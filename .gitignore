@@ -42,7 +42,7 @@ Barcode2of5/**
 dEXIF/**
 MSXML2/**
 NumericalRecipes13/**
-OBJ/**
+#The \OBJ sub-folder is used with Jpeg_Ops.pas
 Synopse/**
 
 
