@@ -256,6 +256,8 @@ function GetFolderSize(sFolder:string) : Integer;
 function DelTree(DirName : string): boolean;
 function GetSpecialFolderPath(iFolder : integer) : String;
 function GetDriveSerialNo(sDrive : string) : String;
+function MovedFolder(folderSrc : String;
+                     folderDest : String) : Boolean;
 function GetTextFileEncoding(sFileName : string) : TEncoding;
 function GetTemporaryFolder(Folder : string) : String;
 function RefreshMappedDrive(cDrvLetter: Char): Boolean;
@@ -264,7 +266,7 @@ function FilesBackedUp(pathSource : String;
                        pathDestination : String) : Boolean;
 procedure FilesSortedAlphabetically(const path : String;
                                     attr : Integer;
-                                    pbProgress : TProgressBar;
+                                    aProgressBar : TProgressBar;
                                     const filesFound : TStringList);
 function FileExistsA(const path : String;
                      attr : Integer) : Boolean;
@@ -3043,16 +3045,18 @@ end;
 //
 //  FUNCTION  : GetSpecialFolderPath
 //
-//  I/P       : Integer - CSIDL value (From constants held in the SHFolder or
-//                ShlObj units)
+//  I/P       : Integer - CSIDL value (From constants held in the WinAPI.SHFolder
+//                or ShlObj units)
 //
 //  O/P       : String - Full path to a special folder (no trailing backslash)
 //
-//  OPERATION : Get paths for special Windows folders
-// CSIDL_COMMON_DESKTOPDIRECTORY
-// CSIDL_COMMON_APPDATA
-// CSIDL_COMMON_DOCUMENTS - (Note : Embedded XP would not write here - it went to the TEMP folder)
-// CSIDL_PERSONAL
+//  OPERATION : Get paths for special Windows folders.
+//
+//              Example values :
+//                CSIDL_COMMON_DESKTOPDIRECTORY
+//                CSIDL_COMMON_APPDATA
+//                CSIDL_COMMON_DOCUMENTS - (Note : Embedded XP would not write here - it went to the TEMP folder)
+//                CSIDL_PERSONAL
 //
 //              see http://delphi.about.com/od/kbwinshell/a/SHGetFolderPath.htm
 // https://msdn.microsoft.com/en-us/library/windows/desktop/bb762494(v=vs.85).aspx
@@ -3138,6 +3142,44 @@ begin
   if GetVolumeInformation(PWideChar(sDrive + '\'), NIL, 0, @VolSerNum, Dummy1, Dummy2, NIL, 0) then
     Result := Format('%.4x:%.4x', [HiWord(VolSerNum), LoWord(VolSerNum)]);
 end; // GetDriveSerialNo
+
+//***************************************************************************
+//
+//  FUNCTION  : MovedFolder
+//
+//  I/P       : folderSrc : String - Source folder, with or without the
+//                trailing path delimiter (e.g. 'E:\Temp')
+//
+//              folderDest : String - Destination folder, with or without the
+//                trailing path delimiter (e.g. 'C:\Dest')
+//
+//  O/P       : Boolean : TRUE if the operation was a success
+//
+//  OPERATION : Moves all the contents (files, folders and subfolders) from
+//              one folder to another one.   Leaves an empty source folder.
+//
+//              This pops up a Windows progress window
+//
+//  UPDATED   : 2018-01-17
+//
+//***************************************************************************
+function MovedFolder(folderSrc : String;
+                     folderDest : String) : Boolean;
+var
+  FOS: TSHFileOpStruct;
+
+begin
+  ZeroMemory(@FOS, SizeOf(FOS));
+  with FOS do
+  begin
+    wFunc  := FO_MOVE; // FO_COPY;
+    fFlags := FOF_ALLOWUNDO or FOF_SIMPLEPROGRESS;
+    pFrom  := PChar(IncludeTrailingPathDelimiter(folderSrc) + '*.*'#0);
+    pTo    := PChar(folderDest + #0);
+  end;
+  Result := (SHFileOperation(FOS) = 0);
+end; // MovedFolder
+
 
 //***************************************************************************
 //
@@ -3463,7 +3505,7 @@ end; // FilesBackedUp
 //***************************************************************************
 procedure FilesSortedAlphabetically(const path : String;
                                     attr : Integer;
-                                    pbProgress : TProgressBar;
+                                    aProgressBar : TProgressBar;
                                     const filesFound : TStringList);
 var
   fresult : Integer;
@@ -3478,10 +3520,10 @@ begin
         (srFile.Name <> '..')) then
     begin
       filesFound.Add(srFile.Name);
-      if (pbProgress <> nil) then
+      if (aProgressBar <> nil) then
       begin
-        pbProgress.Position := pbProgress.Position + 1;
-        pbProgress.Update;
+        aProgressBar.Position := aProgressBar.Position + 1;
+        aProgressBar.Update;
       end;
     end; // if
     fresult := FindNext(srFile);

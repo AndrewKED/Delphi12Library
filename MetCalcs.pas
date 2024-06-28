@@ -3,16 +3,17 @@
 interface
 
 const
-  RDGAS = 287.04;                     // Rd : Gas constant for dry air in J/(kgK) (or 8.314 J/(molK))
-  RVGAS = 461.5;                      // Rv : Gas constant for water vapour in J/(kgK)
-  SPECH_DA_CP = 1005.7;               // Cpd : specific heat of dry air at constant pressure in J/(kgK)
-  STANDARD_NORMAL_GRAVITY = 9.80665;  // m/s2 Gravitational Constant in m/s2 (WMO) - gn
-  ABS_ZEROT = -273.15;                // Temperature of absolute zero, in degC - To
-  STANDARD_SL_PRESSURE = 1013.25;     // International Civil Aviation Organisation ICAO hPa
-  STANDARD_SL_TEMPERATURE = 15;       // ICAO (C)
-  STANDARD_SL_DENSITY = 1.225;        // ICAO (kg/m3)
-  SMD_STANDARD_SL_PRESSURE = 1000.0;  // 750mmHg is SMD standard
-  INITIAL_TLAPSE = 6.5;               // Initial temperature lapse rate in degC/1000m
+  RDGAS = 287.04;                           // Rd : Gas constant for dry air in J/(kgK) (or 8.314 J/(molK))
+  RVGAS = 461.5;                            // Rv : Gas constant for water vapour in J/(kgK)
+  SPECH_DA_CP = 1005.7;                     // Cpd : specific heat of dry air at constant pressure in J/(kgK)
+  STANDARD_NORMAL_GRAVITY = 9.80665;        // m/s2 Gravitational Constant in m/s2 (WMO) - gn
+  ABS_ZEROT = -273.15;                      // Temperature of absolute zero, in degC - To
+  STANDARD_SL_PRESSURE = 1013.25;           // International Civil Aviation Organisation ICAO hPa
+  STANDARD_SL_TEMPERATURE = 15;             // ICAO (in deg C)
+  STANDARD_SL_DENSITY = 1.225;              // ICAO (in kg/m3)
+  SMD_STANDARD_SL_PRESSURE = 1000.0;        // 750mmHg is SMD standard
+  INITIAL_TLAPSE = 6.5;                     // Initial temperature lapse rate in degC/1000m
+  POISSON_CONSTANT_DRY = RDGAS/SPECH_DA_CP; // Poisson constant (typically given the capital Kappa symbol) for dry air
 
   MAX_TEMPERATURE = 65.0;             // 57.8degC at Al' Aziziyah, Libya, Sept 1922)
   MIN_GROUND_TEMPERATURE = -95.0;     // -89.4degC at Vostok, Antartica, 21 July 1983
@@ -26,13 +27,15 @@ function AirDensity(dADPressure : Double;
 function SaturationVapourPressure(dSVPTemperature : Double) : Double;
 //function SaturationVapourPressure(dSVPTemperature : Double;
 //                                  dSVPPressure : Double) : Double;
-function TdFromVP(dGivenVP : Double) : Double;
-function TfFromVP(dGivenVP : Double) : Double;
+function Td_From_VP(dGivenVP : Double) : Double;
+function Tf_From_VP(dGivenVP : Double) : Double;
 function VapourPressure(dTemperature : Double;
                         dHumidity : Double) : Double;
-function MixingRatio(dPressure : Double;
-                     dTemperature : Double;
-                     dHumidity : Double) : Double;
+function MixingRatio(pressure : Double;
+                     temperature : Double;
+                     humidity : Double) : Double;
+function Td_From_P_MR(pressure : Double;
+                      mixingRatio : Double) : Double;
 function PrecipitableWater(p1 : Double;
                            t1 : Double;
                            u1 : Double;
@@ -42,8 +45,10 @@ function PrecipitableWater(p1 : Double;
                            g : Double) : Double;
 function Td_From_MR_P(dMixingRatio : Double;
                       dPressure : Double) : Double;
-function PotTempFromT_P(dTemperature : Double;
+function PotTemp_From_T_P(dTemperature : Double;
                         dPressure : Double) : Double;
+function T_From_PotTemp_P(potentialTemperature : Double;
+                        pressure : Double) : Double;
 function U_From_Tdp_T(dDewPoint : Double;
                       dTemperature : Double) : Double;
 function AbsoluteHumidity(vapourPressure : Double;
@@ -82,6 +87,8 @@ function WetDryTemp2Humidity(dTDryBulb : Double;
                              dPressure : Double) : Double;
 function T_From_SAT_P(dSaturationAdiabat : Double;
                       dPressure : Double) : Double;
+function SAT_From_T_P(temperature : Double;
+                      pressure : Double) : Double;
 function GetWetBulbTemp(dTDryBulb : Double;
                         dHumidity : Double;
                         dPressure : Double) : Double;
@@ -110,13 +117,16 @@ function SpeedOfSound(pressure : Double;
                       density : Double) : Double;
 function ValidGroundTemperature(temperature : Double) : Boolean;
 function ValidFlightTemperature(temperature : Double) : Boolean;
+function GetLCLPressure(pressure : Double;
+                        temperature : Double;
+                        dewPoint : Double) : Double;
 
 implementation
 
 uses
   Math,
   KEDConstants,
-  Maths, NewtonRoot;
+  Maths, NewtonRoot, UnitConversions;
 
 type
   TAltPress = record
@@ -202,7 +212,7 @@ const
 //
 //  FUNCTION  : SaturationVapourPressure
 //
-//  I/P       : dSVPTemperature (double) - the temperature in �C.
+//  I/P       : dSVPTemperature (double) - the temperature in degC.
 //
 //  O/P       : (double) - The saturation vapour pressure, in hPa
 //
@@ -237,7 +247,7 @@ const
 //                Humidity & Moisture, Teddington, London, England, April 1998
 //                "ITS-90 FORMULATIONS FOR VAPOR PRESSURE, FROSTPOINT
 //                TEMPERATURE, DEWPOINT TEMPERATURE, AND
-//                ENHANCEMENT FACTORS IN THE RANGE �100 TO +100 C"
+//                ENHANCEMENT FACTORS IN THE RANGE -100 TO +100 C"
 //
 //              Copy this line for use in spreadsheets\
 //              NOTE : Temperature is in Kelvin
@@ -267,11 +277,11 @@ end; // SaturationVapourPressure
 
 //***************************************************************************
 //
-//  FUNCTION  : TdFromVP
+//  FUNCTION  : Td_From_VP
 //
 //  I/P       : dGivenVP : double - The Vapour Pressure, in hPa
 //
-//  O/P       : double - The dewpoint temperature in �C
+//  O/P       : double - The dewpoint temperature in degC
 //
 //  OPERATION : Determine the Dew Point Temperature, given the Vapour
 //              Pressure using Wexler (modified to ITS-90 by Hardy)
@@ -296,7 +306,7 @@ end; // SaturationVapourPressure
 //  UPDATED   : 2013-08-16
 //
 //***************************************************************************\
-function TdFromVP(dGivenVP : Double) : Double;
+function Td_From_VP(dGivenVP : Double) : Double;
 begin
   if ((dGivenVP < INVALID_TEST) and
       (dGivenVP > 0.0)) then
@@ -315,11 +325,11 @@ begin
   end // if
   else
     result := INVALID_TEST
-end; // TdFromVP
+end; // Td_From_VP
 
 //***************************************************************************
 //
-//  FUNCTION  : TfFromVP
+//  FUNCTION  : Tf_From_VP
 //
 //  I/P       : dGivenVP : double - The Vapour Pressure, in hPa
 //
@@ -341,7 +351,7 @@ end; // TdFromVP
 //  UPDATED   : 2015-10-01
 //
 //***************************************************************************\
-function TfFromVP(dGivenVP : Double) : Double;
+function Tf_From_VP(dGivenVP : Double) : Double;
 begin
   if ((dGivenVP < INVALID_TEST) and
       (dGivenVP > 0.0)) then
@@ -359,7 +369,7 @@ begin
   end // if
   else
     result := INVALID_TEST
-end; // TfFromSVP
+end; // Tf_From_VP
 
 //***************************************************************************
 //
@@ -412,13 +422,13 @@ end; // VapourPressure
 //
 //  FUNCTION  : MixingRatio
 //
-//  I/P       : dPressure (double) - The pressure in hPa
+//  I/P       : pressure : Double - The pressure in hPa
 //
-//              dTemperature (double) - The temperature in degC
+//              temperature : Double - The temperature in degC
 //
-//              dHumidity (double) - The relative humidity in %
+//              humidity : Double - The relative humidity in %
 //
-//  O/P       : (double) - the mixing ratio in g/kg
+//  O/P       : Double - the mixing ratio in g/kg
 //
 //  OPERATION : Mixing Ratio is the ratio of the mass of water vapour to
 //              the mass of dry air with which the water vapour is associated.
@@ -440,29 +450,54 @@ end; // VapourPressure
 //  UPDATED   : 2007-03-16
 //
 //***************************************************************************
-function MixingRatio(dPressure : Double;
-                     dTemperature : Double;
-                     dHumidity : Double) : Double;
+function MixingRatio(pressure : Double;
+                     temperature : Double;
+                     humidity : Double) : Double;
 var
   e : Double;
 
 begin
-  if ((dPressure < INVALID_TEST) and
-      (dPressure > 0.0) and
-      (dTemperature < INVALID_TEST) and
-      (dHumidity < INVALID_TEST)) then
+  if ((pressure < INVALID_TEST) and
+      (pressure > 0.0) and
+      (temperature < INVALID_TEST) and
+      (humidity < INVALID_TEST)) then
   begin
 //    Use either
 //    es := SaturationVapourPressure(dTemperature);
 //    ws := 621.97 * es / (dPressure - es);
 //    result := ws * dHumidity / 100.0;
 //    or
-    e := VapourPressure(dTemperature,dHumidity);
-    result := 621.97 * e / (dPressure - e);
+    e := VapourPressure(temperature, humidity);
+    result := 621.97 * e / (pressure - e);
   end // if
   else
     result := INVALID_VALUE;
 end; // MixingRatio
+
+//***************************************************************************
+//
+//  FUNCTION  : Td_from_P_MR
+//
+//  I/P       : pressure : Double - the pressure, in hPa
+//
+//              mixingRatio : Double - The mixing ratio, in g/m^3
+//
+//  O/P       : Double - The dew point temperature, in Kelvin
+//
+//  OPERATION : Calculate the dew point temperature from pressure and mixing ratio
+//
+//  UPDATED   : 2022-12-12
+//
+//***************************************************************************
+function Td_from_P_MR(pressure : Double;
+                      mixingRatio : Double) : Double;
+var
+  e : Double;
+
+begin
+  e := mixingRatio * pressure / (621.97 + mixingRatio);
+  Result := Kelvin_From_degC(Td_From_VP(e));
+end; // Td_From_P_MR
 
 //***************************************************************************
 //
@@ -542,7 +577,7 @@ begin
       (dMixingRatio < INVALID_TEST)) then
   begin
     dSVP := dMixingRatio * dPressure / (621.97 + dMixingRatio);
-    result := TdFromVP(dSVP);
+    result := Td_From_VP(dSVP);
   end // if
   else
     result := INVALID_VALUE;
@@ -550,7 +585,7 @@ end; // Td_From_MR_P
 
 //***************************************************************************
 //
-//  FUNCTION  : PotTempFromT_P
+//  FUNCTION  : PotTemp_From_T_P
 //
 //  I/P       : dTemperature : double - The temperature, in Kelvin
 //
@@ -583,8 +618,8 @@ end; // Td_From_MR_P
 //  UPDATED   : 2013-07-29
 //
 //***************************************************************************
-function PotTempFromT_P(dTemperature : Double;
-                        dPressure : Double) : Double;
+function PotTemp_From_T_P(dTemperature : Double;
+                          dPressure : Double) : Double;
 begin
   if ((dPressure < INVALID_TEST) and
       (dPressure > 0.0) and
@@ -592,7 +627,36 @@ begin
     result := dTemperature * Power(1000.0 / dPressure, RDGAS/SPECH_DA_CP)
   else
     result := INVALID_VALUE;
-end; // PotTempFromT_P
+end; // PotTemp_From_T_P
+
+//***************************************************************************
+//
+//  FUNCTION  : T_From_PotTemp_P
+//
+//  I/P       : potentialTemperature : Double - The potential temperature, in Kelvin
+//
+//              pressure : Double - The pressure, in hPa
+//
+//  O/P       : double - The temperature, in Kelvin
+//
+//  OPERATION : Calculate the temperature, given the potential temperature and
+//              pressure.
+//
+//              See the notes in the function PotTemp_From_T_P.
+//
+//  UPDATED   : 2022-11-02
+//
+//***************************************************************************
+function T_From_PotTemp_P(potentialTemperature : Double;
+                          pressure : Double) : Double;
+begin
+  if ((pressure < INVALID_TEST) and
+      (pressure > 0.0) and
+      (potentialTemperature < INVALID_TEST)) then
+    result := potentialTemperature / Power(1000.0 / pressure, RDGAS/SPECH_DA_CP)
+  else
+    result := INVALID_VALUE;
+end; // T_From_PotTemp_P
 
 //***************************************************************************
 //
@@ -824,7 +888,7 @@ begin
     // pressure.   This is Dew Point.
   //  dTemp := Ln(ed / (6.112 * fp(STANDARD_SL_PRESSURE)));
   //  result := (243.12 * dTemp) / (17.62 - dTemp);
-    result := TdFromVP(ed);
+    result := Td_From_VP(ed);
   end // if
   else
     result := INVALID_VALUE;
@@ -910,7 +974,7 @@ begin
       dFPHumidity := 1.0;
     ed := (dFPHumidity * es) / 100.0;
 
-    result := TfFromVP(ed);
+    result := Tf_From_VP(ed);
   end // if
   else
     result := INVALID_VALUE;
@@ -1355,21 +1419,26 @@ end; // IndexOfRefraction
 //
 //  FUNCTION  : T_From_SAT_P
 //
-//  I/P       : dSaturationAdiabat : double - The saturation adiabat in Kelvin
+//  I/P       : dSaturationAdiabat : double - The saturation adiabat in degC
 //
 //              dPressure : double - the pressure in hPa.
 //
-//  O/P       : double - The temperature at which this occurs in Kelvin
+//  O/P       : double - The temperature at which this occurs in degC
 //
 //  OPERATION : Determines the temperature at which the saturation adiabat
 //              occurs, given the pressure.
-//              The method
-//              is iterative, homing in on the final value to an accuracy
-//              of better than 0.01�C
+//
+//              The method is iterative, homing in on the final value to an
+//              accuracy of better than 0.01degC
 //
 //					    The equation used was derived from those given in
 //              WMO-No.8 "Guide to Meteorological Instruments and Methods
 //              of Observation" Annex 4B
+//
+//              Replace with Bolton equation?
+//              https://journals.ametsoc.org/view/journals/mwre/136/7/2007mwr2224.1.xml
+//              https://www.nsstc.uah.edu/mips/personnel/kevin/thermo/Chap-6ppt.pdf
+//              https://unidata.github.io/MetPy/v0.2/api/thermo.html
 //
 //  UPDATED   : 2005/02/22
 //
@@ -1378,13 +1447,16 @@ function T_From_SAT_P(dSaturationAdiabat : Double;
                       dPressure : Double) : Double;
 var
   dStep : Double;
-  dEstT : Double;
+  dEstT : Double;           // in degC
   dDerivedSAT : Double;
 
 begin
-  dStep := 1.0;
-  dEstT := -200.0;
-  dDerivedSAT := -100.0;
+  dStep := 100.0;
+  dEstT := ABS_ZEROT;
+  dDerivedSAT := PotTemp_From_T_P(Kelvin_From_DegC(dEstT), dPressure) /
+                 Exp((-2.6518986 * (621.97*SaturationVapourPressure(dEstT))/
+                                   (dPressure-SaturationVapourPressure(dEstT)))/ Kelvin_From_DegC(dEstT));
+  dDerivedSAT := degC_From_Kelvin(dDerivedSAT);
 
   while (abs(dDerivedSAT - dSaturationAdiabat) > 0.01) do
   begin
@@ -1404,14 +1476,39 @@ begin
     end; // if
 
     // Saturation Adiabat = Dry adiabat / thingy
-    dDerivedSAT := PotTempFromT_P(dEstT+273.15, dPressure) /
+    dDerivedSAT := PotTemp_From_T_P(Kelvin_From_DegC(dEstT), dPressure) /
                    Exp((-2.6518986 * (621.97*SaturationVapourPressure(dEstT))/
-                                     (dPressure-SaturationVapourPressure(dEstT)))/ (dEstT+273.15));
-    dDerivedSAT := dDerivedSAT - 273.15;
+                                     (dPressure-SaturationVapourPressure(dEstT)))/ (Kelvin_From_DegC(dEstT)));
+    dDerivedSAT := degC_From_Kelvin(dDerivedSAT);
   end; // while
+
 
   result := dEstT;
 end; // T_From_SAT_P
+
+//***************************************************************************
+//
+//  FUNCTION  : SAT_From_T_P
+//
+//  I/P       : temperature : Double - in Kelvin
+//
+//              pressure : Double - in hPa
+//
+//  O/P       : Double - The saturated adiabat value, in Kelvin
+//
+//  OPERATION : Get the saturated adiabat value from temperature and pressure.
+//
+//  UPDATED   : 2022-12-10
+//
+//***************************************************************************
+function SAT_From_T_P(temperature : Double;
+                      pressure : Double) : Double;
+begin
+  Result := PotTemp_From_T_P(temperature, pressure) /
+            Exp((-2.6518986 * (621.97*SaturationVapourPressure(degC_From_Kelvin(temperature)))/
+                              (pressure-SaturationVapourPressure(degC_From_Kelvin(temperature)))) /
+                (temperature));
+end; // SAT_From_T_P
 
 //***************************************************************************
 //
@@ -1860,6 +1957,67 @@ begin
   Result := (temperature >= MIN_FLIGHT_TEMPERATURE) and
             (temperature <= MAX_TEMPERATURE);
 end; // ValidFlightTemperature
+
+//***************************************************************************
+//
+//  FUNCTION  :
+//
+//  I/P       : pressure : Double - Ground level pressure, in hPa
+//
+//              temperature : Double - Ground level temperature, in degC
+//
+//              dewPoint : Double - Ground level dew point, in degC
+//
+//  O/P       : Double - the pressure level of Lifting Condensation Level, in hPa
+//
+//  OPERATION : Given ground conditions, determine the pressure of the Lifting
+//              Condensation Level (LCL).
+//
+//              The LCL is at the intersection of the dry adiabatic lapse rate
+//              line that starts at ground pressure/temperature, and the mixing
+//              ratio line, that starts at ground pressure/dew point.
+//
+//  UPDATED   : 2022-11-02
+//
+//***************************************************************************
+function GetLCLPressure(pressure : Double;
+                        temperature : Double;
+                        dewPoint : Double) : Double;
+var
+  mr : Double;
+  groundTp : Double;
+  p : Double;
+  Td : Double;
+  T : Double;
+
+begin
+  // Get the mixing ratio value at ground pressure and dewpoint.
+  mr := MixingRatio(pressure, dewPoint, 100.0);
+
+  // What is the equation for the dry adiabat that passes through ground pressure
+  // and ground temperature.
+
+  // Get the ground potential temperature (in K)
+  groundTp := PotTemp_From_T_P(temperature - ABS_ZEROT, pressure);
+  // The dry adiabt through the ground temperature will follow the curve
+  //  T = groundTp / Power((1000.0/p),0.288);
+
+  // Starting at the ground pressure, decrease pressure until the mixing ratio
+  // line that started at ground Td crosses the dry adiabat line that started at
+  // ground temperature.
+  p := pressure;
+  Td := Td_From_P_MR(p, mr);
+  T := T_From_PotTemp_P(groundTp, p);
+  while (Td < T) do
+  begin
+    p := p - 0.01;
+    Td := Td_From_P_MR(p, mr);
+    T := T_From_PotTemp_P(groundTp, p);
+  end;
+
+  Result := p;
+end; // GetLCLPressure
+
 
 (*
   Water vapour pressure

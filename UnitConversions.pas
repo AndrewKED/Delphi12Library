@@ -24,6 +24,88 @@ const
   GPM3_PER_OZPFT3 = 1001.1539701121;
   GPM3_PER_OZPYD3 = 37.0797766708;
 
+function degC_From_Kelvin(t : Double) : Double;
+function Kelvin_From_degC(t : Double) : Double;
+function Farenheit_From_degC(t : Double) : Double;
+function degC_From_Farenheit(t : Double) : Double;
+
 implementation
+
+uses
+  MetCalcs;
+
+//***************************************************************************
+//
+//  FUNCTION  : degC_From_Kelvin
+//
+//  I/P       : t : Double - The temperature, in degrees Celcius
+//
+//  O/P       : Double - The temperature, in Kelvin
+//
+//  OPERATION : Convert temperature from degrees Celcius to Kelvin
+//
+//  UPDATED   : 2022-11-02
+//
+//***************************************************************************
+function degC_From_Kelvin(t : Double) : Double;
+begin
+  Result := t + ABS_ZEROT;
+end; // degC_From_Kelvin
+
+//***************************************************************************
+//
+//  FUNCTION  : Kelvin_From_degC
+//
+//  I/P       : t : Double - The temperature, in Kelvin
+//
+//  O/P       : Double - The temperature, in degrees Celcius
+//
+//  OPERATION : Convert temperature from Kelvin to degrees Celcius
+//
+//  UPDATED   : 2022-11-02
+//
+//***************************************************************************
+function Kelvin_From_degC(t : Double) : Double;
+begin
+  Result := t - ABS_ZEROT;
+end; // Kelvin_From_degC
+
+
+//***************************************************************************
+//
+//  FUNCTION  : Farenheit_From_degC
+//
+//  I/P       : t : Double - The temperature, in degrees Celcius
+//
+//  O/P       : Double : The temperature, in Farenheit
+//
+//  OPERATION : Return Farenheit value for the given value in degrees Celcius
+//
+//  UPDATED   : 2022-11-02
+//
+//***************************************************************************
+function Farenheit_From_degC(t : Double) : Double;
+begin
+  Result := t * DEGF_PER_DEGC + 32;
+end;
+
+//***************************************************************************
+//
+//  FUNCTION  : degC_From_Farenheit
+//
+//  I/P       : t : Double - The temperature, in Farenheit
+//
+//  O/P       : Double : The temperature, in degrees Celcius
+//
+//  OPERATION : Return degrees Celcius value for the given value in Farenheit
+//
+//  UPDATED   : 2022-11-02
+//
+//***************************************************************************
+function degC_From_Farenheit(t : Double) : Double;
+begin
+  Result := (t - 32) / DEGF_PER_DEGC;
+end;
+
 
 end.

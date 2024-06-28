@@ -115,6 +115,7 @@ type
   TRowOfAlignment = array[1..MAX_COLUMNS] of TAlignment;
   TRowOfStyle = array[1..MAX_COLUMNS] of TFontStyles;
   TRowOfFontSize = array[1..MAX_COLUMNS] of integer;
+  TRowOfTWIPS = array[1..MAX_COLUMNS] of integer;
   TRowOfColour = array[1..MAX_COLUMNS] of TColor;
   TPrintOverrideOption = (PRNT_OVR_FONT_SIZE,
                           PRNT_OVR_FONT_COLOUR,
@@ -123,7 +124,11 @@ type
                           PRNT_OVR_FONT_UNDERLINE,
                           PRNT_OVR_FONT_STRIKEOUT,
                           PRNT_OVR_BACKGROUND_COLOUR,
-                          PRNT_OVR_ALIGNMENT);
+                          PRNT_OVR_ALIGNMENT,
+                          PRNT_OVR_TOP_BORDER,
+                          PRNT_OVR_BOTTOM_BORDER,
+                          PRNT_OVR_LEFT_BORDER,
+                          PRNT_OVR_RIGHT_BORDER);
   TPrintOverrides = array of TPrintOverrideOption;
   TPrintOverrideValues = array of Variant;
   TPrintFitImage = (PRNT_IMG_FIT_ALL,
@@ -256,8 +261,8 @@ procedure InsertTextIntoHeaderCell(sCellText : string;
                                    overrideIDs : TPrintOverrides = [];
                                    overrideValues : TPrintOverrideValues = []);
 procedure InsertTextIntoBodyCell(sCellText : string;
-                                   overrideIDs : TPrintOverrides = [];
-                                   overrideValues : TPrintOverrideValues = []);
+                                 overrideIDs : TPrintOverrides = [];
+                                 overrideValues : TPrintOverrideValues = []);
 function BodyRowComplete : Boolean;
 procedure CompleteBodyRow(sFill : string);
 procedure PrintTableHeader;
@@ -365,6 +370,15 @@ type
     bodyFGColour : TRowOfColour;        // Foreground (font) colour to be applied to the body row
     headerFontSize : TRowOfFontSize;    // Font Size to be applied to the header row
     bodyFontSize : TRowOfFontSize;      // Font Size to be applied to the body row
+    headerTopBorderTWIPS : TRowOfTWIPS;
+    bodyTopBorderTWIPS : TRowOfTWIPS;
+    headerBottomBorderTWIPS : TRowOfTWIPS;
+    bodyBottomBorderTWIPS : TRowOfTWIPS;
+    headerLeftBorderTWIPS : TRowOfTWIPS;
+    bodyLeftBorderTWIPS : TRowOfTWIPS;
+    headerRightBorderTWIPS : TRowOfTWIPS;
+    bodyRightBorderTWIPS : TRowOfTWIPS;
+
     bPermitPageBreakInRow : boolean;    // Set if we allow rows to span a page break
     bReprintHeaderRow : boolean;        // Set if we must print column headers
     end; // record
@@ -536,16 +550,18 @@ end;
 //              poDireciton - The orientation of the printout.
 //
 //              liTopMargin - Printing starts this far from the top of the
-//                page (in 100ths of mm).   -1 for the default.
+//                page (in 100ths of mm). Use -1 for the default value, which is
+//                10mm for portrait and 16mm for landscape, for binding.
 //
 //              liBottomMargin - Printing stops this far from the bottom
-//                of the page (in 100ths of mm).   -1 for the default.
+//                of the page (in 100ths of mm). Use -1 for the default of 10mm.
 //
 //              liLeftMargin - Printing starts this far from the left of the
-//                page (in 100ths of mm).   -1 for the default.
+//                page (in 100ths of mm). Use -1 for the default value, which is
+//                16mm for portrait and 10mm for landscape, for binding.
 //
 //              liRightMargin - Printing stops this far from the right of the
-//                page (in 100ths of mm).   -1 for the default.
+//                page (in 100ths of mm). Use -1 for the default of 10mm.
 //
 //              bBorder - TRUE if a border is to be printed around the
 //                page.
@@ -661,6 +677,7 @@ begin
   if (bPageBorder) then
   begin
     // With a border, remove 7.5mm/5.0mm from the X/Y printable area
+{TODO -oAndrew Spencer -cFixThis : This should be configurable   }
     iPrnAreaLeft := iPageLeftMargin + ppOutput^.ConvertX(750,mmHiMetric,ppOutput^.Units);
     iPrnAreaRight := iPageRightMargin - ppOutput^.ConvertX(750,mmHiMetric,ppOutput^.Units);
     iPrnAreaTop := iPageTopMargin + ppOutput^.ConvertX(500,mmHiMetric,ppOutput^.Units);
@@ -1628,7 +1645,7 @@ begin
 (*
 Empty, non-working RTF
 
-{\rtf1\ansi\ansicpg1252\deff0{\fonttbl{\f0\fnil MS Sans Serif;}}
+{\rtf1\ansi\ansicpg1252\deff0{\fonttbl{\f0\fnil Tahoma;}}
 {\colortbl ;\red0\green0\blue0;}
 \viewkind4\uc1\pard\cf1\lang1033\f0\fs16
 \par }
@@ -1637,7 +1654,7 @@ Empty, non-working RTF
 (*
 It does work for this RTF, which only has the word "test" in it
 
-{\rtf1\ansi\ansicpg1252\deff0{\fonttbl{\f0\fnil\fcharset0 MS Sans Serif;}{\f1\fnil MS Sans Serif;}}
+{\rtf1\ansi\ansicpg1252\deff0{\fonttbl{\f0\fnil\fcharset0 Tahoma;}{\f1\fnil Tahoma;}}
 {\colortbl ;\red0\green0\blue0;}
 \viewkind4\uc1\pard\cf1\lang1033\f0\fs16 test\f1
 \par }
@@ -1673,7 +1690,9 @@ end; // PrintRichParagraph
 //
 //  O/P       : None
 //
-//  OPERATION : Used to move the insertion point down a certain number of points
+//  OPERATION : Used to move the insertion point down (or up) a certain number
+//              of points.
+//
 //              No printing is done - the area is left blank.
 //
 //  UPDATED   : 2007/02/09
@@ -2222,15 +2241,16 @@ procedure DrawHeaderCellBorders(iTopBorder : Integer;
                                 iBottomBorder : integer);
 var
   n : Integer;
+
 begin
   n := 1;
   while (n <= tptTable[ct].iTableColumns) do
   begin
-// Check whether a top border has been defined for this cell - if so, print it
-    if (tptTable[ct].headerColumns[n].iTopBorderTWIPS > 0) then
+    // Check whether a top border has been defined for this cell - if so, print it
+    if (tptTable[ct].headerTopBorderTWIPS[n] > 0) then
     begin
       ppOutput^.Canvas.Pen.Color := tptTable[ct].headerColumns[n].cBorderColour;
-      ppOutput^.Canvas.Pen.Width := ppOutput^.ConvertX(tptTable[ct].headerColumns[n].iTopBorderTWIPS,mmTWIPS,ppOutput^.Units);
+      ppOutput^.Canvas.Pen.Width := ppOutput^.ConvertX(tptTable[ct].headerTopBorderTWIPS[n], mmTWIPS, ppOutput^.Units);
 
       ppOutput^.Canvas.MoveTo(iPrnAreaLeft +
                               ppOutput^.ConvertX(tptTable[ct].headerColumns[n].iColumnLeftMM100,mmHiMetric,ppOutput^.Units),
@@ -2240,11 +2260,11 @@ begin
                               iTopBorder);
     end; // if
 
-// Check whether a left border has been defined
-    if (tptTable[ct].headerColumns[n].iLeftBorderTWIPS > 0) then
+    // Check whether a left border has been defined
+    if (tptTable[ct].headerLeftBorderTWIPS[n] > 0) then
     begin
       ppOutput^.Canvas.Pen.Color := tptTable[ct].headerColumns[n].cBorderColour;
-      ppOutput^.Canvas.Pen.Width := ppOutput^.ConvertX(tptTable[ct].headerColumns[n].iLeftBorderTWIPS,mmTWIPS,ppOutput^.Units);
+      ppOutput^.Canvas.Pen.Width := ppOutput^.ConvertX(tptTable[ct].headerLeftBorderTWIPS[n], mmTWIPS, ppOutput^.Units);
 
       ppOutput^.Canvas.MoveTo(iPrnAreaLeft +
                               ppOutput^.ConvertX(tptTable[ct].headerColumns[n].iColumnLeftMM100,mmHiMetric,ppOutput^.Units),
@@ -2254,11 +2274,11 @@ begin
                               iBottomBorder);
     end; // if
 
-// Check whether a right border has been defined
-    if (tptTable[ct].headerColumns[n].iRightBorderTWIPS > 0) then
+    // Check whether a right border has been defined
+    if (tptTable[ct].headerRightBorderTWIPS[n] > 0) then
     begin
       ppOutput^.Canvas.Pen.Color := tptTable[ct].headerColumns[n].cBorderColour;
-      ppOutput^.Canvas.Pen.Width := ppOutput^.ConvertX(tptTable[ct].headerColumns[n].iRightBorderTWIPS,mmTWIPS,ppOutput^.Units);
+      ppOutput^.Canvas.Pen.Width := ppOutput^.ConvertX(tptTable[ct].headerRightBorderTWIPS[n], mmTWIPS, ppOutput^.Units);
 
       ppOutput^.Canvas.MoveTo(iPrnAreaLeft +
                               ppOutput^.ConvertX(tptTable[ct].headerColumns[n].iColumnRightMM100,mmHiMetric,ppOutput^.Units),
@@ -2268,11 +2288,11 @@ begin
                               iBottomBorder);
     end; // if
 
-// Check whether a bottom border has been defined
-    if (tptTable[ct].headerColumns[n].iBottomBorderTWIPS > 0) then
+    // Check whether a bottom border has been defined
+    if (tptTable[ct].headerBottomBorderTWIPS[n] > 0) then
     begin
       ppOutput^.Canvas.Pen.Color := tptTable[ct].headerColumns[n].cBorderColour;
-      ppOutput^.Canvas.Pen.Width := ppOutput^.ConvertX(tptTable[ct].headerColumns[n].iBottomBorderTWIPS,mmTWIPS,ppOutput^.Units);
+      ppOutput^.Canvas.Pen.Width := ppOutput^.ConvertX(tptTable[ct].headerBottomBorderTWIPS[n], mmTWIPS, ppOutput^.Units);
 
       ppOutput^.Canvas.MoveTo(iPrnAreaLeft +
                               ppOutput^.ConvertX(tptTable[ct].headerColumns[n].iColumnLeftMM100,mmHiMetric,ppOutput^.Units),
@@ -2309,15 +2329,16 @@ procedure DrawBodyCellBorders(iTopBorder : Integer;
                               iBottomBorder : integer);
 var
   n : Integer;
+
 begin
   n := 1;
   while (n <= tptTable[ct].iTableColumns) do
   begin
     // Check whether a top border has been defined for this cell - if so, print it
-    if (tptTable[ct].bodyColumns[n].iTopBorderTWIPS > 0) then
+    if (tptTable[ct].bodyTopBorderTWIPS[n] > 0) then
     begin
       ppOutput^.Canvas.Pen.Color := tptTable[ct].bodyColumns[n].cBorderColour;
-      ppOutput^.Canvas.Pen.Width := ppOutput^.ConvertX(tptTable[ct].bodyColumns[n].iTopBorderTWIPS,mmTWIPS,ppOutput^.Units);
+      ppOutput^.Canvas.Pen.Width := ppOutput^.ConvertX(tptTable[ct].bodyTopBorderTWIPS[n], mmTWIPS, ppOutput^.Units);
 
       ppOutput^.Canvas.MoveTo(iPrnAreaLeft +
                               ppOutput^.ConvertX(tptTable[ct].bodyColumns[n].iColumnLeftMM100,mmHiMetric,ppOutput^.Units),
@@ -2328,10 +2349,10 @@ begin
     end; // if
 
     // Check whether a left border has been defined
-    if (tptTable[ct].bodyColumns[n].iLeftBorderTWIPS > 0) then
+    if (tptTable[ct].bodyLeftBorderTWIPS[n] > 0) then
     begin
       ppOutput^.Canvas.Pen.Color := tptTable[ct].bodyColumns[n].cBorderColour;
-      ppOutput^.Canvas.Pen.Width := ppOutput^.ConvertX(tptTable[ct].bodyColumns[n].iLeftBorderTWIPS,mmTWIPS,ppOutput^.Units);
+      ppOutput^.Canvas.Pen.Width := ppOutput^.ConvertX(tptTable[ct].bodyLeftBorderTWIPS[n], mmTWIPS, ppOutput^.Units);
 
       ppOutput^.Canvas.MoveTo(iPrnAreaLeft +
                               ppOutput^.ConvertX(tptTable[ct].bodyColumns[n].iColumnLeftMM100,mmHiMetric,ppOutput^.Units),
@@ -2342,10 +2363,10 @@ begin
     end; // if
 
     // Check whether a right border has been defined
-    if (tptTable[ct].bodyColumns[n].iRightBorderTWIPS > 0) then
+    if (tptTable[ct].bodyRightBorderTWIPS[n] > 0) then
     begin
       ppOutput^.Canvas.Pen.Color := tptTable[ct].bodyColumns[n].cBorderColour;
-      ppOutput^.Canvas.Pen.Width := ppOutput^.ConvertX(tptTable[ct].bodyColumns[n].iRightBorderTWIPS,mmTWIPS,ppOutput^.Units);
+      ppOutput^.Canvas.Pen.Width := ppOutput^.ConvertX(tptTable[ct].bodyRightBorderTWIPS[n], mmTWIPS, ppOutput^.Units);
 
       ppOutput^.Canvas.MoveTo(iPrnAreaLeft +
                               ppOutput^.ConvertX(tptTable[ct].bodyColumns[n].iColumnRightMM100,mmHiMetric,ppOutput^.Units),
@@ -2356,10 +2377,10 @@ begin
     end; // if
 
     // Check whether a bottom border has been defined
-    if (tptTable[ct].bodyColumns[n].iBottomBorderTWIPS > 0) then
+    if (tptTable[ct].bodyBottomBorderTWIPS[n] > 0) then
     begin
       ppOutput^.Canvas.Pen.Color := tptTable[ct].bodyColumns[n].cBorderColour;
-      ppOutput^.Canvas.Pen.Width := ppOutput^.ConvertX(tptTable[ct].bodyColumns[n].iBottomBorderTWIPS,mmTWIPS,ppOutput^.Units);
+      ppOutput^.Canvas.Pen.Width := ppOutput^.ConvertX(tptTable[ct].bodyBottomBorderTWIPS[n], mmTWIPS, ppOutput^.Units);
 
       ppOutput^.Canvas.MoveTo(iPrnAreaLeft +
                               ppOutput^.ConvertX(tptTable[ct].bodyColumns[n].iColumnLeftMM100,mmHiMetric,ppOutput^.Units),
@@ -2415,7 +2436,7 @@ var
     if (((bHeader) and
          (tptTable[ct].headerBGColour[idCol] <> clWhite)) or
         ((not bHeader) and
-         (tptTable[ct].bodyBGColour[idCol] <> clWhite)))   then
+         (tptTable[ct].bodyBGColour[idCol] <> clWhite))) then
     begin
       ppOutput^.Canvas.Brush.Style := bsSolid;
       if (bHeader) then
@@ -2823,9 +2844,13 @@ begin
         // This partial row will be left on the page, so produce the required borders
         // around the cells in this row.
         if (bHeader) then
-          DrawHeaderCellBorders(iTopBorderPos,iLowestBottomBorderPos)
+        begin
+          DrawHeaderCellBorders(iTopBorderPos,iLowestBottomBorderPos);
+        end // if
         else
+        begin
           DrawBodyCellBorders(iTopBorderPos,iLowestBottomBorderPos);
+        end;
       end; // else
       StartNewPage(FALSE);
       // Check if we must put column headers at the start of this page
@@ -3242,12 +3267,16 @@ begin
       sCellText := '';
     end; // else
 
-    // Set the defaults
+    // Set the defaults values to be used in header cell drawing
     tptTable[ct].headerAlignment[tptTable[ct].siCurrentHeaderColumn] := tptTable[ct].headerColumns[tptTable[ct].siCurrentHeaderColumn].taAlignment;
     tptTable[ct].headerStyle[tptTable[ct].siCurrentHeaderColumn] := tptTable[ct].headerColumns[tptTable[ct].siCurrentHeaderColumn].sfsFontStyle;
     tptTable[ct].headerBGColour[tptTable[ct].siCurrentHeaderColumn] := tptTable[ct].headerColumns[tptTable[ct].siCurrentHeaderColumn].cBackgroundColour;
     tptTable[ct].headerFGColour[tptTable[ct].siCurrentHeaderColumn] := tptTable[ct].headerColumns[tptTable[ct].siCurrentHeaderColumn].cFontColour;
     tptTable[ct].headerFontSize[tptTable[ct].siCurrentHeaderColumn] := tptTable[ct].headerColumns[tptTable[ct].siCurrentHeaderColumn].iFontSize;
+    tptTable[ct].headerTopBorderTWIPS[tptTable[ct].siCurrentHeaderColumn] := tptTable[ct].headerColumns[tptTable[ct].siCurrentHeaderColumn].iTopBorderTWIPS;
+    tptTable[ct].headerBottomBorderTWIPS[tptTable[ct].siCurrentHeaderColumn] := tptTable[ct].headerColumns[tptTable[ct].siCurrentHeaderColumn].iBottomBorderTWIPS;
+    tptTable[ct].headerLeftBorderTWIPS[tptTable[ct].siCurrentHeaderColumn] := tptTable[ct].headerColumns[tptTable[ct].siCurrentHeaderColumn].iLeftBorderTWIPS;
+    tptTable[ct].headerRightBorderTWIPS[tptTable[ct].siCurrentHeaderColumn] := tptTable[ct].headerColumns[tptTable[ct].siCurrentHeaderColumn].iRightBorderTWIPS;
     // Make any specified cell changes
     n := 0;
     while ((n < Length(overrideIDs)) and
@@ -3290,6 +3319,14 @@ begin
           else
             tptTable[ct].headerStyle[tptTable[ct].siCurrentHeaderColumn] :=
               tptTable[ct].headerStyle[tptTable[ct].siCurrentHeaderColumn] - [fsStrikeOut];
+        PRNT_OVR_TOP_BORDER :
+          tptTable[ct].headerTopBorderTWIPS[tptTable[ct].siCurrentHeaderColumn] := Integer(overrideValues[n]);
+        PRNT_OVR_BOTTOM_BORDER :
+          tptTable[ct].headerBottomBorderTWIPS[tptTable[ct].siCurrentHeaderColumn] := Integer(overrideValues[n]);
+        PRNT_OVR_LEFT_BORDER :
+          tptTable[ct].headerLeftBorderTWIPS[tptTable[ct].siCurrentHeaderColumn] := Integer(overrideValues[n]);
+        PRNT_OVR_RIGHT_BORDER :
+          tptTable[ct].headerRightBorderTWIPS[tptTable[ct].siCurrentHeaderColumn] := Integer(overrideValues[n]);
       end; // case
       Inc(n);
     end; // while
@@ -3344,6 +3381,7 @@ end; // InsertTextIntoHeaderCell
 //  FUNCTION  : InsertTextIntoBodyCell
 //
 //  I/P       : sCellText(string) - The text to be printed in this cell.
+//                Insert #9 characters to move to next cell.
 //
 //              overrideIDs : TPrintOverrides = [] - Optional array of override
 //                identifiers.
@@ -3355,7 +3393,9 @@ end; // InsertTextIntoHeaderCell
 //
 //              tptTable[ct].siCurrentBodyColumn - indicates the current column
 //
-//  OPERATION : Adds the given text to the next body column.
+//  OPERATION : Adds the given text to the next body column/s and print when
+//              the row is ended.
+//
 //              If specified, certain attributes of the defined table body
 //              column may be overridden for this row.
 //
@@ -3363,8 +3403,8 @@ end; // InsertTextIntoHeaderCell
 //
 //***************************************************************************
 procedure InsertTextIntoBodyCell(sCellText : string;
-                                   overrideIDs : TPrintOverrides = [];
-                                   overrideValues : TPrintOverrideValues = []);
+                                 overrideIDs : TPrintOverrides = [];
+                                 overrideValues : TPrintOverrideValues = []);
 var
   n : Integer;
 
@@ -3385,12 +3425,17 @@ begin
       tptTable[ct].bodyRowText[tptTable[ct].siCurrentBodyColumn] := sCellText;
       sCellText := '';
     end; // else
-    // Set the defaults
+
+    // Set the defaults values to be used in body cell drawing
     tptTable[ct].bodyAlignment[tptTable[ct].siCurrentBodyColumn] := tptTable[ct].bodyColumns[tptTable[ct].siCurrentBodyColumn].taAlignment;
     tptTable[ct].bodyStyle[tptTable[ct].siCurrentBodyColumn] := tptTable[ct].bodyColumns[tptTable[ct].siCurrentBodyColumn].sfsFontStyle;
     tptTable[ct].bodyBGColour[tptTable[ct].siCurrentBodyColumn] := tptTable[ct].bodyColumns[tptTable[ct].siCurrentBodyColumn].cBackgroundColour;
     tptTable[ct].bodyFGColour[tptTable[ct].siCurrentBodyColumn] := tptTable[ct].bodyColumns[tptTable[ct].siCurrentBodyColumn].cFontColour;
     tptTable[ct].bodyFontSize[tptTable[ct].siCurrentBodyColumn] := tptTable[ct].bodyColumns[tptTable[ct].siCurrentBodyColumn].iFontSize;
+    tptTable[ct].bodyTopBorderTWIPS[tptTable[ct].siCurrentBodyColumn] := tptTable[ct].bodyColumns[tptTable[ct].siCurrentBodyColumn].iTopBorderTWIPS;
+    tptTable[ct].bodyBottomBorderTWIPS[tptTable[ct].siCurrentBodyColumn] := tptTable[ct].bodyColumns[tptTable[ct].siCurrentBodyColumn].iBottomBorderTWIPS;
+    tptTable[ct].bodyLeftBorderTWIPS[tptTable[ct].siCurrentBodyColumn] := tptTable[ct].bodyColumns[tptTable[ct].siCurrentBodyColumn].iLeftBorderTWIPS;
+    tptTable[ct].bodyRightBorderTWIPS[tptTable[ct].siCurrentBodyColumn] := tptTable[ct].bodyColumns[tptTable[ct].siCurrentBodyColumn].iRightBorderTWIPS;
     // Make any specified cell changes
     n := 0;
     while ((n < Length(overrideIDs)) and
@@ -3433,6 +3478,14 @@ begin
           else
             tptTable[ct].bodyStyle[tptTable[ct].siCurrentBodyColumn] :=
               tptTable[ct].bodyStyle[tptTable[ct].siCurrentBodyColumn] - [fsStrikeOut];
+        PRNT_OVR_TOP_BORDER :
+          tptTable[ct].bodyTopBorderTWIPS[tptTable[ct].siCurrentBodyColumn] := Integer(overrideValues[n]);
+        PRNT_OVR_BOTTOM_BORDER :
+          tptTable[ct].bodyBottomBorderTWIPS[tptTable[ct].siCurrentBodyColumn] := Integer(overrideValues[n]);
+        PRNT_OVR_LEFT_BORDER :
+          tptTable[ct].bodyLeftBorderTWIPS[tptTable[ct].siCurrentBodyColumn] := Integer(overrideValues[n]);
+        PRNT_OVR_RIGHT_BORDER :
+          tptTable[ct].bodyRightBorderTWIPS[tptTable[ct].siCurrentBodyColumn] := Integer(overrideValues[n]);
       end; // case
       Inc(n);
     end; // while

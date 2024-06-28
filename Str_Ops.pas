@@ -13,7 +13,7 @@ unit Str_Ops;
 
 interface
 
-uses classes, sysutils;
+uses Classes, Sysutils;
 
 const
   CRLF = #$D#$A;
@@ -66,14 +66,7 @@ function Str2Debug(sLine : AnsiString;
                    bHex : boolean;
                    bSquareBrackets : boolean;
                    cSeparator : Char) : String;
-procedure SortStrings(var sStrings : TStrings);         //!! Not strings!
-function FindIndex(sFind : String;
-                   bCaseSensitive : boolean;
-                   sAvailable : TStrings) : Integer;    //!! Not strings!
 function DP(dtDate : TDateTime) : String;
-procedure ParseDelimited(const sl : TStringList;
-                         const sMain : String;
-                         const sDelimiter : string);
 procedure StuffString(sNew : String;
                       var sOriginal : String;
                       iOffset : integer);
@@ -85,9 +78,12 @@ function SuppressEnd(sMain : String;
 function YesNo(sInput : String;
                bUpperCase : boolean) : String; overload;
 function YesNo(bState : boolean;
-               bUpperCase : boolean) : String; overload;
+               bUpperCase : boolean = FALSE) : String; overload;
 function IfThenS(state : boolean;
-                 sTrue : String; sFalse : String) : String;
+                 sTrue : String; sFalse : String = '') : String;
+function RemapString(given : AnsiString;
+                     origSet : AnsiString;
+                     remapSet : AnsiString) : AnsiChar;
 procedure InitialiseString (var sMain : string);
 function GetNthChar(sIP : String;
                     iOffset : integer) : Char;
@@ -116,9 +112,6 @@ function ExtractCorSCSeparatedElement(var sInput : string) : String;
 function ValidEmailAddress(sAddress : string) : boolean;
 function ValidEmailAddresses(sAddress : string) : boolean;
 function ValidPhoneNumber(phoneNumber : string) : boolean;
-procedure SortTStrings(TheStrings : TStrings);
-function TStrings2String(theStrings : TStrings;
-                         separator : String) : String;
 function GUIDDegrouping(guid : String) : String;
 function GUID2Grouping(guid : String) : String;
 function BreakText(theText : String;
@@ -133,6 +126,25 @@ function NoneSingleMultiple(items : Integer;
                             noneText : String;
                             oneText : String;
                             multipleText : String) : String;
+function IsASCIIOnly(test : AnsiString;
+                     printable : Boolean = FALSE) : Boolean;
+
+// TStrings-associated functions
+//------------------------------------------------------------------------------
+procedure SortStrings(var sStrings : TStrings);         //!! Not strings!
+function FindIndex(sFind : String;
+                   bCaseSensitive : boolean;
+                   sAvailable : TStrings) : Integer;    //!! Not strings!
+procedure ParseDelimited(const sl : TStringList;
+                         const sMain : String;
+                         const sDelimiter : string);
+procedure SortTStrings(theStrings : TStrings);
+function TStrings2String(theStrings : TStrings;
+                         separator : String) : String;
+procedure RemoveEmptyFromTString(theStrings : TStrings);
+function ConcatenateStrings(theStrings : TStrings;
+                            separator : String = '';
+                            quotes : String = '') : String;
 
 //****************************************************************************
 
@@ -1267,113 +1279,6 @@ end; // Str2Debug
 
 //***************************************************************************
 //
-//  FUNCTION    :   SortStrings
-//
-//  I/P         :
-//
-//  O/P         :
-//
-//  OPERATION   :
-//
-//  UPDATED     :   2002/10/20
-//
-//***************************************************************************
-procedure SortStrings(var sStrings : TStrings);
-var
-  bDone : boolean;
-  iJump : Integer;
-  i : Integer;
-  j : Integer;
-  iCount : Integer;
-  sTemp : String;
-begin
-  iCount := sStrings.Count;
-  iJump := iCount;
-
-  while (iJump > 1) do
-  begin
-    iJump := iJump div 2;
-    repeat
-      bDone := TRUE;
-      for j:= 1 to iCount - iJump do
-      begin
-        i := j + iJump;
-        if (sStrings[j] > sStrings[j]) then
-        begin
-          sTemp := sStrings[i];
-          sStrings[i] := sStrings[j];
-          sStrings[j] := sTemp;
-          bDone := FALSE;
-        end; // if
-      end; // for
-    until (bDone);
-  end; // while
-(*Quick Sort - Recursive, but faster
-procedure qsort(lower, upper : byte)
-     var
-       left, right, pivot : Byte;
-     begin
-         pivot:=Data[(lower+upper) div 2];
-         left:=lower;
-         right:=upper;
-
-         while left<=right do
-         begin
-             while Data[left]  < pivot do left:=left+1;  // Parting for left
-             while Data[right] > pivot do right:=right-1;// Parting for right
-             if left<=right then   // Validate the change
-             begin
-                 swap Data[left] with Data[right];
-                 left:=left+1;
-                 right:=right-1;
-             end;
-         end;
-         if right>lower then qsort(lower,right); // Sort the LEFT  part
-         if upper>left  then qsort(left ,upper); // Sort the RIGHT part
-     end;
-*)
-end; // SortStrings
-
-//***************************************************************************
-//
-//  FUNCTION  :   FindIndex
-//
-//  I/P       : sFind (string) - The string value to be found
-//
-//              bCaseSensitive (boolean) - TRUE if the strings must match
-//                in case.
-//
-//              sAvailable (TStrings) - The strings that may contain the
-//                the given string.
-//
-//  O/P       : (integer) - -1 if no match is found, else the index to the
-//                matching string.
-//
-//  OPERATION : Finds the index of the string in a string list that matches
-//              a given string.
-//
-//  UPDATED   :   2005/09/12
-//
-//***************************************************************************
-function FindIndex(sFind : String;
-                   bCaseSensitive : boolean;
-                   sAvailable : TStrings) : Integer;
-var
-  n : Integer;
-begin
-  result := -1;
-  n := 0;
-  while ((result = -1) and
-         (n < sAvailable.Count)) do
-    if ((sAvailable.Strings[n] = sFind) or
-        ((not bCaseSensitive) and (UpperCase(sAvailable.Strings[n]) = UpperCase(sFind)))) then
-      result := n
-    else
-      Inc(n);
-end; // FindIndex
-
-//***************************************************************************
-//
 //  FUNCTION  : DP
 //
 //  I/P       : dtDate (TDateTime) - the date for which the password will be
@@ -1408,49 +1313,6 @@ begin
       uiDateCode := uiDateCode div 2;
   result := Front_Padded(IntToStr(uiDateCode),'0',5);
 end; // DP
-
-//***************************************************************************
-//
-//  FUNCTION  : ParseDelimited
-//
-//  I/P       :
-//
-//  O/P       :
-//
-//  OPERATION : Splits a delimited string into individual strings in a
-//              TStrings object.
-//
-//              Copied from
-//      http://delphi.about.com/od/adptips2005/qt/parsedelimited.htm?nl=1
-//
-//  UPDATED   : 2005/11/25
-//
-//***************************************************************************
-procedure ParseDelimited(const sl : TStringList;
-                         const sMain : String;
-                         const sDelimiter : string);
-var
-  dx : Integer;
-  ns : String;
-  txt : String;
-  delta : Integer;
-begin
-  delta := Length(sDelimiter);
-  txt := sMain + sDelimiter;
-  sl.BeginUpdate;
-  sl.Clear;
-  try
-    while Length(txt) > 0 do
-    begin
-      dx := Pos(sDelimiter, txt) ;
-      ns := Copy(txt,0,dx-1) ;
-      sl.Add(ns) ;
-      txt := Copy(txt,dx+delta,MaxInt) ;
-    end;
-  finally
-    sl.EndUpdate;
-  end;
-end;
 
 //***************************************************************************
 //
@@ -1612,7 +1474,7 @@ begin
     result := UpperCase(result);
 end; // YesNo
 function YesNo(bState : boolean;
-               bUpperCase : boolean) : String; overload;
+               bUpperCase : boolean = FALSE) : String; overload;
 begin
   result := 'No';
   if (bState) then
@@ -1630,7 +1492,7 @@ end; // YesNo
 //
 //              sTrue : String - The result if the choice is TRUE
 //
-//              sFalse : String - The result if the choice is FALSE
+//              sFalse : String = '' - The result if the choice is FALSE
 //
 //  O/P       : String
 //
@@ -1640,13 +1502,39 @@ end; // YesNo
 //
 //***************************************************************************
 function IfThenS(state : boolean;
-                 sTrue : String; sFalse : String) : String;
+                 sTrue : String; sFalse : String = '') : String;
 begin
-  if (state) then
-    result := sTrue
-  else
-    result := sFalse;
+  result := System.StrUtils.ifthen(state, sTrue, sFalse);
 end; // IfThenS
+
+//***************************************************************************
+//
+//  FUNCTION  : RemapString
+//
+//  I/P       : given : AnsiString - The string to find in origSet
+//
+//              origSet : AnsiString - the set of expected characters
+//
+//              remapSet : AnsiString - the ordered set of remappings
+//
+//  O/P       :
+//
+//  OPERATION : Given a character, find it in a string of expected characters.
+//              Then return the associated character from the remap string.
+//
+//  UPDATED   : 2017-10-12
+//
+//***************************************************************************
+function RemapString(given : AnsiString;
+                     origSet : AnsiString;
+                     remapSet : AnsiString) : AnsiChar;
+begin
+  if ((Length(origSet) = Length(remapSet)) and
+      (Length(origSet) >= Length(given))) then
+    result := remapSet[Pos(given,origSet)]
+  else
+    result := #0;
+end; // RemapCharacters
 
 //***************************************************************************
 //
@@ -1807,22 +1695,27 @@ end; // IsAnInteger
 //
 //  O/P       : Boolean - TRUE if the string can be converted to a floating point
 //
-//  OPERATION : Returns true if the string represents a floating point number
-//              (in any format that can be converted to a float, including whole
-//              numbers, scientific and normal floating point)
+//  OPERATION : Returns true if the string represents a floating point number.
+//
+//              Allow any format that can be converted to a float, including
+//              whole numbers, scientific and normal floating point.
 //
 //              Note : You cannot use the Val command here, as I have done in
 //                IsAnInteger, above (to avoid exceptions during debugging).
 //                Val command expects a '.' as a decimal separator(!)
 //
-//              An input string of 'NAN', which is
+//              Empty string, a single minus (typical if testing an input as
+//              someone is typing in a negative number) and 'NAN' are
+//              specifically tested to stop the StrToFloat operation causing
+//              an annoying exception during debugging operations.
 //
-//  UPDATED   : 2014-10-29
+//  UPDATED   : 2023-03-22
 //
 //***************************************************************************
 function IsAFloat(sNumber : string) : boolean;
 begin
   if ((sNumber <> '') and
+      (sNumber <> '-') and
       (sNumber <> 'NAN')) then
   begin
     try
@@ -1917,9 +1810,10 @@ end;
 //  O/P       : Boolean - TRUE if the string is non-empty, with all characters
 //                being valid hexadecimal characters.
 //
-//  OPERATION : Check if the string contains a valid hexadecimal number.
-//              Note that the string is allowed to be very long - i.e. we are
-//              not checking for valid storable numbers (e.g. 64 bit)
+//  OPERATION : Check that the given string contains valid hexadecimal characters.
+//
+//              The string may be very long, and need not contain an even number
+//              of characters.
 //
 //  UPDATED   : 2019-06-13
 //
@@ -2366,14 +2260,22 @@ end; // ExtractCorSCSeparatedElement
 //  OPERATION : As far as can be reasonably checked, test the validity of a
 //              given email address.
 //
-//  UPDATED   : 2020-06-29
+//              See https://www.rfc-editor.org/rfc/rfc5322
+//
+//              Pre-2022-02-22, the Rexex was
+//              '^[a-zA-Z0-9.%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}$'
+//              I modified this as per rfc5322, but the second part of the
+//              domain may require further modification. For absolute correctness,
+//              there is also the matter of quotes in addresses.
+//
+//  UPDATED   : 2023-02-22
 //
 //***************************************************************************
 function ValidEmailAddress(sAddress : string) : boolean;
 begin
   result := (
     TRegEx.Match(
-      sAddress, '^[a-zA-Z0-9.%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}$'
+      sAddress, '^[!-Z^-~]+@[!-Z^-~]+\.[A-Za-z]{2,}$'
     ).Index = 1
   ) and (
     Pos(
@@ -2427,77 +2329,6 @@ begin
   while ((sAddress > '') and
          (result)) do
     result := ValidEmailAddress(ExtractCorSCSeparatedElement(sAddress));
-end;
-
-//***************************************************************************
-//
-//  FUNCTION  : SortTStrings
-//
-//  I/P       : TheStrings : TStrings - TStrings or TStringList of items to be
-//                sorted.
-//
-//  O/P       : TheStrings : TStrings - Sorted!
-//
-//  OPERATION : from http://delphi.cjcsoft.net/viewthread.php?tid=46126
-//
-//  UPDATED   : 2015-10-13
-//
-//***************************************************************************
-procedure SortTStrings(TheStrings : TStrings);
-var
-   tmp: TStringList;
-
-begin
-  if (TheStrings is TStringList) then
-  begin
-    TStringList(TheStrings).Sort;
-  end
-  else
-  begin
-    tmp := TStringList.Create;
-    try
-      // Make a copy, sort and assign
-      tmp.Assign(TheStrings);
-      tmp.Sort;
-      TheStrings.Assign(tmp);
-    finally
-      tmp.Free;
-    end;
-  end;
-end;
-
-//***************************************************************************
-//
-//  FUNCTION  : TStrings2String
-//
-//  I/P       : theStrings : TStrings
-//
-//              separator : String - The character/characters that separate
-//                each TString item
-//
-//  O/P       : String - The single string containing all items
-//
-//  OPERATION : Create a single string comprising all the items in a given
-//              TStrings, with a given separator between each item.
-//
-//  UPDATED   : 2016-07-25
-//
-//***************************************************************************
-function TStrings2String(theStrings : TStrings;
-                         separator : String) : String;
-var
-  i : Integer;
-
-begin
-  result := '';
-  i := 0;
-  while (i < theStrings.Count) do
-  begin
-    result := result + theStrings[i] + separator;
-    Inc(i);
-  end; // while
-  // Remove the last separator
-  result := Copy(result,1,Length(result) - Length(separator));
 end;
 
 //***************************************************************************
@@ -2658,6 +2489,44 @@ end; // BreakText
 
 //***************************************************************************
 //
+//  FUNCTION  : IsASCIIOnly
+//
+//  I/P       : test : AnsiString - The string to be tested
+//
+//              printable : Boolean = FALSE - TRUE if the characters must be
+//                in the range of $20 to $7F inclusive
+//
+//  O/P       :
+//
+//  OPERATION : Check if a given AnsiString contains only ASCII characters
+//              (i.e. in the range of $00 to $7F inclusive)
+//
+//              Optionally, only printable ASCII characters (i.e. in the range
+//              of $20 to $7F inclusive.).
+//
+//  UPDATED   : 2024-02-29
+//
+//***************************************************************************
+function IsASCIIOnly(test : AnsiString;
+                     printable : Boolean = FALSE) : Boolean;
+var
+  n : Integer;
+
+begin
+  Result := TRUE;
+  for n := Length(test) downto 1 do
+  begin
+    if ((test[n] > #127) or
+        ((printable) and (test[n] < #32)))  then
+    begin
+      Result := FALSE;
+      Exit;
+    end;
+  end;
+end; // IsASCIIOnly
+
+//***************************************************************************
+//
 //  FUNCTION  : JoinStrings
 //
 //  I/P       :
@@ -2780,5 +2649,299 @@ begin
     Result := Format(multipleText, [items]);
   end;
 end; // NoneSingleMultiple
+
+//***************************************************************************
+//
+//  FUNCTION    :   SortStrings
+//
+//  I/P         :
+//
+//  O/P         :
+//
+//  OPERATION   :
+//
+//  UPDATED     :   2002/10/20
+//
+//***************************************************************************
+procedure SortStrings(var sStrings : TStrings);
+var
+  bDone : boolean;
+  iJump : Integer;
+  i : Integer;
+  j : Integer;
+  iCount : Integer;
+  sTemp : String;
+begin
+  iCount := sStrings.Count;
+  iJump := iCount;
+
+  while (iJump > 1) do
+  begin
+    iJump := iJump div 2;
+    repeat
+      bDone := TRUE;
+      for j:= 1 to iCount - iJump do
+      begin
+        i := j + iJump;
+        if (sStrings[j] > sStrings[j]) then
+        begin
+          sTemp := sStrings[i];
+          sStrings[i] := sStrings[j];
+          sStrings[j] := sTemp;
+          bDone := FALSE;
+        end; // if
+      end; // for
+    until (bDone);
+  end; // while
+(*Quick Sort - Recursive, but faster
+procedure qsort(lower, upper : byte)
+     var
+       left, right, pivot : Byte;
+     begin
+         pivot:=Data[(lower+upper) div 2];
+         left:=lower;
+         right:=upper;
+
+         while left<=right do
+         begin
+             while Data[left]  < pivot do left:=left+1;  // Parting for left
+             while Data[right] > pivot do right:=right-1;// Parting for right
+             if left<=right then   // Validate the change
+             begin
+                 swap Data[left] with Data[right];
+                 left:=left+1;
+                 right:=right-1;
+             end;
+         end;
+         if right>lower then qsort(lower,right); // Sort the LEFT  part
+         if upper>left  then qsort(left ,upper); // Sort the RIGHT part
+     end;
+*)
+end; // SortStrings
+
+//***************************************************************************
+//
+//  FUNCTION  :   FindIndex
+//
+//  I/P       : sFind (string) - The string value to be found
+//
+//              bCaseSensitive (boolean) - TRUE if the strings must match
+//                in case.
+//
+//              sAvailable (TStrings) - The strings that may contain the
+//                the given string.
+//
+//  O/P       : (integer) - -1 if no match is found, else the index to the
+//                matching string.
+//
+//  OPERATION : Finds the index of the string in a string list that matches
+//              a given string.
+//
+//  UPDATED   :   2005/09/12
+//
+//***************************************************************************
+function FindIndex(sFind : String;
+                   bCaseSensitive : boolean;
+                   sAvailable : TStrings) : Integer;
+var
+  n : Integer;
+begin
+  result := -1;
+  n := 0;
+  while ((result = -1) and
+         (n < sAvailable.Count)) do
+    if ((sAvailable.Strings[n] = sFind) or
+        ((not bCaseSensitive) and (UpperCase(sAvailable.Strings[n]) = UpperCase(sFind)))) then
+      result := n
+    else
+      Inc(n);
+end; // FindIndex
+
+//***************************************************************************
+//
+//  FUNCTION  : ParseDelimited
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION : Splits a delimited string into individual strings in a
+//              TStrings object.
+//
+//              Copied from
+//      http://delphi.about.com/od/adptips2005/qt/parsedelimited.htm?nl=1
+//
+//  UPDATED   : 2005/11/25
+//
+//***************************************************************************
+procedure ParseDelimited(const sl : TStringList;
+                         const sMain : String;
+                         const sDelimiter : string);
+var
+  dx : Integer;
+  ns : String;
+  txt : String;
+  delta : Integer;
+
+begin
+  delta := Length(sDelimiter);
+  txt := sMain + sDelimiter;
+  sl.BeginUpdate;
+  sl.Clear;
+  try
+    while Length(txt) > 0 do
+    begin
+      dx := Pos(sDelimiter, txt) ;
+      ns := Copy(txt,0,dx-1) ;
+      sl.Add(ns) ;
+      txt := Copy(txt,dx+delta,MaxInt) ;
+    end;
+  finally
+    sl.EndUpdate;
+  end;
+end; // ParseDelimited
+
+//***************************************************************************
+//
+//  FUNCTION  : SortTStrings
+//
+//  I/P       : theStrings : TStrings - TStrings or TStringList of items to be
+//                sorted.
+//
+//  O/P       : TheStrings : TStrings - Sorted!
+//
+//  OPERATION : from http://delphi.cjcsoft.net/viewthread.php?tid=46126
+//
+//  UPDATED   : 2015-10-13
+//
+//***************************************************************************
+procedure SortTStrings(theStrings : TStrings);
+var
+   tmp: TStringList;
+
+begin
+  if (theStrings is TStringList) then
+  begin
+    TStringList(TheStrings).Sort;
+  end
+  else
+  begin
+    tmp := TStringList.Create;
+    try
+      // Make a copy, sort and assign
+      tmp.Assign(theStrings);
+      tmp.Sort;
+      theStrings.Assign(tmp);
+    finally
+      tmp.Free;
+    end;
+  end;
+end;
+
+//***************************************************************************
+//
+//  FUNCTION  : TStrings2String
+//
+//  I/P       : theStrings : TStrings
+//
+//              separator : String - The character/characters that separate
+//                each TString item
+//
+//  O/P       : String - The single string containing all items
+//
+//  OPERATION : Create a single string comprising all the items in a given
+//              TStrings, with a given separator between each item.
+//
+//  UPDATED   : 2016-07-25
+//
+//***************************************************************************
+function TStrings2String(theStrings : TStrings;
+                         separator : String) : String;
+var
+  i : Integer;
+
+begin
+  result := '';
+  i := 0;
+  while (i < theStrings.Count) do
+  begin
+    result := result + theStrings[i] + separator;
+    Inc(i);
+  end; // while
+  // Remove the last separator
+  result := Copy(result,1,Length(result) - Length(separator));
+end;
+
+//***************************************************************************
+//
+//  FUNCTION  : RemoveEmptyFromTString
+//
+//  I/P       : theStrings : TStrings - The strings to be checked
+//
+//  O/P       : theStrings : TStrings - All empty strings removed
+//
+//  OPERATION : Remove empty strings from a given TStrings.
+//
+//  UPDATED   : 2023-02-08
+//
+//***************************************************************************
+procedure RemoveEmptyFromTString(theStrings : TStrings);
+var
+  n : integer;
+
+begin
+  n := theStrings.Count-1;
+  while (n >= 0) do
+  begin
+    if (theStrings[n] = '') then
+    begin
+      theStrings.Delete(n);
+    end;
+    Dec(n);
+  end;
+end; // RemoveEmptyFromTString
+
+//***************************************************************************
+//
+//  FUNCTION  : ConcatenateStrings
+//
+//  I/P       : theStrings : TStrings - The strings to be joined
+//
+//              separator : String = '' - The separator string between strings.
+//
+//              quotes : String = '' - Any quotations to be used around strings.
+//
+//  O/P       : String - The combination.
+//
+//  OPERATION : Produce a formatted concatenation of the strings in TStrings.
+//
+//              After a fashioin, this can be done with .DelimitedText, but
+//              not exactly in the way that I wanted it.
+//
+//              e.g. it uses only a single character separator, and does some
+//              intersting stuff with replacements and quoting.
+//
+//  UPDATED   : 2023-08-31
+//
+//***************************************************************************
+function ConcatenateStrings(theStrings : TStrings;
+                            separator : String = '';
+                            quotes : String = '') : String;
+var
+  n : Integer;
+
+begin
+  Result := '';
+  for n := 0 to theStrings.Count-1 do
+  begin
+    Result := Result + quotes + theStrings[n] + quotes + separator;
+  end;
+
+  // Trim off the last separator
+  if (Result <> '') then
+  begin
+    Result := Copy(Result, 1, Length(Result) - Length(separator));
+  end;
+end; // ConcatenateStrings
 
 end.

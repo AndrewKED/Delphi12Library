@@ -1,5 +1,9 @@
 unit Chart_Ops;
 
+// http://www.teechart.net/docs/teechart/vclfmx/tutorials/UserGuide/html/manu45id.htm
+// http://www.teechart.net/docs/teechart/vclfmx/lib/
+// http://www.teechart.net/docs/teechart/vclfmx/lib/html/TChartShape.html
+
 interface
 
 uses

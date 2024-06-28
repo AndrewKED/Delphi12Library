@@ -47,6 +47,7 @@ type
 
 function GetDriveSerial(const Drive:AnsiChar;
                         const ddType : String) : String;
+function GetDriveSerialNumber : String;
 function GetAvailableDrives : String;
 function GetBusType(Drive: AnsiChar): TStorageBusType;
 
@@ -188,6 +189,7 @@ end;
 //
 //              See
 //              https://stackoverflow.com/questions/4292395/how-to-get-manufacturer-serial-number-of-an-usb-flash-drive
+//              https://www.codeproject.com/Articles/6077/How-to-Retrieve-the-REAL-Hard-Drive-Serial-Number
 //
 //  For hard discs, from https://winaero.com/blog/find-hard-disk-serial-number-windows-10/
 //    1) Open an elevated command prompt.
@@ -213,57 +215,102 @@ var
   oEnumLogical   : IEnumvariant;
   iValue         : LongWord;
   DeviceID       : string;
+
 begin;
-  CoInitialize(nil);
+  Result:='';
+
   try
-    Result:='';
-    FSWbemLocator := CreateOleObject('WbemScripting.SWbemLocator');
-    objWMIService := FSWbemLocator.ConnectServer('.', 'root\CIMV2', '', '');
-    colDiskDrives := objWMIService.ExecQuery('SELECT * FROM Win32_DiskDrive WHERE InterfaceType="' + ddType + '"','WQL',0);
-    oEnumDiskDrive := IUnknown(colDiskDrives._NewEnum) as IEnumVariant;
-    while (oEnumDiskDrive.Next(1, objDiskDrive, iValue) = 0) do
-    begin
-      DeviceID := StringReplace(VarStrNull(objDiskDrive.DeviceID),'\','\\',[rfReplaceAll]); //Escape the `\` chars in the DeviceID value because the '\' is a reserved character in WMI.
-      colPartitions := objWMIService.ExecQuery(Format('ASSOCIATORS OF {Win32_DiskDrive.DeviceID="%s"} WHERE AssocClass = Win32_DiskDriveToDiskPartition',[DeviceID]));//link the Win32_DiskDrive class with the Win32_DiskDriveToDiskPartition class
-      oEnumPartition := IUnknown(colPartitions._NewEnum) as IEnumVariant;
-      while (oEnumPartition.Next(1, objPartition, iValue) = 0) do
+    CoInitialize(nil);
+    try
+      FSWbemLocator := CreateOleObject('WbemScripting.SWbemLocator');
+      objWMIService := FSWbemLocator.ConnectServer('.', 'root\CIMV2', '', '');
+      colDiskDrives := objWMIService.ExecQuery('SELECT * FROM Win32_DiskDrive WHERE InterfaceType="' + ddType + '"','WQL',0);
+      oEnumDiskDrive := IUnknown(colDiskDrives._NewEnum) as IEnumVariant;
+      while (oEnumDiskDrive.Next(1, objDiskDrive, iValue) = 0) do
       begin
-        colLogicalDisks := objWMIService.ExecQuery('ASSOCIATORS OF {Win32_DiskPartition.DeviceID="'+VarStrNull(objPartition.DeviceID)+'"} WHERE AssocClass = Win32_LogicalDiskToPartition'); //link the Win32_DiskPartition class with theWin32_LogicalDiskToPartition class.
-        oEnumLogical := IUnknown(colLogicalDisks._NewEnum) as IEnumVariant;
-        while (oEnumLogical.Next(1, objLogicalDisk, iValue) = 0) do
+        DeviceID := StringReplace(VarStrNull(objDiskDrive.DeviceID),'\','\\',[rfReplaceAll]); //Escape the `\` chars in the DeviceID value because the '\' is a reserved character in WMI.
+        colPartitions := objWMIService.ExecQuery(Format('ASSOCIATORS OF {Win32_DiskDrive.DeviceID="%s"} WHERE AssocClass = Win32_DiskDriveToDiskPartition',[DeviceID]));//link the Win32_DiskDrive class with the Win32_DiskDriveToDiskPartition class
+        oEnumPartition := IUnknown(colPartitions._NewEnum) as IEnumVariant;
+        while (oEnumPartition.Next(1, objPartition, iValue) = 0) do
         begin
-          // Compare the device id
-          if (SameText(VarStrNull(objLogicalDisk.DeviceID),Drive+':')) then
+          colLogicalDisks := objWMIService.ExecQuery('ASSOCIATORS OF {Win32_DiskPartition.DeviceID="'+VarStrNull(objPartition.DeviceID)+'"} WHERE AssocClass = Win32_LogicalDiskToPartition'); //link the Win32_DiskPartition class with theWin32_LogicalDiskToPartition class.
+          oEnumLogical := IUnknown(colLogicalDisks._NewEnum) as IEnumVariant;
+          while (oEnumLogical.Next(1, objLogicalDisk, iValue) = 0) do
           begin
-            if (ddType = 'IDE') then
+            // Compare the device id
+            if (SameText(VarStrNull(objLogicalDisk.DeviceID),Drive+':')) then
             begin
-              // IDE drive
-              // .SerialNumber does work on some USB drives, but I found it added an extra character
-              Result := VarStrNull(objDiskDrive.SerialNumber);
-              Exit;
-            end // if
-            else
-            begin
-              // USB drive
-              Result := VarStrNull(objDiskDrive.PnPDeviceID);
-              if (AnsiStartsText('USBSTOR', Result)) then
+              if (ddType = 'IDE') then
               begin
-                iValue:=LastDelimiter('\', Result);
-                Result:=Copy(Result, iValue+1, Length(Result));
-              end; // if
-              objLogicalDisk := Unassigned;
-              Exit;
-            end; // else
-          end; // if
-          objLogicalDisk := Unassigned;
+                // IDE drive
+                // .SerialNumber does work on some USB drives, but I found it added an extra character
+                Result := VarStrNull(objDiskDrive.SerialNumber);
+                Exit;
+              end // if
+              else
+              begin
+                // USB drive
+                Result := VarStrNull(objDiskDrive.PnPDeviceID);
+                if (AnsiStartsText('USBSTOR', Result)) then
+                begin
+                  iValue:=LastDelimiter('\', Result);
+                  Result:=Copy(Result, iValue+1, Length(Result));
+                end; // if
+                objLogicalDisk := Unassigned;
+                Exit;
+              end; // else
+            end; // if
+            objLogicalDisk := Unassigned;
+          end; // while
+          objPartition := Unassigned;
         end; // while
-        objPartition := Unassigned;
+        objDiskDrive := Unassigned;
       end; // while
-      objDiskDrive := Unassigned;
-    end; // while
-  finally
-    CoUninitialize;
-  end; // finally
+    finally
+      CoUninitialize;
+    end; // finally
+
+  except
+    Result := '';
+  end;
+end; // GetDriveSerial
+
+//***************************************************************************
+//
+//  FUNCTION  :
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION :
+//
+//              http://scalabium.com/faq/dct0055.htm
+//
+//  UPDATED   :
+//
+//***************************************************************************
+function GetDriveSerialNumber : String;
+var
+  VolumeSerialNumber: DWORD;
+  MaximumComponentLength: DWORD;
+  FileSystemFlags: DWORD;
+  buffer : TBytes;
+
+begin
+  GetVolumeInformation('E:\',
+                         nil,
+                         0,
+                         @VolumeSerialNumber,
+                         MaximumComponentLength,
+                         FileSystemFlags,
+                         nil,
+                         0);
+  SetLength(buffer,MaximumComponentLength);
+  Move(Pointer(VolumeSerialNumber), buffer[0], MaximumComponentLength);
+//  result := IntToHex(HiWord(VolumeSerialNumber), 4) +
+//            '-' +
+//            IntToHex(LoWord(VolumeSerialNumber), 4);
 end;
 
 //***************************************************************************

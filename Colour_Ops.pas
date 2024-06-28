@@ -25,10 +25,15 @@ const
 
   clLtLtRed         = $00CCCCFF;
   clHighlightPink   = $00FF80FF;
+
+  clLtLtOrange      = $00B0D0FF;
+  clLightOrange     = $0080C0FF;
   clOrange          = $000080FF;    // Buttons in Syntell MX Display
+
   clSoftYellow      = $00CCFFFF;
   clPaleYellow      = $00E0FFFF;
   clGold            = $007AC2CD;    // Dry Adiabats in D-Met SkewT-LogP (as used in RAOB)
+
   clLtLtBlue        = $00FFFFCC;
   clLtBlue          = $00FFFF88;
   clLtAqua          = $00FFFFC0;    // Buttons in Syntell MX Display
@@ -43,7 +48,7 @@ const
   clMedSeaGreen     = $00C8DFC8;
   clLightGreen      = $000BF4AE;    // Moist Adiabats in D-Met SkewT-LogP (as used in RAOB)
 
-
+  clDocBackground   = $00FFF0D6;    // A Light blue
 
 implementation
 

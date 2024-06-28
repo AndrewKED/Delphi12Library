@@ -80,8 +80,8 @@ const
   DBISAM_TABLE_EXT = '.dat';
 
 procedure SetupTable(tGiven : TDBISAMTable;
-                     dName : String;
-                     tName : String);
+                     nameDatabase : String;
+                     nameTable : String);
 procedure SealTable(tTableToSeal : TDBISAMTable);
 function ConvertedParadox2DBISAM(DBFolder : String;
                                  ShowDebugMessages : Boolean) : String;
@@ -174,24 +174,24 @@ var
 //
 //  I/P       : tGiven : TDBISAMTable - The table to use
 //
-//              dName : String - The database name of the table
+//              nameDatabase : String - The database name of the table
 //
-//              tName : String - The table name of the table
+//              nameTable : String - The table name of the table
 //
 //  O/P       : None
 //
 //  OPERATION : Closes the table and sets the database and table names
 //
-/// Date      : 2017-10-21
+/// Date      : 2023-05-25
 //
 // ***************************************************************************
 procedure SetupTable(tGiven : TDBISAMTable;
-                     dName : String;
-                     tName : String);
+                     nameDatabase : String;
+                     nameTable : String);
 begin
   tGiven.Close;
-  tGiven.DatabaseName := dName;
-  tGiven.TableName := tName;
+  tGiven.DatabaseName := nameDatabase;
+  tGiven.TableName := nameTable;
 end; // SetupTable
 
 //***************************************************************************
@@ -353,7 +353,7 @@ begin
   with tDSSource do
   begin
     // Ensure that there are the correct number of fields
-    if (FieldDefs.Count<>field_nos.Count) then
+    if (FieldDefs.Count <> field_nos.Count) then
     begin
       result := FALSE;
       iDBUC_DBUpgErr := ERR_DB_DEVELOPMENT;
@@ -436,11 +436,11 @@ end; // SourceTableFieldsMatch
 //  FUNCTION  : AccessedSourceTable
 //
 //  I/P       : filenameTable : String -The full file name of the table that
-//                we are wanting to upgrade.
+//                we are wanting to upgrade (including the '.dat' extension).
 //
-//              openExclusive : Boolean
+//              openExclusive : Boolean - As required
 //
-//  O/P       : (boolean) - TRUE if we accessed and opened the table
+//  O/P       : (boolean) - TRUE if the table was accessed and opened
 //
 //              bNewTable - TRUE if a new table must be created.
 //
@@ -448,7 +448,7 @@ end; // SourceTableFieldsMatch
 //                it exists and is accessable for upgrading.
 //                descriptions.
 //
-//  UPDATED   : 2012-08-30
+//  UPDATED   : 2023-05-25
 //
 //***************************************************************************
 function AccessedSourceTable(tableFileName : String;
@@ -456,10 +456,10 @@ function AccessedSourceTable(tableFileName : String;
                              tableTitle : String;
                              tableExclusive : Boolean) : Boolean;
 begin
-  // Assume that we will be able to access the table
   result := TRUE;
+
   // Check that the current table file name is valid
-  if ((tableFileName='') or
+  if ((tableFileName = '') or
       (UpperCase(ExtractFileExt(tableFileName)) <> UpperCase(DBISAM_TABLE_EXT))) then
   begin
     iDBUC_DBUpgErr := ERR_DB_DEVELOPMENT;
@@ -467,91 +467,96 @@ begin
                          'An invalid filename, ' + tableFileName + ' has been specified.' + #$D +
                          'This table has not been upgraded.';
     result := FALSE;
+    Exit;
+  end; // if
+
+  // Check whether the table file exists
+  if (FileExists(tableFileName)) then
+  begin
+    // The .dat file of the table file exists.
+    // Try to open it as a table.
+    try
+      with tDSSource do
+      begin
+        SetupTable(tDSSource, ExtractFilePath(tableFileName), ExtractFileName(tableFileName));
+        if (tableSession <> '') then
+          SessionName := tableSession;
+        if (sDBUC_Password <> '') then
+        begin
+          sControl.Open;
+          sControl.RemoveAllPasswords;
+          sControl.AddPassword(sDBUC_Password);
+        end;
+        // Get exclusive access, as required.
+        Exclusive := tableExclusive;
+        Open;
+      end; // with
+      // Flag that it is not necessary to create a new table
+      bNewTable := FALSE;
+    except
+      on E: Exception do
+      begin
+        // It is most likely that we could not obtain exclusive access to this table
+        result := FALSE;
+        iDBUC_DBUpgErr := ERR_DB_OTHER;
+        if (E is EDatabaseError) and (E is EDBISAMEngineError) then
+        begin
+          if (EDBISAMEngineError(E).ErrorCode = DBISAM_OSEACCES) then
+          begin
+            // Access denied error
+            iDBUC_DBUpgErr := ERR_DB_ACCESS_DENIED;
+            sDBUC_DBUpgResult := 'Table : ' + tableTitle + ' (' + verSource + ')' + #$D +
+                                 ifthens(tableExclusive,
+                                         'Unable to gain exclusive access to this table.',
+                                         'Unable to gain read/write access to this table.') + #$D +
+                                 '(Error message "' + E.Message + '")' + #13 +
+                                 'Ensure that the table is not currently being accessed by another program or network user.';
+          end // if
+          else if (EDBISAMEngineError(E).ErrorCode = DBISAM_OSENOENT) then
+          begin
+            // "Table open fails due to the directory or table files not being present" - V4 Manual
+            iDBUC_DBUpgErr := ERR_DB_ACCESS_DENIED;
+            sDBUC_DBUpgResult := 'Table : ' + tableTitle + ' (' + verSource + ')' + #$D +
+                                 'Table does not exist.' + #$D +
+                                 '(Error message "' + E.Message + '")';
+          end // if
+          else
+          begin
+            raise Exception.Create('Database engine error ' + IntToStr(EDBISAMEngineError(E).ErrorCode) + #13 +
+                                   '"' + E.Message + '"');
+          end; // else
+        end
+        else
+        begin
+          raise Exception.Create('Unknown or unexpected error has occurred');
+        end;
+      end; // on
+    end; // except
   end // if
   else
   begin
-    // Check whether the table file exists
-    if (FileExists(tableFileName)) then
-    begin
-      // The table file exists, so try to access it exclusively
-      try
-        with tDSSource do
-        begin
-          SetupTable(tDSSource, ExtractFilePath(tableFileName), ExtractFileName(tableFileName));
-          if (tableSession <> '') then
-            SessionName := tableSession;
-          if (sDBUC_Password <> '') then
-          begin
-            sControl.Open;
-            sControl.RemoveAllPasswords;
-            sControl.AddPassword(sDBUC_Password);
-          end;
-          // Get exclusive access, to prevent anyone else altering contents
-          Exclusive := tableExclusive;
-          Open;
-        end; // with
-        // Flag that it is not necessary to create a new table
-        bNewTable := FALSE;
-      except
-        on E: Exception do
-        begin
-          // It is most likely that we could not obtain exclusive access to this table
-          result := FALSE;
-          iDBUC_DBUpgErr := ERR_DB_OTHER;
-          if (E is EDatabaseError) and (E is EDBISAMEngineError) then
-          begin
-            if (EDBISAMEngineError(E).ErrorCode = DBISAM_OSEACCES) then
-            begin
-              // Exclusive access error
-              iDBUC_DBUpgErr := ERR_DB_ACCESS_DENIED;
-              sDBUC_DBUpgResult := 'Table : ' + tableTitle + ' (' + verSource + ')' + #$D +
-                                   'Unable to gain exclusive access for upgrading of this table.' + #$D +
-                                   '(Error message "' + E.Message + '")' + #13 +
-                                   'Ensure that the database/table is not currently being accessed by another program or network user.';
-            end // if
-            else
-              if (EDBISAMEngineError(E).ErrorCode = DBISAM_OSENOENT) then
-              begin
-                // "Table open fails due to the directory or table files not being present" - V4 Manual
-                iDBUC_DBUpgErr := ERR_DB_ACCESS_DENIED;
-                sDBUC_DBUpgResult := 'Table : ' + tableTitle + ' (' + verSource + ')' + #$D +
-                                     'Unable to gain access to this table.' + #$D +
-                                     '(Error message "' + E.Message + '")';
-              end
-              else
-                raise Exception.Create('Database engine error ' + IntToStr(EDBISAMEngineError(E).ErrorCode) + #13 +
-                                       '"' + E.Message + '"');
-          end
-          else
-            raise Exception.Create('Unknown or unexpected error has occurred');
-        end; // on
-      end; // except
-    end // if
-    else
-    begin
-      // Flag that a new table must be created
-      bNewTable := TRUE;
-      result := FALSE;
-      WriteToDBUpgLog('Table does not exist');
-    end; // else
+    // Flag that a new table must be created
+    bNewTable := TRUE;
+    result := FALSE;
+    WriteToDBUpgLog('Table does not exist');
   end; // else
 end; // AccessedSourceTable
 
 //***************************************************************************
 //
-//  FUNCTION    :   GotSourceVersion
+//  FUNCTION  : GotSourceVersion
 //
-//  I/P         :   tSource (TDBISAMTable) - The source table.
+//  I/P       : tSource (TDBISAMTable) - The source table.
 //
-//  O/P         :   (boolean) - TRUE if the original and desired table
-//                        differ in any way
+//  O/P       : Boolean - TRUE if the original and desired table
+//                differ in any way
 //
-//                      sSourceVer - The version of the tSource table.
+//              sSourceVer - The version of the tSource table.
 //
-//  OPERATION   :   Attempt to extract the Source Table's version from
-//                      Field 1.
+//  OPERATION : Attempt to extract the Source Table's version from
+//                Field 1.
 //
-//  UPDATED     :   2003/08/29
+//  UPDATED   : 2003/08/29
 //
 //***************************************************************************
 function GotSourceVersion : Boolean;
@@ -617,11 +622,13 @@ end; // GotSourceVersion
 //
 //  O/P       : Boolean - TRUE if the temporary table was created.
 //
-//  OPERATION : Creates a temporary table with the fields and indexes
-//                as given in the INI file sections current_table.Fields
-//                and current_table.Indexes.
+//  OPERATION : Creates a temporary in-memory table, as defined.
 //
-//  UPDATED   : 2018-11-20
+//              Field and index definitionsa are as per the sections
+//              current_table.Fields and current_table.Indexes in the global
+//              table definition file.
+//
+//  UPDATED   : 2023-05-25
 //
 //***************************************************************************
 function CreatedTempTable : Boolean;
@@ -646,25 +653,21 @@ begin
   // Initially assume all is OK
   result := TRUE;
 
-  // Set up the temporary destination file
-  with tDSDestination do
-  begin
-    index_nos := nil;
-    index_info := nil;
-    field_nos := nil;
-    field_info := nil;
+  SetupTable(tDSDestination, 'MEMORY', TEMP_TABLE_NAME + DBISAM_TABLE_EXT);
 
+  if (tDSDestination.Exists) then
+    tDSDestination.DeleteTable;
+
+  // Clear any fields and indexes in this new table
+  tDSDestination.FieldDefs.Clear;
+  tDSDestination.IndexDefs.Clear;
+
+  // Define the fields
+  field_nos := TStringList.Create;
+  try
+    field_info := TStringList.Create;   //
     try
-      SetupTable(tDSDestination, ExtractFilePath(sDBUC_TableFilename), TEMP_TABLE_NAME + DBISAM_TABLE_EXT);
-      if (Exists) then
-        DeleteTable;
-
-      // Clear any fields and indexes in this new table
-      FieldDefs.Clear;
-      IndexDefs.Clear;
-
-      field_nos := TStringList.Create;    // Create the storage space and read in the
-      field_info := TStringList.Create;   // list of fields in this table.
+      // Read in the list of fields in this table.
       mifDBUC_TableDefn.ReadSection('1.LatestFields',field_nos);
       mifDBUC_TableDefn.ReadSectionValues('1.LatestFields',field_info);
 
@@ -689,11 +692,21 @@ begin
         field_line := Copy(field_line,Pos(',',field_line)+1,255);
         field_required := (field_line[1]='1');
 
-        FieldDefs.Add(field_name,field_datatype,field_size,field_required);
+        tDSDestination.FieldDefs.Add(field_name,field_datatype,field_size,field_required);
       end; // for
+    finally
+      field_info.Free;
+    end;
+  finally
+    field_nos.Free;
+  end; // finally
 
-      index_nos := TStringList.Create;    // Create the storage space and read in the
-      index_info := TStringList.Create;   // list of fields in this table.
+  // Define the indexes
+  index_nos := TStringList.Create;
+  try
+    index_info := TStringList.Create;
+    try
+      // Read in the list of indexes in this table.
       mifDBUC_TableDefn.ReadSection('1.LatestIndexes',index_nos);
       mifDBUC_TableDefn.ReadSectionValues('1.LatestIndexes',index_info);
 
@@ -720,32 +733,31 @@ begin
         if ((index_noptions AND $01)=$01) then
           index_options := index_options + [ixCaseInsensitive];
 
-        IndexDefs.Add(index_name,index_fields,index_options);
+        tDSDestination.IndexDefs.Add(index_name,index_fields,index_options);
       end; // for
-      // Make the table
-      CreateTable;
-
-      WriteToDBUpgLog('Temporary upgrade table created');
-    except
-      on E:EDatabaseError do
-      begin
-        result := FALSE;
-        WriteToDBUpgLog('Error creating temporary table : "' + E.Message + '"');
-        iDBUC_DBUpgErr := ERR_DB_OTHER;
-        sDBUC_DBUpgResult := 'Table : ' + sDBUC_TableTitle + ' (' + verSource + ')' + #$D +
-                             'Unable to create a temporary upgrade table.' + #$D +
-                             'This table has not been upgraded.' + #$D + #$D +
-                             '(Error Description : ' + E.Message + ')';
-      end; // on
-    end; // except
-
-    // Free up the space used by these variables
+    finally
+      index_info.Free;
+    end; // finally
+  finally
     index_nos.Free;
-    index_info.Free;
-    field_nos.Free;
-    field_info.Free;
-  end; // with
+  end; // finally
 
+  try
+    tDSDestination.CreateTable;
+
+    WriteToDBUpgLog('Temporary upgrade table created');
+  except
+    on E:EDatabaseError do
+    begin
+      result := FALSE;
+      WriteToDBUpgLog('Error creating temporary table : "' + E.Message + '"');
+      iDBUC_DBUpgErr := ERR_DB_OTHER;
+      sDBUC_DBUpgResult := 'Table : ' + sDBUC_TableTitle + ' (' + verSource + ')' + #$D +
+                           'Unable to create a temporary upgrade table.' + #$D +
+                           'This table has not been upgraded.' + #$D + #$D +
+                           '(Error Description : ' + E.Message + ')';
+    end; // on
+  end; // except
 end; // CreatedTempTable
 
 //***************************************************************************
@@ -997,7 +1009,7 @@ end; // TransferRecord
 //  O/P       : Boolean -TRUE if the data was transferred
 //
 //  OPERATION : Transfer all records in the source destination into
-//                      the destination table, using the given mapping information.
+//              the destination table, using the given mapping information.
 //
 //  UPDATED   : 2013-06-20
 //
@@ -1007,7 +1019,6 @@ procedure TransferTableContents(oTransferMessage : TObject;
                                 pbIndexProgress : TProgressBar);
 var
   map_info : TStringList;
-//  dRemaining : double;
   sTemp : String;
   iRecordsTotal : Integer;
   iRecordsDone : Integer;
@@ -1019,6 +1030,13 @@ begin
   // Continue if the mapping info is OK
   if (sDBUC_DBUpgResult = '') then
   begin
+    // Re-open the source table exclusively. \
+    // This is to prevent any data changes during this transfer operation
+    // Note that exception handling is provided in the calling function.
+    tDSSource.Close;
+    tDSSource.Exclusive := TRUE;
+    tDSSource.Open;
+
     // Open the destination table
     tDSDestination.Open;
 
@@ -1095,41 +1113,8 @@ begin
   if (sDBUC_DBUpgResult <> '') then
     Inc(iErrors);
 
-  tDSSource.Close;              // Close down the source table
+  tDSSource.Close;
 end; // TransferTableContents
-
-//***************************************************************************
-//
-//  FUNCTION    :   RenameTempTable
-//
-//  I/P         :
-//
-//  O/P         :
-//
-//  OPERATION   :
-//
-//  UPDATED     :
-//
-//***************************************************************************
-procedure RenameTempTable;
-var
-  file_root : String;
-  sr : TSearchRec;
-begin
-  file_root := Copy(ExtractFileName(sDBUC_TableFilename),1,Pos('.',ExtractFileName(sDBUC_TableFilename)));
-  DeletedFiles(ExtractFilePath(sDBUC_TableFilename) + file_root + 'dat',0,0.0);
-  DeletedFiles(ExtractFilePath(sDBUC_TableFilename) + file_root + 'idx',0,0.0);
-  DeletedFiles(ExtractFilePath(sDBUC_TableFilename) + file_root + 'blb',0,0.0);
-
-  file_root := Copy(file_root,1,Length(file_root)-1); // Knock off the '.'
-
-  ChDir(ExtractFilePath(sDBUC_TableFilename));
-
-  while (FindFirst(ExtractFilePath(sDBUC_TableFilename) + TEMP_TABLE_NAME + '.*',faReadOnly + faArchive,sr)=0) do
-    RenameFile (sr.name,file_root + ExtractFileExt(sr.name));
-
-  WriteToDBUpgLog('Temporary table renamed');
-end; // RenameTempTable
 
 //***************************************************************************
 //
@@ -1489,45 +1474,86 @@ begin
   // Start off with no errors for this table
   iDBUC_DBUpgErr := ERR_DB_NONE;
   sDBUC_DBUpgResult := '';
-  // Check whether the source table name is OK, and whether it exists
-  if (AccessedSourceTable(sDBUC_TableFilename,sDBUC_Session,sDBUC_TableTitle,TRUE) or
+
+  if (AccessedSourceTable(sDBUC_TableFilename,sDBUC_Session, sDBUC_TableTitle, FALSE) or
       (bNewTable)) then
-    // Get the version of the table that we are about to upgrade
+  begin
+    // The source table name is accessible (non-exclusively), or it is a new table
+
     if ((bNewTable) or (GotSourceVersion)) then
-      // Check that the table definition for the latest version of the table is OK
+    begin
+      // This is a new table, or the source table version has been read from
+      // the name of Field[0] (a method that this system uses for table version ID)
+
       if ((GotLatestVersion) and
           (TableFieldDefnsOK('Latest')) and
           (LatestIndexDefnsOK)) then
-        // The source should be same or earlier than the latest, otherwise we do
-        // not know how to handle it (i.e. its from newer software)
+      begin
+        // The field and index definitions for the latest version of this table
+        // are available and valid.
+
         if ((bNewTable) or (VersionUpgradable(sDBUC_TableTitle,verSource))) then
-          // Check that the version description for the source table is OK
+        begin
+          // This a new table, or the source table version is at or earlier than
+          // the latest table definition i.e. we know how to handle it.
+
           if ((bNewTable) or (TableFieldDefnsOK(verSource))) then
-            // Check that the original table is correct according to the version information that we have
+          begin
+            // This is a new table, or the source table field definitions are
+            // available and valid.
+
             if ((bNewTable) or (SourceTableFieldsMatch(verSource))) then
-              // Check whether we actually need to upgrade the entire table.
-              // We must upgrade the table if one does not exist, if the source fields don't match
-              // the latest fields or if the primary index has changed.
+            begin
+              // The source table has fields that match the expected fields for
+              // its version
+
               if ((bNewTable) or
                   (not (SourceTableFieldsMatch('Latest'))) or
                   (not (SourceTableIndexesMatch(FALSE)))) then
               begin
+                // Either its a new table, or there is a mismatch between the
+                // source table version and the latest table field definitions,
+                // or the primary index has changed.
+
                 // Clear any "error message" that may have been generated by the field match or index
                 // match checks above.
                 iDBUC_DBUpgErr := ERR_DB_NONE;
                 sDBUC_DBUpgResult := '';
 
-                // Check that we have been able create a temporary table, for the data transfer
-                if (CreatedTempTable) then
+                if ((CreatedTempTable) and
+                    (sDBUC_DBUpgResult = '')) then
                 begin
-                  // If this is not a new table, transfer the data from the existing table
-                  if (not bNewTable) then
-                    TransferTableContents(oProgressMessage,pbTableRecordProgress,pbTableIndexProgress);
+                  // A temporary table, of the required schema has been created.
 
-                  // If this is a new table, or if we transferred the contents, rename the temporary table
+                  if (not bNewTable) then
+                  begin
+                    // Transfer the data from the existing table.
+                    // Exclusivity to the source table will be required,
+                    // to prevent data changes during in mid-transfer.
+                    try
+                      TransferTableContents(
+                        oProgressMessage, pbTableRecordProgress, pbTableIndexProgress
+                      );
+                    except
+                      on E: Exception do
+                        sDBUC_DBUpgResult := 'Table : ' + tableTitle + ' (' + verSource + ')' + #$D +
+                                             'Unable to gain exclusive access to this table.' + #$D +
+                                             '(Error message "' + E.Message + '")' + #13 +
+                                             'Ensure that the table is not currently being accessed by another program or network user.';
+                    end; // except
+                  end;
+
                   if ((bNewTable) or (sDBUC_DBUpgResult = '')) then
                   begin
-                    RenameTempTable;
+                    // With a new table, or transferred contents of an existing
+                    // table, move the table to the destination.
+                    tDSDestination.CopyTable(
+                      ExtractFilePath(sDBUC_TableFilename),
+                      ExtractFileName(sDBUC_TableFilename)
+                    );
+                    tDSDestination.DeleteTable;
+                    WriteToDBUpgLog('Temporary table renamed');
+
                     // Count the changes that were made
                     if (bNewTable) then
                       Inc(iNewTables)
@@ -1546,6 +1572,12 @@ begin
                   Inc(iIndexesUpdated);
                 end; // if
               end; // else
+            end; // if
+          end; // if
+        end; // if
+      end; // if
+    end; // if
+  end; // if
   // At this point, only display errors for a developer's attention
   if ((sDBUC_DBUpgResult<>'') and
       ((iDBUC_DBUpgErr = ERR_DB_DEVELOPMENT))) then
@@ -1778,7 +1810,7 @@ begin
   iDBUC_DBUpgErr := ERR_DB_NONE;
   sDBUC_DBUpgResult := '';
   // Check whether the source table name is OK, and whether it exists
-  if (AccessedSourceTable(sDBUC_TableFilename,sDBUC_Session,sDBUC_TableTitle,TRUE)) then
+  if (AccessedSourceTable(sDBUC_TableFilename, sDBUC_Session,sDBUC_TableTitle, TRUE)) then
     // If this is an existing table, get the version of the table that we are about to upgrade
     if ((not bNewTable) and (GotSourceVersion)) then
       // Check that the table definition for the latest version of the table is OK
@@ -2273,9 +2305,9 @@ begin
                              'Please upgrade the database.';
         if (runningUnderIDE) then
         begin
-          sDBUC_DBUpgResult := sDBUC_DBUpgResult +
-            'Differences in definition of field' + #13 +
-            '   ' + tDSSource.FieldDefs.Items[n].Name + ' / ' +
+          sDBUC_DBUpgResult := sDBUC_DBUpgResult + #13 +
+            'Differences in definition of field "' +
+            tDSSource.FieldDefs.Items[n].Name + '" / "' +
             field_name + '"';
         end; // if
         Exit;
@@ -2639,7 +2671,7 @@ end; // MovedToRecord
 //  OPERATION : Close, EmptyTable and Open the given tabl.
 //
 //              Used so that we do not need to open tables with Exclusive=True
-//              which causes a problem with sharing (e.g. in multiple vehicle
+//              which causes a problem with sharing (e.g. in multi-vehicle
 //              selection)
 //
 //              It can also help with debugging when accessing tables while the

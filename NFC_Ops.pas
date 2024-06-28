@@ -3,46 +3,19 @@
 interface
 
 uses
-  System.SysUtils, Vcl.StdCtrls;
+  System.SysUtils,
+  Vcl.Graphics, Vcl.StdCtrls;
 
 const
   NFC_BUFF_SIZE = 256;
 
-  GCRCU_INTERFACE_DLL = 'CR95HF.dll';
-
 type
   TNFCBuffer = packed array[0..NFC_BUFF_SIZE-1] of Byte;
 
-// DLL Functions
-function CR95HFDll_Echo(stringReply : array of Byte) : Integer; stdcall; external GCRCU_INTERFACE_DLL;
-
-function CR95HFDll_Idn(stringReply : array of Byte) : Integer; stdcall; external GCRCU_INTERFACE_DLL;
-function CR95HFDll_Select(stringCmd : TBytes; stringReply : array of Byte) : Integer; stdcall; external GCRCU_INTERFACE_DLL;
-function CR95HFDll_SendReceive(stringCmd : TBytes; stringReply : array of Byte) : Integer; stdcall; external GCRCU_INTERFACE_DLL;
-function CR95HFDll_STCmd(stringCmd : TBytes; stringReply : array of Byte) : Integer; stdcall; external GCRCU_INTERFACE_DLL;
-function CR95HFDll_FieldOff(stringReply : array of Byte) : Integer; stdcall; external GCRCU_INTERFACE_DLL;
-
-function CR95HFDll_ResetSPI(stringReply : array of Byte) : Integer; stdcall; external GCRCU_INTERFACE_DLL;
-function CR95HFDLL_getHardwareVersion(stringReply : array of Byte) : Integer; stdcall; external GCRCU_INTERFACE_DLL;
-function CR95HFDLL_getMCUrev(stringReply : array of Byte) : Integer; stdcall; external GCRCU_INTERFACE_DLL;
-
-function CR95HFDll_GetDLLrev(stringReply : array of Byte) : Integer; stdcall; external GCRCU_INTERFACE_DLL;
-function CR95HFDLL_USBconnect : Integer; stdcall; external GCRCU_INTERFACE_DLL;
-function CR95HFDLL_USBhandlecheck : Integer; stdcall; external GCRCU_INTERFACE_DLL;
-
-//function CR95HFDll_SendIRQPulse(stringReply : array of Byte) : Integer; stdcall; external 'CR95HF.dll';
-function CR95HFDLL_getInterfacePinState(stringReply : array of Byte) : Integer; stdcall; external GCRCU_INTERFACE_DLL;
-//function CR95HFDll_Polling_Reading(stringReply : array of Byte) : Integer; stdcall; external 'CR95HF.dll';
-//function CR95HFDll_SendNSSPulse(stringReply : array of Byte) : Integer; stdcall; external 'CR95HF.dll';
-
-function CR95HFDll_GpsOn(stringReply : array of Byte) : Integer; stdcall; external GCRCU_INTERFACE_DLL;
-function CR95HFDll_GpsOff(stringReply : array of Byte) : Integer; stdcall; external GCRCU_INTERFACE_DLL;
-function CR95HFDll_GetGps(stringReply : array of Byte) : Integer; stdcall; external GCRCU_INTERFACE_DLL;
-
-function CR95HFDLL_USBfinal() : Integer; stdcall; external GCRCU_INTERFACE_DLL;
-
 procedure SetNFCDebug(debugToUse : TCustomMemo);
-procedure AddNFCDebug(line : String);
+procedure ClearNFCDebug;
+procedure AddNFCDebug(line : String;
+                      colour : TColor = clBlack);
 function ISO14443A_Initiate : Boolean;
 function ISO14443A_AntiCollision : Boolean;
 function ISO14443A_RATS : Boolean;
@@ -66,7 +39,7 @@ implementation
 
 uses
   Vcl.ComCtrls,
-  Block_Ops, Debug_Ops;
+  Block_Ops, Debug_Ops, CR95HF_Ops, Str_Ops;
 
 const
 // PCB (Process Control Block)
@@ -150,7 +123,7 @@ var
 
 	cmdResponse : TNFCBuffer;
 
-//{$DEFINE DEBUG_LOTS}
+{$DEFINE DEBUG_LOTS}
 
 //***************************************************************************
 //
@@ -198,27 +171,35 @@ end;
 
 //***************************************************************************
 //
-//  FUNCTION  :
+//  FUNCTION  : AddNFCDebug
 //
-//  I/P       :
+//  I/P       : line : String - The text to be added.
 //
-//  O/P       :
+//              colour : TColor = clBlack - Optional specification of colour
 //
-//  OPERATION :
+//  O/P       : None
 //
-//  UPDATED   :
+//  OPERATION : Output a line of text, with timestamp, to the NFC Debug monitor.
+//
+//  UPDATED   : 2024-05-13
 //
 //***************************************************************************
-procedure AddNFCDebug(line : String);
+procedure AddNFCDebug(line : String;
+                      colour : TColor = clBlack);
 begin
   if (debugMonitor <> nil) then
   begin
+    if (debugMonitor is TCustomRichEdit) then
+    begin
+      TCustomRichEdit(debugMonitor).SelAttributes.Color := colour;
+      TCustomRichEdit(debugMonitor).SelAttributes.Style := [];
+    end; // if
     TCustomMemo(debugMonitor).Lines.Add(FormatDateTime('hh:nn:ss.zzz',Now) + ',' + line);
   end;
 
   if (idxLogFile <> -1) then
   begin
-    DebugLog(idxLogFile, line, FALSE);
+    DebugLog(idxLogFile, line, LOG_ENTRY_NONE, FALSE);
   end;
 end;
 
@@ -248,9 +229,15 @@ begin
   result := FALSE;
   try
 {$IFDEF DEBUG_LOTS}
-    AddNFCDebug('Send to tag,Tx,' + TBytes2HexString(tagCommand));
+    AddNFCDebug(
+      'Send to tag,Tx,' +
+      TBytes2HexString(command) +
+      ' (' +
+      Str2Debug(Hex2Str(TBytes2HexString(command)), FALSE, FALSE, FALSE, #0) +
+      ')'
+    );
 {$ENDIF}
-    iresult := CR95HFDll_SendReceive(command, response);
+    iresult := CR95HF_SendReceive(command, response);
 {$IFDEF DEBUG_LOTS}
     AddNFCDebug('Send to tag,Response,' + IntToStr(iresult));
 {$ENDIF}
@@ -291,7 +278,7 @@ begin
   except
     on E:Exception do
     begin
-      errorMsgNFC := 'CR95HFDll_SendReceive (' + E.Message + ')';
+      errorMsgNFC := 'CR95HF_SendReceive (' + E.Message + ')';
       result := FALSE;
     end; // on
   end;
@@ -299,7 +286,7 @@ end; // SendToTag
 
 //***************************************************************************
 //
-//  FUNCTION  : InitiateIS14443A
+//  FUNCTION  : ISO14443A_Initiate
 //
 //  I/P       : None
 //
@@ -325,7 +312,16 @@ begin
 {$IFDEF DEBUG_LOTS}
     AddNFCDebug('ISO14443A Init,Tx,02000280');
 {$ENDIF}
-    iresult := CR95HFDll_Select(StringToTBytes0('02000280'), reply);
+    // 0x02 = ISO/IEC 14443-A
+    // Further parameters - only 3 parameter bytes (the rest are optional)
+    // 0x00 - 106Kbps transmission and reception
+    // 0x02 - PP
+    // 0x80 - MM
+    iresult := CR95HF_Select(StringToTBytes0('02000280'), reply);
+    // "Success" reply = $30, $30, $30, $30 (i.e. 0x00 0x00 : result = 0x00 = success, and length = 0x00)
+    // Error reply   = $49, $6E, $76, $61, $6C, $69, $64, $20, $72, $65, $73, $70, $6F, $6E, $73, $65 ("Invalid response")
+    //
+
 {$IFDEF DEBUG_LOTS}
     AddNFCDebug('ISO14443A Init,Response,' + IntToStr(iresult));
     AddNFCDebug('ISO14443A Init,Rx,' + AByte0ToAnsiString(reply));
@@ -333,11 +329,13 @@ begin
 
     if (iresult = 0) then
     begin
-      // Optomise ISO14443A
+      // Optimise ISO14443A
 {$IFDEF DEBUG_LOTS}
       AddNFCDebug('ISO14443A Init,Tx,0109043A005804');
 {$ENDIF}
-      iresult := CR95HFDll_STCmd(StringToTBytes0('0109043A005804'), reply);
+      iresult := CR95HF_STCmd(StringToTBytes0('0109043A005804'), reply);
+      // Typical reply =
+      // $30, $30, $30, $30
 {$IFDEF DEBUG_LOTS}
       AddNFCDebug('ISO14443A Init,Response,' + IntToStr(iresult));
       AddNFCDebug('ISO14443A Init,Rx,' + AByte0ToAnsiString(reply));
@@ -350,7 +348,9 @@ begin
 {$IFDEF DEBUG_LOTS}
       AddNFCDebug('ISO14443A Init,Tx,010904680101D3');
 {$ENDIF}
-      iresult := CR95HFDll_STCmd(StringToTBytes0('010904680101D3'), reply);
+      iresult := CR95HF_STCmd(StringToTBytes0('010904680101D3'), reply);
+      // Typical reply =
+      // $30, $30, $30, $30
 {$IFDEF DEBUG_LOTS}
       AddNFCDebug('ISO14443A Init,Response,' + IntToStr(iresult));
       AddNFCDebug('ISO14443A Init,Rx,' + AByte0ToAnsiString(reply));
@@ -362,7 +362,7 @@ begin
     on E:Exception do
       errorMsgNFC := 'ISO14443A_Initiate (' + E.Message + ')';
   end;
-end; // InitiateIS14443A
+end; // InitiateISO14443A_Initiate
 
 //***************************************************************************
 //
@@ -372,7 +372,7 @@ end; // InitiateIS14443A
 //
 //  O/P       : Boolean - TRUE if the tag was correctly selected
 //
-//  OPERATION : Performs anti-collision and tag selection.
+//  OPERATION : Performs ISO 14443A anti-collision and tag selection.
 //
 //  UPDATED   : 2018-10-15
 //
@@ -389,7 +389,13 @@ begin
 {$IFDEF DEBUG_LOTS}
     AddNFCDebug('ISO14443A AntiCollision,Tx,2607');
 {$ENDIF}
-    iresult := CR95HFDll_SendReceive(StringToTBytes0('2607'), reply);
+    // NFC Forum Type 1 (Topaz) request sequence REQA
+    // Look for card in the field
+    iresult := CR95HF_SendReceive(StringToTBytes0('2607'), reply);
+    // Typical reply =
+    // $38, $30, $30, $35, $34, $32, $30, $30, $32, $38, $30, $30, $30, $30
+    // result = 0 and reply = '80054200280000' if there is a tag in place.
+    // result = 1 if there is no tag in place.
 {$IFDEF DEBUG_LOTS}
     AddNFCDebug('ISO14443A AntiCollision,Response,' + IntToStr(iresult));
     AddNFCDebug('ISO14443A AntiCollision,Rx,' + AByte0ToAnsiString(reply));
@@ -405,7 +411,8 @@ begin
 {$IFDEF DEBUG_LOTS}
         AddNFCDebug('ISO14443A AntiCollision,Tx,932008');
 {$ENDIF}
-        iresult := CR95HFDll_SendReceive(StringToTBytes0('932008'), reply);
+        //
+        iresult := CR95HF_SendReceive(StringToTBytes0('932008'), reply);
 {$IFDEF DEBUG_LOTS}
         AddNFCDebug('ISO14443A AntiCollision,Response,' + IntToStr(iresult));
         AddNFCDebug('ISO14443A AntiCollision,Rx,' + AByte0ToAnsiString(reply));
@@ -421,8 +428,11 @@ begin
           uid[1] := Copy(AByte0ToAnsiString(reply), 9, 2);
           uid[2] := Copy(AByte0ToAnsiString(reply), 11, 2);
           bcc := Copy(AByte0ToAnsiString(reply), 13, 2);
-          if (StrToInt('$' + bcc) =
-              (StrToInt('$88') xor StrToInt('$' + uid[0]) xor StrToInt('$' + uid[1]) xor StrToInt('$' + uid[2]))) then
+          if (StrToInt('$' + String(bcc)) =
+              (StrToInt('$88') xor
+               StrToInt('$' + String(uid[0])) xor
+               StrToInt('$' + String(uid[1])) xor
+               StrToInt('$' + String(uid[2])))) then
           begin
 
             // Select 1
@@ -430,7 +440,8 @@ begin
 {$IFDEF DEBUG_LOTS}
               AddNFCDebug('ISO14443A AntiCollision,Tx,937088' + uid[0] + uid[1] + uid[2] + bcc + '28');
 {$ENDIF}
-              iresult := CR95HFDll_SendReceive(StringToTBytes0('937088' + uid[0] + uid[1] + uid[2] + bcc + '28'), reply);
+              iresult := CR95HF_SendReceive(StringToTBytes0('937088' +
+                         String(uid[0] + uid[1] + uid[2] + bcc) + '28'), reply);
 {$IFDEF DEBUG_LOTS}
               AddNFCDebug('ISO14443A AntiCollision,Response,' + IntToStr(iresult));
               AddNFCDebug('ISO14443A AntiCollision,Rx,' + AByte0ToAnsiString(reply));
@@ -447,7 +458,7 @@ begin
 {$IFDEF DEBUG_LOTS}
                   AddNFCDebug('ISO14443A AntiCollision,Tx,952008');
 {$ENDIF}
-                  iresult := CR95HFDll_SendReceive(StringToTBytes0('952008'), reply);
+                  iresult := CR95HF_SendReceive(StringToTBytes0('952008'), reply);
 {$IFDEF DEBUG_LOTS}
                   AddNFCDebug('ISO14443A AntiCollision,Response,' + IntToStr(iresult));
                   AddNFCDebug('ISO14443A AntiCollision,Rx,' + AByte0ToAnsiString(reply));
@@ -463,8 +474,11 @@ begin
                     uid[5] := Copy(AByte0ToAnsiString(reply), 9, 2);
                     uid[6] := Copy(AByte0ToAnsiString(reply), 11, 2);
                     bcc := Copy(AByte0ToAnsiString(reply), 13, 2);
-                    if (StrToInt('$' + bcc) =
-                        (StrToInt('$' + uid[3]) xor StrToInt('$' + uid[4]) xor StrToInt('$' + uid[5]) xor StrToInt('$' + uid[6]))) then
+                    if (StrToInt('$' + String(bcc)) =
+                        (StrToInt('$' + String(uid[3])) xor
+                         StrToInt('$' + String(uid[4])) xor
+                         StrToInt('$' + String(uid[5])) xor
+                         StrToInt('$' + String(uid[6])))) then
                     begin
 
                       // Select 2
@@ -472,7 +486,10 @@ begin
 {$IFDEF DEBUG_LOTS}
                         AddNFCDebug('ISO14443A AntiCollision,Tx,9570' + uid[3] + uid[4] + uid[5] + uid[6] + bcc + '28');
 {$ENDIF}
-                        iresult := CR95HFDll_SendReceive(StringToTBytes0('9570' + uid[3] + uid[4] + uid[5] + uid[6] + bcc + '28'), reply);
+                        iresult := CR95HF_SendReceive(StringToTBytes0(
+                          '9570' +
+                          String(uid[3] + uid[4] + uid[5] + uid[6] + bcc) + '28'
+                        ), reply);
 {$IFDEF DEBUG_LOTS}
                         AddNFCDebug('ISO14443A AntiCollision,Response,' + IntToStr(iresult));
                         AddNFCDebug('ISO14443A AntiCollision,Rx,' + AByte0ToAnsiString(reply));
@@ -579,10 +596,10 @@ begin
 {$IFDEF DEBUG_LOTS}
     AddNFCDebug('ISO14443A RATS,Tx,E08028');
 {$ENDIF}
-    iresult := CR95HFDll_SendReceive(StringToTBytes0('E08028'), reply);
+    iresult := CR95HF_SendReceive(StringToTBytes0('E08028'), reply);
 {$IFDEF DEBUG_LOTS}
     AddNFCDebug('ISO14443A RATS,Response,' + IntToStr(iresult));
-    AddNFCDebug('ISO14443A RATS,Rx,' + ABytes0ToAnsiString(reply));
+    AddNFCDebug('ISO14443A RATS,Rx,' + AByte0ToAnsiString(reply));
 {$ENDIF}
 
     result := ((iresult <> 4) and
@@ -600,13 +617,96 @@ end; // ISO14443A_RATS
 
 //***************************************************************************
 //
+//  FUNCTION  : ISO15693_Initiate
+//
+//  I/P       : None
+//
+//  O/P       : Boolean - TRUE if the ISO15693 interface was correctly initialised.
+//
+//  OPERATION :
+//
+//              ST support says "0280 parameters are best configuration
+//              for CR95HF demo board and ISO14443-A.
+//
+//  UPDATED   : 2021-09-08
+//
+//***************************************************************************
+function ISO15693_Initiate : Boolean;
+var
+  reply : TNFCBuffer;
+  iresult : Integer;
+
+begin
+  result := FALSE;
+  try
+    // Set ISO15693 Protocol
+{$IFDEF DEBUG_LOTS}
+    AddNFCDebug('ISO15693 Init,Tx,0105');
+{$ENDIF}
+    // 0x01 = ISO/IEC 15693
+    // Further parameters - only 1 parameter byte
+    // 0x00 - 106Kbps transmission and reception
+    // 0x02 - PP
+    // 0x80 - MM
+    iresult := CR95HF_Select(StringToTBytes0('02000280'), reply);
+    // "Success" reply = $30, $30, $30, $30 (i.e. 0x00 0x00 : result = 0x00 = success, and length = 0x00)
+    // Error reply   = $49, $6E, $76, $61, $6C, $69, $64, $20, $72, $65, $73, $70, $6F, $6E, $73, $65 ("Invalid response")
+    //
+
+{$IFDEF DEBUG_LOTS}
+    AddNFCDebug('ISO15693 Init,Response,' + IntToStr(iresult));
+    AddNFCDebug('ISO15693 Init,Rx,' + AByte0ToAnsiString(reply));
+{$ENDIF}
+
+    if (iresult = 0) then
+    begin
+      // Optimise ISO14443A
+{$IFDEF DEBUG_LOTS}
+      AddNFCDebug('ISO14443A Init,Tx,0109043A005804');
+{$ENDIF}
+      iresult := CR95HF_STCmd(StringToTBytes0('0109043A005804'), reply);
+      // Typical reply =
+      // $30, $30, $30, $30
+{$IFDEF DEBUG_LOTS}
+      AddNFCDebug('ISO14443A Init,Response,' + IntToStr(iresult));
+      AddNFCDebug('ISO14443A Init,Rx,' + AByte0ToAnsiString(reply));
+{$ENDIF}
+    end;
+
+    if (iresult = 0) then
+    begin
+      // Modify Index And Rx Gain
+{$IFDEF DEBUG_LOTS}
+      AddNFCDebug('ISO14443A Init,Tx,010904680101D3');
+{$ENDIF}
+      iresult := CR95HF_STCmd(StringToTBytes0('010904680101D3'), reply);
+      // Typical reply =
+      // $30, $30, $30, $30
+{$IFDEF DEBUG_LOTS}
+      AddNFCDebug('ISO14443A Init,Response,' + IntToStr(iresult));
+      AddNFCDebug('ISO14443A Init,Rx,' + AByte0ToAnsiString(reply));
+{$ENDIF}
+    end;
+
+    result := (iresult = 0);
+  except
+    on E:Exception do
+      errorMsgNFC := 'ISO14443A_Initiate (' + E.Message + ')';
+  end;
+end; // InitiateISO15693_Initiate
+
+//***************************************************************************
+//
 //  FUNCTION  : NFCFieldOff
 //
 //  I/P       : reply : PAnsiChar -
 //
 //  O/P       : Integer - 0 if the command was executed correctly
 //
-//  OPERATION :
+//  OPERATION : Turn off the NFC field.
+//
+//              This uses the Select Protocol command, with protocol set to 0x00
+//              (but this is done in the DLL)
 //
 //  UPDATED   : 2021-03-19
 //
@@ -621,14 +721,14 @@ begin
 {$IFDEF DEBUG_LOTS}
     AddNFCDebug('Turning off NFC field');
 {$ENDIF}
-    iresult := CR95HFDll_FieldOff(reply);
+    iresult := CR95HF_FieldOff(reply);
 {$IFDEF DEBUG_LOTS}
     AddNFCDebug('NFC field off,Response,' + IntToStr(iresult));
     AddNFCDebug('NFC field off,Rx,' + AByte0ToAnsiString(reply));
 {$ENDIF}
 
-//iresult := CR95HFDll_FieldOff(reply);
-//is giving a compile error, since the defintion of CR95HFDll_FieldOff expects a TBytes parameter.
+//iresult := CR95HF_FieldOff(reply);
+//is giving a compile error, since the defintion of CR95HF_FieldOff expects a TBytes parameter.
 
     result := ((iresult = 0) and
                (AByte0ToAnsiString(reply) = '0000'));
@@ -706,17 +806,17 @@ var
 	hexCommand : AnsiString;
   toSend : TBytes;
   i : Integer;
-  newCRC : Word;
+//  newCRC : Word;
 
 begin
   try
     lastCommandPCB := PCB;
 
-    hexCommand := IntToHex(PCB, 2);
+    hexCommand := AnsiString(IntToHex(PCB, 2));
     i := 1;
     while (i <= Length(command)) do
     begin
-      hexCommand := hexCommand + IntToHex(command[i - 1], 2);
+      hexCommand := hexCommand + AnsiString(IntToHex(command[i - 1], 2));
       Inc(i);
     end; // while
     hexCommand := hexCommand + '28';
@@ -726,12 +826,11 @@ begin
   //	msg[commandLen + 1] = newCRC  & 0x00FF;
   //	msg[commandLen + 2] = (newCRC & 0xFF00) >> 8;
 
-    toSend := StringToTBytes0(hexCommand);
+    toSend := StringToTBytes0(String(hexCommand));
     result := SendToTag(toSend);
 
 {$IFDEF DEBUG_LOTS}
     AddNFCDebug('Send to tag,Exited');
-    AddNFCDebug('Send to tag,Length of reply = ' + IntToStr(Length(cmdResponse)));
 {$ENDIF}
 
     // Check PCB to see whether the Block number should be changed
@@ -861,7 +960,7 @@ begin
 
 {$IFDEF DEBUG_LOTS}
   AddNFCDebug('NFC_SelectNDEFTagApplication response length,' + IntToStr(Length(cmdResponse)));
-  AddNFCDebug('NFC_SelectNDEFTagApplication response,' + TBytes2HexString(cmdResponse));
+//!!  AddNFCDebug('NFC_SelectNDEFTagApplication response,' + TBytes2HexString(cmdResponse));
   AddNFCDebug('NFC_SelectNDEFTagApplication completed,' + IntToStr(Integer(result)));
 {$ENDIF}
 end;
@@ -988,12 +1087,12 @@ end; // NFC_SelectNDEFFile
 function NFC_ReadFile : Boolean;
 var
   command : TBytes;
-  response : TBytes;
   offset : Word;
   Le : Byte;
-  lengthFile : Integer;
 
 begin
+  Result := FALSE;
+
   SetLength(command, 5);
   // Get the size of the file
   offset := $0000;
@@ -1017,7 +1116,7 @@ begin
     command[3] := offset and $FF;           // P2 }
     command[4] := Le;                       // Length expected
 
-    result := (SendCommand(PCB_ID_I or PCB_RFU_I or blockNumber,
+    Result := (SendCommand(PCB_ID_I or PCB_RFU_I or blockNumber,
                            command)) and
 //        (kStatus_Success == ReceiveResponse(response, Le + 5)) &&
               (ResponseStatus(cmdResponse, Le + 1) = RX_STAT_OK);
@@ -1058,11 +1157,11 @@ begin
   //    Length command
   //    'T' = Payload type (text)
   hexData := '00' +
-          IntToHex(Length(hexData) div 2 + NDEF_PACKET_OVERHEAD, 2) +
+          AnsiString(IntToHex(Length(hexData) div 2 + NDEF_PACKET_OVERHEAD, 2)) +
           'D1' +
           '01' +
-          IntToHex(Length(hexData) div 2, 2) +
-          IntToHex(Ord('T'), 2) +
+          AnsiString(IntToHex(Length(hexData) div 2, 2)) +
+          AnsiString(IntToHex(Ord('T'), 2)) +
           hexData;
 
   SetLength(command, 7 + Length(hexData) div 2);
@@ -1074,7 +1173,7 @@ begin
   command[3] := $00;                                // P2 }
   command[4] := Length(hexData) div 2 + 2;          // Length to be written (1 length bytes + data)
   for i := 0 to Length(hexData) div 2 - 1 do
-    command[5 + i] := StrToInt('$' + Copy(hexData, 2*i+1, 2));
+    command[5 + i] := StrToInt('$' + String(Copy(hexData, 2*i+1, 2)));
   result := (SendCommand(PCB_ID_I or PCB_RFU_I or blockNumber,
                          command));
 

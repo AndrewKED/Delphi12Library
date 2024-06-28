@@ -53,9 +53,10 @@ interface
 
 uses
   Forms, Menus, WinProcs, StdCtrls, Grids, DBGrids, ComCtrls,
+  System.Win.Registry,
   Vcl.Controls, Vcl.Buttons,
   SHDocVw, SysUtils, Graphics, Classes, Vcl.Dialogs, System.IniFiles, SMDBGrid,
-  System.Win.Registry;
+  JvSpeedButton;
 
 type
   TRGBColor = record
@@ -165,12 +166,6 @@ procedure ToggleRichEditAttributeStyle(creTarget : TCustomRichEdit;
 procedure RichEditAttributeSize(creTarget : TCustomRichEdit;
                                 iDifference : Integer;
                                 iSetTo : integer);
-procedure SaveDBGridColumnWidths(grid : TSMDBGrid;
-                                 reg : TRegistryIniFile;
-                                 key : String); overload;
-procedure SaveDBGridColumnWidths(grid : TDBGrid;
-                                 reg : TRegistryIniFile;
-                                 key : String); overload;
 procedure SetSpeedButtonFonts(Sender : TObject;
                               cParent : TWinControl);
 procedure SetFormAccessRights(ThisForm : TForm;
@@ -1010,13 +1005,13 @@ procedure ClearFormSizePosition(cifConfig : TCustomIniFile;
                                 Section : string);
 begin
   cifConfig.EraseSection(Section);
-end; // SaveFormSizePosition
+end; // ClearFormSizePosition
 
 procedure ClearFormSizePosition(cifConfig : TRegIniFile;
                                 Section : string); overload;
 begin
   cifConfig.EraseSection(Section);
-end; // SaveFormSizePosition
+end; // ClearFormSizePosition
 
 //***************************************************************************
 //
@@ -1327,8 +1322,9 @@ procedure DimMainForm;
 begin
   wcActive := Screen.ActiveControl;
   fActive := Screen.ActiveForm;
-//  I am not happy with this at present (2010-05-13) because on the Undimming, the previously active control
-//  is not restored.   I need to work out a way to do this.
+//  I am not happy with this at present (2010-05-13) because on the Undimming,
+//  the previously active control  is not restored.
+//  I need to work out a way to do this.
 (*
   with fDimmerForm do
   begin
@@ -1971,48 +1967,9 @@ end; // RichEditAttributeSize
 
 //***************************************************************************
 //
-//  FUNCTION  : SaveDBGridColumnWidths
-//
-//  I/P       : grid : TSMDBGrid - The grid for which column widths are to be saved
-//
-//              reg : TRegistryIniFile - The RegistryIniFile to be used
-//
-//              key : String - the key within the above RegistryIniFile to use
-//
-//  O/P       : None
-//
-//  OPERATION : Saves the widths of the specified DGgrid in the given
-//              registry/registry key
-//
-//  UPDATED   : 2017-10-16
-//
-//***************************************************************************
-procedure SaveDBGridColumnWidths(grid : TSMDBGrid;
-                                 reg : TRegistryIniFile;
-                                 key : String); overload;
-var
-  n : Integer;
-
-begin
-  for n := 0 to grid.Columns.Count-1 do
-    reg.WriteInteger(key,'Col' + IntToStr(n),grid.Columns[n].Width);
-end;
-procedure SaveDBGridColumnWidths(grid : TDBGrid;
-                                 reg : TRegistryIniFile;
-                                 key : String); overload;
-var
-  n : Integer;
-
-begin
-  for n := 0 to grid.Columns.Count-1 do
-    reg.WriteInteger(key,'Col' + IntToStr(n),grid.Columns[n].Width);
-end;
-
-//***************************************************************************
-//
 //  FUNCTION  : SetSpeedButtonFonts
 //
-//  I/P       : Sender : TObject - The TSpeedButton that we would like to
+//  I/P       : Sender : TSpeedButton - The TObject that we would like to
 //                highlight.
 //
 //              cParent : TWinControl - The container of the TSpeedButton
@@ -2023,7 +1980,7 @@ end;
 //  OPERATION : In a set of TSpeedButtons that share the same GroupIndex property,
 //              highlight the given one by setting its font to Bold and Underlined.
 //
-//  UPDATED   : 2006/07/19
+//  UPDATED   : 2024-06-28
 //
 //***************************************************************************
 procedure SetSpeedButtonFonts(Sender : TObject;
@@ -2043,6 +2000,19 @@ begin
             (cParent.Components[n] as TSpeedButton).Font.Style - [fsBold] - [fsUnderline];
     // Now set the button's own font to bold and underlined
     (Sender as TSpeedButton).Font.Style := (Sender as TSpeedButton).Font.Style + [fsBold] + [fsUnderline];
+  end; // if
+
+  if ((Sender is TJvSpeedButton) and
+      (cParent <> nil)) then
+  begin
+    for n := 0 to cParent.ComponentCount-1 do
+      if (cParent.Components[n] is TJvSpeedButton) then
+        if (((cParent.Components[n] as TJvSpeedButton).GroupIndex <> 0) and
+            ((cParent.Components[n] as TJvSpeedButton).GroupIndex = (Sender as TJvSpeedButton).GroupIndex)) then
+          (cParent.Components[n] as TJvSpeedButton).Font.Style :=
+            (cParent.Components[n] as TJvSpeedButton).Font.Style - [fsBold] - [fsUnderline];
+    // Now set the button's own font to bold and underlined
+    (Sender as TJvSpeedButton).Font.Style := (Sender as TJvSpeedButton).Font.Style + [fsBold] + [fsUnderline];
   end; // if
 
   if ((Sender is TJvArrowButton) and

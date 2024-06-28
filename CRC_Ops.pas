@@ -440,7 +440,7 @@ begin
         crc := (crc shr 1);
       end;
     end;
-    Inc(dataPtr, sizeof(DWORD));  // This does not compile in Delphi
+    Inc(dataPtr, sizeof(DWORD));    // This does not compile in Delphi
     Dec(sizeBlock, sizeof(DWORD));
   end;
 

@@ -4,6 +4,7 @@ interface
 
 uses
   System.IniFiles, System.SysUtils, System.Types, System.Classes,
+  System.Win.Registry,
   Vcl.StdCtrls, Vcl.Grids, Vcl.DBGrids, Vcl.Forms,
   SMDBGrid;
 
@@ -45,6 +46,12 @@ procedure SetColumnVisibility(grid : TSMDBGrid;
 procedure StoreGridColumnWidths(grid : TSMDBGrid;
                                 config : TCustomIniFile;
                                 sectionColumnWidth : String);
+procedure SaveDBGridColumnWidths(grid : TSMDBGrid;
+                                 reg : TRegistryIniFile;
+                                 key : String); overload;
+procedure SaveDBGridColumnWidths(grid : TDBGrid;
+                                 reg : TRegistryIniFile;
+                                 key : String); overload;
 procedure SelectAll(grid : TSMDBGrid); overload;
 procedure SelectAll(grid : TDBGrid); overload;
 
@@ -135,8 +142,9 @@ end; // GetGridClientWidth
 //
 //  FUNCTION  : ResizeDBGridColumns
 //
-//  I/P       : theGrid : TDBGrid;
-//                              columnRatios : array of Integer
+//  I/P       : theGrid : TDBGrid
+//
+//              columnRatios : array of Integer
 //
 //  O/P       :
 //
@@ -729,6 +737,45 @@ begin
   end;
   config.UpdateFile;
 end; // StoreGridColumnWidths
+
+//***************************************************************************
+//
+//  FUNCTION  : SaveDBGridColumnWidths
+//
+//  I/P       : grid : TSMDBGrid - The grid for which column widths are to be saved
+//
+//              reg : TRegistryIniFile - The RegistryIniFile to be used
+//
+//              key : String - the key within the above RegistryIniFile to use
+//
+//  O/P       : None
+//
+//  OPERATION : Saves the widths of the specified DGgrid in the given
+//              registry/registry key
+//
+//  UPDATED   : 2017-10-16
+//
+//***************************************************************************
+procedure SaveDBGridColumnWidths(grid : TSMDBGrid;
+                                 reg : TRegistryIniFile;
+                                 key : String); overload;
+var
+  n : Integer;
+
+begin
+  for n := 0 to grid.Columns.Count-1 do
+    reg.WriteInteger(key,'Col' + IntToStr(n),grid.Columns[n].Width);
+end;
+procedure SaveDBGridColumnWidths(grid : TDBGrid;
+                                 reg : TRegistryIniFile;
+                                 key : String); overload;
+var
+  n : Integer;
+
+begin
+  for n := 0 to grid.Columns.Count-1 do
+    reg.WriteInteger(key,'Col' + IntToStr(n),grid.Columns[n].Width);
+end;
 
 //***************************************************************************
 //

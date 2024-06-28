@@ -633,8 +633,8 @@ uses
 //
 //  I/P       : None
 //
-//  O/P       : Double - the offset (in a fashion that may be added to
-//                a TDateTime variable) to get PC's time into UTC.
+//  O/P       : Double - the offset, in faction of a day, so that when added
+//                to the PC's date/time will convert it to UTC date/time.
 //
 //  OPERATION : From borland.public.delphi.winapi
 //
@@ -669,7 +669,11 @@ end; // GetPCTimeZoneDelta
 //
 //  O/P       : String - The PC's time zone
 //
-//  OPERATION : Returns the PC's time zone as a signed ('+' or '-') 'hh:nn' value
+//  OPERATION : Return the PC's time zone as a signed ('+' or '-') 'hh:nn'
+//              value.
+//
+//              This is the standard expression, showing how many hours the
+//              PC is ahead (+) or behind (-) UTC.
 //
 //  UPDATED   : 2019-10-23
 //
@@ -745,7 +749,8 @@ end; // UTC2PC2
 //
 //  O/P       : String - The represented time zone in form '±hh:mm'
 //
-//  OPERATION : Returns the given time zone as a signed ('+' or '-') 'hh:nn' value
+//  OPERATION : Returns the given time zone offset as a signed ('+' or '-')
+//              'hh:nn' value
 //
 //  UPDATED   : 2019-10-23
 //

@@ -102,7 +102,9 @@ interface
 
 {$A-}
 
-uses StdCtrls, COMCtrls, Forms, Classes, DKLang, ABSMain;
+uses
+  StdCtrls, COMCtrls, Forms, Classes, Dialogs,
+  DKLang, ABSMain;
 
 const
   ABS_DB_EXTENSION = '.ABS';
@@ -159,14 +161,20 @@ function Get_Old_Index(tCurrent : TTable;
 
 implementation
 
-uses DB, Controls, SysUtils, Dialogs, System.StrUtils,
-     DBUtilsCommon,
-     Str_Ops, TimeDate, File_Ops, Dialog_Ops;
+uses
+  DB, Controls, SysUtils, System.StrUtils,
+  DBUtilsCommon,
+  Str_Ops, TimeDate, File_Ops, Dialog_Ops;
 
 
 const
   TEMP_TABLE_NAME = '~TMP~TBL';         // Temporary root of table file name (MUST be unused elsewhere)
   WORK_DATABASE_NAME = 'TESTING1234';
+
+type
+  TDBLikeObj = class
+    class procedure OnPassword(Sender: TObject; var Continue: Boolean);
+  end;
 
 var
 (*  lcDBUtils : TDKLanguageController;
@@ -188,6 +196,9 @@ var
   bUseUpgradeLog : boolean;         // TRUE if we are to use the log file for recording operations
   sTableType : string;              // Indicates the type of the table (Paradox, DBISAM)
 *)
+
+  dbHelper : TDBLikeObj;
+
 //***************************************************************************
 //
 //  FUNCTION  : SealTable
@@ -1305,7 +1316,7 @@ end; // TransferTableContents
 procedure RenameTempTable;
 var
   file_root : string;
-  sr : TSearchRec;
+
 begin
   file_root := LeftStr(ExtractFileName(sDBUC_TableFilename),Pos('.',ExtractFileName(sDBUC_TableFilename)));
 
@@ -2066,6 +2077,7 @@ var
 begin
   // Initially assume all is OK
   sDBUC_DBUpgResult := '';
+  sDBUC_PasswordOK := TRUE;
 
   // Check that we have an information file for the database upgrade program
   if (AccessedDBDefinitionResources) then
@@ -2145,19 +2157,23 @@ begin
                                          'Please upgrade the database.';
                 end // if
                 else
+                begin
                   // Error in field information given.
                   sDBUC_DBUpgResult := 'There is a field information error in the ' +
                                        mifDBUC_DBDefn.ReadString('Descriptions',IntToStr(iCurrentTable),'#'+IntToStr(iCurrentTable)) + ' table.' + #13 +
                                        #13 +
                                        sDBUC_AgentHelp;
+                end; // else
               end; // for
             end // if
             else
+            begin
               // This table does not have the same number of fields as the most recent, so obviously
               // it cannot be the latest table version
               sDBUC_DBUpgResult := 'The version of the ' +
                                    mifDBUC_DBDefn.ReadString('Descriptions',IntToStr(iCurrentTable),'#'+IntToStr(iCurrentTable)) + ' table is not correct.' + #13 +
                                    'Please upgrade the database.';
+            end; // else
             // Close the table
             tSource.Close;
 
@@ -2166,16 +2182,19 @@ begin
             field_info.Free;
           end // if
           else
+          begin
             // A table file is missing from the database
             sDBUC_DBUpgResult := 'The ' +
                                  mifDBUC_DBDefn.ReadString('Descriptions',IntToStr(iCurrentTable),'#'+IntToStr(iCurrentTable)) + ' table is missing from the database.' + #13 +
                                  'Please upgrade the database.';
+          end; // else
         end // if
         else
+        begin
           // Could not get the data for the indexed table (unlikely)
           sDBUC_DBUpgResult := 'Table definition #' + IntToStr(iCurrentTable) + ' is corrupt' + #$D +
                                sDBUC_AgentHelp;
-
+        end; // else
 
         // Move on to the next table
         Inc(iCurrentTable);
@@ -2184,11 +2203,14 @@ begin
       dbTest.Close;
     end // if
     else
+    begin
       // Could not get the data for the indexed table (unlikely)
       sDBUC_DBUpgResult := 'The database file ' + sDBFileName + ' is missing' + #$D +
                            'Please upgrade the database.';
+    end; // else
   end; // if
 end; // CheckDatabaseValidity
+
 (*
 //****************************************************************************
 //
@@ -2626,10 +2648,33 @@ end; // DBError_Message
 *)
 
 //***************************************************************************
+//
+//  FUNCTION  :
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION :
+//
+//  UPDATED   :
+//
+//***************************************************************************
+class procedure TDBLikeObj.OnPassword(Sender: TObject; var Continue: Boolean);
+begin
+  sDBUC_PasswordOK := FALSE;
+  Continue := FALSE;
+end;
+
+//***************************************************************************
 initialization
 begin
+  dbHelper := TDBLikeObj.Create;
+
   dbTest := TAbsDatabase.Create(nil);
   dbTest.DatabaseName := WORK_DATABASE_NAME;
+  dbTest.OnPassword := dbHelper.OnPassword;
+
   tSource := TABSTable.Create(nil);
   tSource.DatabaseName := WORK_DATABASE_NAME;
 end;
@@ -2637,6 +2682,8 @@ end;
 //***************************************************************************
 finalization
 begin
+  dbHelper.Free;
+
   tSource.Free;
   dbTest.Free;
 end;

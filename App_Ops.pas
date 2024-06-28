@@ -19,10 +19,20 @@ type
     property IsCritical: Boolean read FIsCritical write SetIsCritical;
   end;
 
-function GetApplicationVersion(bBuild : boolean = FALSE) : String;
+  TSWVersion = record
+    filename : String;
+    version : String;
+  end;
+
+  TSWVersions = array of TSWVersion;
+
 function CompareVersions(sAppVer1 : String;
                          sAppVer2 : String;
                          iDepth : integer) : Integer;
+function GetFileVersion(const fileName : string;
+                        const includeBuild : boolean = FALSE) : string;
+function GetApplicationVersion(const includeBuild : boolean = FALSE) : String;
+function FileVersionsOK(checkInfo : array of TSWVersion) : String;
 procedure CloseApplication(sAppName : string);
 // function ProcessExists(exeFileName: string): boolean;
 procedure HookResourceString(rs: PResStringRec; newStr: PChar);
@@ -40,7 +50,7 @@ var
 implementation
 
 uses
-  System.SysUtils, System.DateUtils,
+  System.SysUtils, System.DateUtils, Registry,
   Windows,
   VCL.Forms,
   WinAPI.Messages,
@@ -60,6 +70,7 @@ const
 
 var
   LastPeekMessageTime: Cardinal = 0;
+  Handle : HMODULE;
 
 //***************************************************************************
 //
@@ -195,88 +206,109 @@ end; // CompareVersions
 
 //***************************************************************************
 //
+//  FUNCTION  : GetFileVersion
+//
+//  I/P       : fileName : string - The path and filename of the file
+//
+//              includeBuild : Boolean = FALSE - Whether the build number is
+//                to be added as the 4th portion of the version, or not.
+//
+//  O/P       : String - The version number in format v.x.y.build or v.x.y
+//
+//  OPERATION : Get the version number of the given file.
+//
+//  UPDATED   : 2023-02-07
+//
+//***************************************************************************
+function GetFileVersion(const fileName : string;
+                        const includeBuild : boolean = FALSE) : string;
+var
+  verInfoSize : DWORD;
+  verInfo : pointer;
+  verValueSize : UINT;
+  verValue : PVSFixedFileInfo;
+  wnd : DWORD;
+
+begin
+  Result := '?';
+
+  verInfoSize := GetFileVersioninfoSize(PChar(fileName), wnd);
+
+  if (verInfoSize <> 0) then
+  begin
+    GetMem(verInfo, verInfoSize);
+    try
+      if (GetFileVersionInfo(PChar(fileName), 0, verInfoSize, verInfo)) then
+      begin
+        if (VerQueryValue(verInfo, '\', Pointer(verValue), VerValueSize)) then;
+        begin
+          Result := IntToStr(verValue.dwFileVersionMS shr 16) + '.' +
+                    IntToStr(verValue.dwFileVersionMS and $FFFF) + '.' +
+                    IntToStr(verValue.dwFileVersionLS shr 16);
+          if (includeBuild) then
+          begin
+            Result := Result + '.' +
+                      IntToStr(VerValue.dwFileVersionLS and $FFFF);
+          end; // if
+        end; // if
+//      else
+//      begin
+//        RaiseLastOSError;
+//      end;
+      end; // if
+//    else
+//    begin
+//      RaiseLastOSError;
+//    end;
+    finally
+      FreeMem(verInfo);
+    end;
+  end; // if
+//  else
+//  begin
+//    RaiseLastOSError;
+//  end;
+end; // GetFileVersion
+
+//***************************************************************************
+//
 //  FUNCTION  : GetApplicationVersion
 //
-//  I/P       : bBuild : Boolean = FALSE - Whether the build number is to be
+//  I/P       : includeBuild : Boolean = FALSE - Whether the build number is to be
 //                added as the 4th portion of the version, or not.
 //
 //  O/P       : String - The version number in format v.x.y.build or v.x.y
 //
-//  OPERATION : Note that for this to work "properly" (or at least in the way
+//  OPERATION : Get the version number of the application.
+//
+//              Note that for this to work "properly" (or at least in the way
 //              that I like my application version numbers), the Delphi project
-//              options should specify "Do not change build number" or, preferably,
-//              "Auto increment build number".
+//              options should specify "Do not change build number" or,
+//              preferably, "Auto increment build number".
 //
 //              "Auto generate build number", as far as I have been able to
 //              ascertain, stores dwFileVersionLS as the days since 2000-01-01
 //              (high word) and number of seconds since midnight div 2 (low word).
 //
-//  UPDATED   : 2015-11-19
+//  UPDATED   : 2023-02-07
 //
 //***************************************************************************
-function GetApplicationVersion(bBuild : boolean = FALSE) : String;
-var
-  VerInfoSize: DWORD;
-  VerInfo: pointer;
-  VerValueSize: DWORD;
-  VerValue: PVSFixedFileInfo;
-  Dummy: DWORD;
-
+function GetApplicationVersion(const includeBuild : boolean = FALSE) : String;
 begin
-  VerInfoSize := GetFileVersionInfoSize(PChar(ParamStr(0)), Dummy);
-  GetMem(VerInfo, VerInfoSize);
-  GetFileVersionInfo(PChar(ParamStr(0)), 0, VerInfoSize, VerInfo);
-  if (VerInfo <> nil) then
-  begin
-    VerQueryValue(VerInfo, '\', pointer(VerValue), VerValueSize);
-
-    result := IntToStr(VerValue^.dwFileVersionMS shr 16) + '.' +
-              IntToStr(VerValue^.dwFileVersionMS and $FFFF) + '.' +
-              IntTostr(VerValue^.dwFileVersionLS shr 16);
-    if (bBuild) then
-      result := result + '.' +
-                IntToStr(VerValue^.dwFileVersionLS and $FFFF);
-  end // if
-  else
-    result := '?';
-
-  FreeMem(VerInfo, VerInfoSize);
-
-(*
-var
-  Exe: string;
-  Size, Handle: DWORD;
-  Buffer: TBytes;
-  FixedPtr: PVSFixedFileInfo;
-begin
-  Exe := ParamStr(0);
-  Size := GetFileVersionInfoSize(PChar(Exe), Handle);
-  if Size = 0 then
-    RaiseLastOSError;
-  SetLength(Buffer, Size);
-  if not GetFileVersionInfo(PChar(Exe), Handle, Size, Buffer) then
-    RaiseLastOSError;
-  if not VerQueryValue(Buffer, '\', Pointer(FixedPtr), Size) then
-    RaiseLastOSError;
-  Result := Format('%d.%d.%d.%d',
-    [LongRec(FixedPtr.dwFileVersionMS).Hi,  //major
-     LongRec(FixedPtr.dwFileVersionMS).Lo,  //minor
-     LongRec(FixedPtr.dwFileVersionLS).Hi,  //release
-     LongRec(FixedPtr.dwFileVersionLS).Lo]) //build
-*)
+  Result := GetFileVersion(ParamStr(0), includeBuild);
 end; // GetApplicationVersion
 
 (*
-procedure TForm1.Button1Click(Sender: TObject);
-
 const
   InfoNum = 10;
   InfoStr: array[1..InfoNum] of string = ('CompanyName', 'FileDescription', 'FileVersion', 'InternalName', 'LegalCopyright', 'LegalTradeMarks', 'OriginalFileName', 'ProductName', 'ProductVersion', 'Comments');
+
 var
   S: string;
   n, Len, i: DWORD;
   Buf: PChar;
   Value: PChar;
+
 begin
   S := Application.ExeName;
   n := GetFileVersionInfoSize(PChar(S), n);
@@ -294,6 +326,47 @@ begin
     Memo1.Lines.Add('No version information found');
 end;
 *)
+
+//***************************************************************************
+//
+//  FUNCTION  : FileVersionsOK
+//
+//  I/P       : checkInfo : array of TSWVersion - An array of filename and
+//                expected version pairings.
+//
+//  O/P       : String - Empty if all filenames have the expected version
+//                The problem filename, if there is a mismatch.
+//
+//  OPERATION : Check that the list of filenames (of exe and/or dll files) each
+//              have the expected version numbers.
+//
+//              The version numbers may be specified as a.b.c.d or a.b.c
+//
+//              This is typically used to ensure that installations have been
+//              correctly made.
+//
+//  UPDATED   : 2023-02-09
+//
+//***************************************************************************
+function FileVersionsOK(checkInfo : array of TSWVersion) : String;
+var
+  n: Integer;
+  verFound : String;
+
+begin
+  Result := '';
+
+  for n := 0 to Length(checkInfo)-1 do
+  begin
+    verFound := GetFileVersion(checkInfo[n].filename, Count_Chars(checkInfo[n].version,'.')=3);
+    if (verFound <> checkInfo[n].version) then
+    begin
+      // Keep the response simple, for possible inclusion in a dialog/log line
+      Result := checkInfo[n].filename;
+      break;
+    end; // if
+  end; // for
+end; // FileVersionsOK
 
 //***************************************************************************
 //
@@ -393,36 +466,6 @@ begin
     PostMessage(H, WM_CLOSE, 0, 0);
 end; // CloseApplication
 
-//***************************************************************************
-//
-//  FUNCTION   : Running32ON64
-//
-//  I/P        :
-//
-//  O/P        :
-//
-//  OPERATION : See http://delphi.about.com/od/delphi-tips-2011/qt/is-your-32bit-delphi-applications-running-on-x86-win-32-or-x64-win-64.htm
-//
-//  UPDATED   : 2012-07-18
-//
-//***************************************************************************
-function Running32ON64: boolean;
-type
-  TIsWow64Process = function(Handle:THandle; var IsWow64 : boolean) : boolean; stdcall;
-var
-  hDLL : cardinal;
-  IsWow64Process : TIsWow64Process;
-begin
-  result := false;
-  hDLL := LoadLibrary('kernel32.dll');
-  if (hDLL = 0) then Exit;
-  try
-    @IsWow64Process := GetProcAddress(hDLL, 'IsWow64Process');
-    if Assigned(IsWow64Process) then IsWow64Process(GetCurrentProcess, result);
-  finally
-    FreeLibrary(hDLL);
-  end;
-end;
 (*
 //***************************************************************************
 //
@@ -604,7 +647,14 @@ end; // GetCopyrightYear
 //***************************************************************************
 initialization
 begin
-  SystemCritical := TSystemCritical.Create;
+  Handle := LoadLibrary(KernelDLL);
+  if (Handle <> 0) then
+  begin
+    if (GetProcAddress(Handle, 'InitializeCriticalSectionEx') <> nil) then
+    begin
+      SystemCritical := TSystemCritical.Create;
+    end;
+  end;
 
   // Indicate if the program is running under the IDE
   runningUnderIDE := (DebugHook <> 0);
@@ -634,6 +684,9 @@ end;
 //
 //***************************************************************************
 finalization
-  SystemCritical.IsCritical := False;
-  SystemCritical.Free;
+  if (SystemCritical <> nil) then
+  begin
+    SystemCritical.IsCritical := False;
+    SystemCritical.Free;
+  end;
 end.

@@ -58,6 +58,7 @@ function Base2Dec(theValue : String;
                   base : Byte;
                   unusedChars : String) : UInt64;
 function SwapEndianHex(hex : String) : String;
+function SwapEndian(theValue : Word) : Word;
 procedure SetDecimalSeparatorAsPoint;
 procedure RestoreDecimalSeparator;
 
@@ -786,6 +787,25 @@ begin
     Inc(n, 2);
   end;
 end; // SwapEndianHex
+
+//***************************************************************************
+//
+//  FUNCTION  : SwapEndian
+//
+//  I/P       : theValue : Word - The value to be swapped
+//
+//  O/P       : Word - The high and low byte values are swapped
+//
+//  OPERATION : Swap the "Endianness" of a given 2-byte value
+//
+//  UPDATED   : 2023-03-24
+//
+//***************************************************************************
+function SwapEndian(theValue : Word) : Word;
+begin
+  result := (theValue shr 8) +
+            (theValue and $FF) shl 8;
+end; // SwapEndian
 
 //***************************************************************************
 //

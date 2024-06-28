@@ -86,6 +86,7 @@ type
 procedure RoughDeltaLL2NE(dFromLatitudeA,dFromLongitudeA : Double;
                           dToLatitudeB,dToLongitudeB : Double;
                           var dNorthings,dEastings : double);
+function radiusEarth(latitude : Double) : Double;
 procedure RoughLLNE2LL(dFromLatitude,dFromLongitude : Double;
                        dNorthings,dEastings : Double;
                        var dToLatitude,dToLongitude : double);
@@ -278,6 +279,38 @@ end; // RoughDeltaLL2NE
 
 //***************************************************************************
 //
+//  FUNCTION  : radiusEarth
+//
+//  I/P       : latitude : Double - the latitude at which the radius is
+//              required
+//
+//  O/P       : Double - the radius at the given latitude, in metres
+//
+//  OPERATION : Get the radius of the earth at a given latitude
+//
+//  UPDATED   : 2023-01-24
+//
+//***************************************************************************
+function radiusEarth(latitude : Double) : Double;
+var
+  dX, dY : Double;
+
+begin
+  // Slice the earth through the longitude and longitude+180 to get an elipse.
+  // The N/S axis is the Y axis, and from surface to surface at the equator is the X-axis.
+  // Then the equation for the elipse is
+  //          X = (radius at equator) * cos(latitude)
+  //          Y = (radius at poles) * sin(latitude)
+  dX := SEMI_MAJOR_AXIS[iDatumToUse] * cos(latitude * PI / 180.0);
+  dY := SEMI_MINOR_AXIS[iDatumToUse] * sin(latitude * PI / 180.0);
+
+  // Northings is the distance along the surface of the earth.  Determine the distance
+  // from the centre of the earth to the surface at the given latitude.
+  Result := Sqrt(dX*dX + dY*dY);
+end;
+
+//***************************************************************************
+//
 //  FUNCTION    :   RoughLLNE2LL
 //
 //  I/P         :   dFromLatitude (double) - Latitude of the starting
@@ -317,7 +350,7 @@ var
   dSameLatCircum : Double;
   dEarthCentreToSurface : Double;
   dSameLongCircum : Double;
-     
+
 begin
   // Slice the earth through the longitude and longitude+180 to get an elipse.
   // The N/S axis is the Y axis, and from surface to surface at the equator is the X-axis.

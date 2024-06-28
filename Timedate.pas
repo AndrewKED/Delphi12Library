@@ -180,25 +180,11 @@ procedure SetDateControlsToMonth(ctrlFrom, ctrlTo : TCalendarView;
                                  dtFrom : TDateTime;
                                  firstDay : Integer); overload;
 function GetStartOfTheWeek : Integer;
-procedure CheckTCalendarViewDate(target : TObject);
 {$IFNDEF NO_DKLANG}
 procedure SetLanguage(lcMain : TDKLanguageController);
 {$ENDIF}
 
 var
-  slShortMonthNames : TStringList;
-  slLongMonthNames : TStringList;
-
-IMPLEMENTATION
-
-uses
-  System.StrUtils, DateUtils, Vcl.Dialogs, Vcl.StdCtrls, SysUtils, Math, System.UITypes,
-  Str_Ops, Maths;
-
-var
-{$IFNDEF NO_DKLANG}
-  lcTimeDate : TDKLanguageController;
-{$ENDIF}
   sAbbrHour : String;
   sAbbrMinute : String;
   sInvalidSDate : String;
@@ -212,12 +198,21 @@ var
   sDay : String;
   sDays : String;
 
+IMPLEMENTATION
+
+uses
+  System.StrUtils, DateUtils, Vcl.Dialogs, Vcl.StdCtrls, SysUtils, Math, System.UITypes,
+  Str_Ops, Maths;
+
+var
+{$IFNDEF NO_DKLANG}
+  lcTimeDate : TDKLanguageController;
+{$ENDIF}
+
   timerFast : array[0..9] of Cardinal;
   timerFastRunning : array[0..9] of Boolean;
   timerPauseValue : array[0..9] of Cardinal;
   n : Integer;
-
-
 
 //***************************************************************************
 //
@@ -1799,40 +1794,6 @@ begin
   ctrlTo.Date := EncodeDate(YearOf(ctrlFrom.Date), MonthOf(ctrlFrom.Date), DaysInMonth(ctrlFrom.Date));
 end; // SetDateControlsToMonth
 
-//***************************************************************************
-//
-//  FUNCTION  : CheckTCalendarViewDate
-//
-//  I/P       : target : TObject - Typically a TCalendarView object.
-//
-//  O/P       :
-//
-//  OPERATION : If TCalendarView has a date showing focus (dotted box), and the
-//              user clicks on that date, the .Date property goes to -700000.
-//
-//
-//  UPDATED   : 2019-11-12
-//
-//***************************************************************************
-procedure CheckTCalendarViewDate(target : TObject);
-begin
-  if (target is TCalendarView) then
-  begin
-    if (IntegerDate(TCalendarView(target).Date) <= 0) then
-    begin
-      if (TCalendarView(target).Tag > 0) then
-      begin
-        TCalendarView(target).Date := TCalendarView(target).Tag;
-      end // if
-      else
-      begin
-        TCalendarView(target).Date := Date;
-      end; // else
-    end; // else
-    TCalendarView(target).Tag := Trunc(TCalendarView(target).Date);
-  end; // else
-end;
-
 {$IFNDEF NO_DKLANG}
 //***************************************************************************
 //
@@ -1884,7 +1845,6 @@ end;
 //
 //***************************************************************************
 initialization
-begin
   // By default, all fast timers are running from the start of the application.
   for n := Low(timerFast) to High(timerFast) do
   begin
@@ -1905,42 +1865,6 @@ begin
   sHours := 'hours';
   sDay := 'day';
   sDays := 'days';
-
-  slShortMonthNames := TStringList.Create;
-  slShortMonthNames.Add('JAN');
-  slShortMonthNames.Add('FEB');
-  slShortMonthNames.Add('MAR');
-  slShortMonthNames.Add('APR');
-  slShortMonthNames.Add('MAY');
-  slShortMonthNames.Add('JUN');
-  slShortMonthNames.Add('JUL');
-  slShortMonthNames.Add('AUG');
-  slShortMonthNames.Add('SEP');
-  slShortMonthNames.Add('OCT');
-  slShortMonthNames.Add('NOV');
-  slShortMonthNames.Add('DEC');
-  slLongMonthNames := TStringList.Create;
-end; // initialization
-
-//***************************************************************************
-//
-//  FUNCTION  : finalization
-//
-//  I/P       :
-//
-//  O/P       :
-//
-//  OPERATION :
-//
-//  UPDATED   :
-//
-//***************************************************************************
-finalization;
-begin
-  slShortMonthNames.Free;
-  slLongMonthNames.Free;
-end; // finalization
-
 
 end. // TimeDate
 

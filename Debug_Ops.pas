@@ -5,18 +5,28 @@ interface
 uses
   System.SysUtils;
 
+type
+  TLogEntry = (
+    LOG_ENTRY_NONE,
+    LOG_ENTRY_OK,
+    LOG_ENTRY_ERROR);
+
 function DebugLineHeader : String;
 function SetDebugLogFile(iIndex : Integer;
                          sFileName : String;
-                         bClear : boolean) : Boolean;
+                         bClear : Boolean;
+                         addHeader : Boolean = FALSE) : Boolean;
 function DebugLogExists(iIndex : Integer) : Boolean;
 procedure DebugLog(iIndex : Integer;
                    sLine : string;
+                   entryType : TLogEntry = LOG_ENTRY_NONE;
                    includeDT : Boolean = TRUE);
 procedure DebugLogException(iIndex : Integer;
                             sLine : string;
                             ex : Exception);
 procedure EraseLog(iIndex : Integer);
+procedure TrimLog(iIndex : Integer;
+                  numLines : Integer);
 
 var
   DebugFileNames : array[1..5] of string; // Allow up to 5 debug files
@@ -24,11 +34,32 @@ var
 implementation
 
 uses
-  System.Math,
+  System.Math, System.Classes,
   File_Ops, Str_Ops;
 
 var
   n : Integer;
+
+//***************************************************************************
+//
+//  FUNCTION  : LogExists
+//
+//  I/P       : iIndex : Integer - Index to the log file, as created in
+//                the SetDebugLogFile procedure, above.
+//
+//  O/P       : TRUE if the log file exists
+//
+//  OPERATION : Check if an indexed log file exists.
+//
+//  UPDATED   : 2023-05-18
+//
+//***************************************************************************
+function LogExists(iIndex : Integer) : Boolean;
+begin
+  result := (InRange(iIndex, Low(DebugFileNames), High(DebugFileNames))) and
+            (DebugFileNames[iIndex] <> '') and
+            (FileExists(DebugFileNames[iIndex]));
+end; // LogExists
 
 //***************************************************************************
 //
@@ -76,9 +107,13 @@ end;
 //***************************************************************************
 function SetDebugLogFile(iIndex : Integer;
                          sFileName : String;
-                         bClear : boolean) : boolean;
+                         bClear : Boolean;
+                         addHeader : Boolean = FALSE) : Boolean;
+var
+  fLogFile : TextFile;
+
 begin
-  result := FALSE;
+  Result := FALSE;
   if (InRange(iIndex, Low(DebugFileNames), High(DebugFileNames))) then
   begin
     if (FileNameValid(ExtractFileName(sFileName))) then
@@ -93,9 +128,20 @@ begin
       DebugFileNames[iIndex] := GetTempFolder + 'Debug.log';
 
     if (bClear) then
-      result := DeleteFile(DebugFileNames[iIndex])
+      Result := DeleteFile(DebugFileNames[iIndex])
     else
-      result := TRUE;
+      Result := TRUE;
+
+    if (addHeader) then
+    begin
+      AssignFile(fLogFile,DebugFileNames[iIndex]);
+      if (not FileExists(DebugFileNames[iIndex])) then
+      begin
+        Rewrite(fLogFile);
+        Writeln(fLogFile, 'PC Date/Time,Details');
+        System.CloseFile(fLogFile);
+      end;
+    end;
   end;
 end; // SetDebugLogFile
 
@@ -114,8 +160,6 @@ end; // SetDebugLogFile
 //***************************************************************************
 function DebugLogExists(iIndex : Integer) : Boolean;
 begin
-  // I have, in the past, inadvertently passed an invalid index to DebugLog, and
-  // then unsuccessully hunted for the error.
   if (InRange(iIndex, Low(DebugFileNames), High(DebugFileNames))) then
   begin
     // Ensure that a debug file has been specified
@@ -137,22 +181,30 @@ end;
 //
 //              sLine : String - The text to append to the log file.
 //
+//              entryType : TLogEntry = LOG_ENTRY_NONE - Indicates the ID to
+//                be inserted as a field in the log line
+//
 //              includeDT : Boolean = TRUE - Include a date field and a time field,
 //                to milliseconds.
 //
 //  O/P       : None.
 //
 //  OPERATION : Creates a log file in the location that has been configured (see above)
-//              Each logged line is date- and time-stampped.
 //
-//  UPDATED   : 2016-03-18
+//              Logged lines have, by default, date and time fields.
+//
+//              Logged lines have a type field, which is '0' by default
+//
+//  UPDATED   : 2023-05-18
 //
 //***************************************************************************
 procedure DebugLog(iIndex : Integer;
                    sLine : string;
+                   entryType : TLogEntry = LOG_ENTRY_NONE;
                    includeDT : Boolean = TRUE);
 var
   fLogFile : TextFile;
+  logLine : String;
 
 begin
   // I have, in the past, inadvertently passed an invalid index to DebugLog, and
@@ -161,7 +213,7 @@ begin
   begin
     // Ensure that a debug file has been specified
     if (DebugFileNames[iIndex] = '') then
-      SetDebugLogFile(iIndex,'',FALSE);
+      SetDebugLogFile(iIndex, '', FALSE);
 
     try
       AssignFile(fLogFile,DebugFileNames[iIndex]);
@@ -169,7 +221,17 @@ begin
         Append(fLogFile)
       else
         Rewrite(fLogFile);
-      Writeln(fLogFile, ifthens(includeDT, DebugLineHeader + ',', '') + sLine);
+
+      logLine := ifthens(includeDT, DebugLineHeader + ',', '');
+      case entryType of
+        LOG_ENTRY_OK :
+          logLine := logLine + '1,';
+        LOG_ENTRY_ERROR :
+          logLine := logLine + '2,';
+        else
+          logLine := logLine + '0,';
+      end;
+      Writeln(fLogFile, logLine + sLine);
       System.CloseFile(fLogFile);
     except
     end; // except
@@ -219,12 +281,52 @@ end;
 //***************************************************************************
 procedure EraseLog(iIndex : Integer);
 begin
-  if ((DebugFileNames[iIndex] <> '') and
-      (FileExists(DebugFileNames[iIndex]))) then
+  if (LogExists(iIndex)) then
   begin
     DeleteFile(DebugFileNames[iIndex])
   end; // if
 end; // EraseLog
+
+//***************************************************************************
+//
+//  FUNCTION  : TrimLog
+//
+//  I/P       : iIndex : Integer - Index to the log file, as created in
+//                the SetDebugLogFile procedure, above.
+//
+//              numLines : Integer - The number of text lines to keep in the
+//                file.
+//
+//  O/P       : None
+//
+//  OPERATION : Trim the front of an indexed log file, to ensure a given
+//              maximum number of lines
+//
+//  UPDATED   : 2023-05-18
+//
+//***************************************************************************
+procedure TrimLog(iIndex : Integer;
+                  numLines : Integer);
+var
+  wholeLog : TStringList;
+
+begin
+  wholeLog := TStringList.Create;
+  try
+    if (LogExists(iIndex)) then
+    begin
+      wholeLog.LoadFromFile(DebugFileNames[iIndex]);
+      while ((numLines >= 0) and
+             (wholeLog.Count > numLines)) do
+      begin
+        wholeLog.Delete(0);
+      end; // while
+      wholeLog.SaveToFile(DebugFileNames[iIndex]);
+    end; // if
+  finally
+    wholeLog.Free;
+  end;
+end; // TrimLog
 
 //***************************************************************************
 //

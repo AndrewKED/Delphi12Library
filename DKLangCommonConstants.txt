@@ -16,3 +16,16 @@ sQKAll=&All
 sQKNoToAll=N&o to All
 sQKYesToAll=Yes to &All
 sQKClose=&Close
+
+sAbbreviationHour=hr
+sAbbreviationMinute=min
+sInvalidSDate=Invalid %s date
+sInvalidSTime=Invalid %s time
+sSecondLC=second
+sSecondsLC=seconds
+sMinuteLC=minute
+sMinutesLC=minutes
+sHourLC=hour
+sHoursLC=hours
+sDayLC=day
+sDaysLC=days

@@ -2,7 +2,8 @@ unit Print_Ops;
 
 interface
 
-uses Classes, ShellAPI;
+uses
+  System.Classes;
 
 function PrinterSupportsDuplex: boolean;
 procedure SetPrinterDuplex(sDuplex : shortint);
@@ -16,7 +17,9 @@ procedure PrintFile(fileName : String);
 implementation
 
 uses
-  Windows, Messages, SysUtils, Variants, Printers, WinSpool;
+  System.SysUtils,
+  Vcl.Printers, Vcl.Forms,
+  Winapi.Messages, Winapi.Windows, Winapi.WinSpool, WinAPI.ShellAPI;
 
 type   // these are needed for reading the Windows and WinSpool units data structures - leave the ^ in!!!!
   LPBYTE = ^byte;
@@ -70,7 +73,7 @@ var
 begin
   // Get printer device mode handle.
   Printer.GetPrinter(Device, Driver, Port, hDevmode);
-  Result := (WinSpool.DeviceCapabilities(Device, Port, DC_DUPLEX, nil, nil) <> 0);
+  Result := (WinAPI.WinSpool.DeviceCapabilities(Device, Port, DC_DUPLEX, nil, nil) <> 0);
 end;
 
 //***************************************************************************
@@ -429,7 +432,7 @@ end; //
 //***************************************************************************
 procedure PrintFile(fileName : String);
 begin
-  ShellExecute(Handle, 'print', PChar(fileName), nil, nil, SW_HIDE);
+  ShellExecute(Application.Handle, 'print', PChar(fileName), nil, nil, SW_HIDE);
 end;
 
 // Duplex Printing

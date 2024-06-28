@@ -28,6 +28,8 @@ function TBytes0ToAnsiString(ipBytes : TBytes;
 function AByte0ToAnsiString(ipBytes : array of Byte;
                             offset : Integer = 0): AnsiString;
 function ABytes0ToTBytes(ipBytes : array of Byte) : TBytes;
+function ABytesToTBytes(ipBytes : array of Byte;
+                        length : Integer) : TBytes;
 function StringToTBytes0(str: String;
                          requiredLen : Integer = 0): TBytes;
 procedure StringToAByte0(str: String;
@@ -52,6 +54,10 @@ procedure InsertValue(value : WORD;
                       var blockDestn : TBytes;
                       offset : Integer); overload;
 procedure InsertValue(value : DWORD;
+                      var blockDestn : TBytes;
+                      offset : Integer;
+                      size : Integer = SizeOf(DWORD)); overload;
+procedure InsertValue(value : Int16;
                       var blockDestn : TBytes;
                       offset : Integer); overload;
 procedure InsertValue(value : Int32;
@@ -87,6 +93,8 @@ procedure AppendValue(value : Single;
                       var blockDestn : TBytes); overload;
 procedure AppendBytes(const blockAdd : TBytes;
                       var blockDestn : TBytes);
+function JoinedBytes(const block1 : TBytes;
+                     const block2 : TBytes) : TBytes;
 procedure PadBytes(value : Byte;
                    count : Integer;
                    var blockDestn : TBytes);
@@ -307,6 +315,29 @@ begin
     Move(ipBytes[0], Result[0], Count);
   end;
 end; // ABytes0ToTBytes
+
+//***************************************************************************
+//
+//  FUNCTION  : ABytesToTBytes
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION :
+//
+//  UPDATED   :
+//
+//***************************************************************************
+function ABytesToTBytes(ipBytes : array of Byte;
+                        length : Integer) : TBytes;
+begin
+  SetLength(Result, length);
+  if (length > 0) then
+  begin
+    Move(ipBytes[0], Result[0], length);
+  end;
+end; // ABytesToTBytes
 
 //***************************************************************************
 //
@@ -541,6 +572,9 @@ end; // AByteToHexString
 //
 //              offset : Integer - Where in TBytes it must be inserted.
 //
+//              size : Integer - The number of bytes to write (because only
+//                3 bytes out of a DWORD has been encountered(!))
+//
 //  O/P       : var paraneter/s
 //
 //  OPERATION : Insert the given value, in the form of bytes, at the given
@@ -572,6 +606,16 @@ begin
 end;
 procedure InsertValue(value : DWORD;
                       var blockDestn : TBytes;
+                      offset : Integer;
+                      size : Integer = SizeOf(DWORD)); overload;
+begin
+  if (offset + size < Length(blockDestn)) then
+  begin
+    Move(value, blockDestn[offset], size);
+  end;
+end;
+procedure InsertValue(value : DWORD;
+                      var blockDestn : TBytes;
                       offset : Integer); overload;
 begin
   if (offset + SizeOf(value) < Length(blockDestn)) then
@@ -580,6 +624,15 @@ begin
   end;
 end;
 procedure InsertValue(value : Int32;
+                      var blockDestn : TBytes;
+                      offset : Integer); overload;
+begin
+  if (offset + SizeOf(value) < Length(blockDestn)) then
+  begin
+    Move(value, blockDestn[offset], sizeof(value));
+  end;
+end;
+procedure InsertValue(value : Int16;
                       var blockDestn : TBytes;
                       offset : Integer); overload;
 begin
@@ -824,6 +877,29 @@ begin
     Move(blockAdd[0], blockDestn[origLength], Length(blockAdd));
   end; // if
 end; // AppendBytes
+
+//***************************************************************************
+//
+//  FUNCTION  : JoinedBytes
+//
+//  I/P       : const block1 : TBytes - The first TBytes
+//
+//              const block2 : TBytes - The second TBytes
+//
+//  O/P       : TBytes - Merged
+//
+//  OPERATION : Merge two given TBytes into one
+//
+//  UPDATED   : 2024-03-26
+//
+//***************************************************************************
+function JoinedBytes(const block1 : TBytes;
+                     const block2 : TBytes) : TBytes;
+begin
+  SetLength(Result, Length(block1) + Length(block2));
+  Move(block1[0], Result[0], Length(block1));
+  Move(block2[0], Result[Length(block1)], Length(block2));
+end;
 
 //***************************************************************************
 //

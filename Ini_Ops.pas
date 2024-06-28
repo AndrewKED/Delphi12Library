@@ -13,11 +13,14 @@ procedure SetIniFileFloat(targetFile : TCustomIniFile;
                           sSection : String;
                           sKey : String;
                           valueGiven : Double);
+function CountValues(targetFile : TCustomIniFile;
+                     sSection : String;
+                     filter : String = '.+') : Integer;
 
 implementation
 
 uses
-  System.SysUtils,
+  System.SysUtils, System.Classes, System.RegularExpressions,
   Str_Ops;
 
 //***************************************************************************
@@ -105,5 +108,49 @@ begin
     FormatSettings.DecimalSeparator := cCurrentDecimalSeaprator;
   end;
 end; // SetIniFileFloat
+
+//***************************************************************************
+//
+//  FUNCTION  : CountValues
+//
+//  I/P       : targetFile : TCustomIniFile - The target INI file.
+//
+//              sSection : String - The name of the section to be examined.
+//
+//              filter : String = '.+' - The optional regex filter to be applied.
+//
+//  O/P       : Integer - The number of keys within the section that match
+//                the filter.
+//
+//  OPERATION : Count the number of keys in an ini file section, with optional
+//              key name matching.
+//
+//  UPDATED   : 2023-03-28
+//
+//***************************************************************************
+function CountValues(targetFile : TCustomIniFile;
+                     sSection : String;
+                     filter : String = '.+') : Integer;
+var
+  content : TStringList;
+  n: Integer;
+
+begin
+  Result := 0;
+  content := TStringList.Create;
+  try
+    targetFile.ReadSection(sSection, content);
+    for n := 0 to content.Count-1 do
+    begin
+      if (TRegEx.Match(content[n], filter).Index = 1) then
+      begin
+        Inc(Result);
+      end; // if
+    end; // for
+  finally
+    content.Free;
+  end;
+
+end;
 
 end.

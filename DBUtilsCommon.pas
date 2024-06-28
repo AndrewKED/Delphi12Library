@@ -74,6 +74,7 @@ var
   sDBUC_TableFilename : String;         // Full file name of the table currently being upgraded/tested
   sDBUC_TableTitle : String;            // A descriptive title of the table currently being upgraded
   sDBUC_Password : String;              // (A single) password to be used in the session.
+  sDBUC_PasswordOK : Boolean;           // TRUE if the password (after an access operation) was found to be OK
   sDBUC_Session : String;               // Session name, if needed (Is this an alternative to providing a password, above?)
   mifDBUC_DBDefn : TMemIniFile;         // Database Definition file for the program
   mifDBUC_TableDefn : TMemIniFile;      // Definition file for a table
@@ -105,7 +106,6 @@ var
   sDBType : String;                 // Specifies ABSOLUTE, DBISAM or BDE PARADOX for the database type
   rifApplicationKey : TRegistryIniFile;  // Target application's sub-key
   tfOutput : TextFile;              // Used to log the progress
-  sSourceVer : String;              // Source table version number
   bUseUpgradeLog : boolean;         // TRUE if we are to use the log file for recording operations
 
 //***************************************************************************

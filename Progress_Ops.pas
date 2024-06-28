@@ -36,6 +36,7 @@ procedure IncrementProgress(pb : TProgressBar;
                             increment : Integer) overload;
 procedure IncrementProgress(pb : TGauge;
                             increment : Integer) overload;
+procedure IncrementProgress(increment : Integer) overload;
 procedure SetProgressControls(fActivity : TForm;
                               plSetting : TProgressLayout;
                               pActivity : TPanel;
@@ -49,6 +50,7 @@ procedure SetProgressControls(fActivity : TForm;
 procedure UpdateActivity(sNewActivityMessage : String;
                          iNewPosition : Integer;
                          iProgressIncrement : Integer = 1);
+procedure ShowProgress(bVisible : Boolean);
 procedure ShowActivity(bVisible : Boolean;
                        sNewActivityMessage : String = '';
                        iProgressMax : Integer = 100;
@@ -58,14 +60,13 @@ procedure StartTaskBarProgress(maxValue : UInt64);
 procedure UpdateTaskBarProgress(progressValue : UInt64);
 procedure IncrementTaskBarProgress(progressIncrement : UInt64 = 1);
 procedure StopTaskBarProgress;
+function GetProgressBar : TProgressBar;
 
 implementation
 
 uses
-  System.Classes, System.Math, System.SysUtils;
-
-type
-  TGetPanelCanvas = Class(TPanel);
+  System.Classes, System.Math, System.SysUtils,
+  VCL_Ops;
 
 var
   progressForm : TForm = nil;
@@ -138,7 +139,7 @@ end; // UpdateProgressItem
 
 //***************************************************************************
 //
-//  FUNCTION  : ?SetProgressMinMax
+//  FUNCTION  : SetProgressMinMax
 //
 //  I/P       : pb : TProgressBar - A given progress bar. nil to use the
 //                progress bar that has been configured in SetProgressControls
@@ -318,6 +319,15 @@ begin
   end; // if
 end; // IncrementProgress
 
+procedure IncrementProgress(increment : Integer) overload;
+begin
+  if (progressBar <> nil) then
+  begin
+    progressBar.Position := progressBar.Position + increment;
+    SetProgressPosition(progressBar, progressBar.Position);
+  end; // if
+end; // IncrementProgressBar
+
 //***************************************************************************
 //
 //  FUNCTION  : SetProgressControls
@@ -397,7 +407,7 @@ begin
     else
     begin
       progressLabel.Left := progressPanel.ClientWidth -
-                            TGetPanelCanvas(progressPanel).Canvas.TextWidth(progressLabel.Caption) - 10;
+                            TGetCanvas(progressPanel).Canvas.TextWidth(progressLabel.Caption) - 10;
       progressBar.Left := 10;
       progressBar.Width := progressLabel.Left - progressBar.Left - 5;
     end;
@@ -489,6 +499,29 @@ end; // UpdateActivity
 
 //***************************************************************************
 //
+//  FUNCTION  : ShowProgress
+//
+//  I/P       : bVisible : Boolean - TRUE to show, FALSE to hide
+//
+//  O/P       : None
+//
+//  OPERATION : Show/hid a predefined TProgressbar.
+//
+//  UPDATED   : 2023-08-15
+//
+//***************************************************************************
+procedure ShowProgress(bVisible : Boolean);
+begin
+  if (progressBar <> nil) then
+  begin
+    progressBar.Visible := bVisible;
+    progressBar.Update;
+    progressBar.Invalidate;
+  end;
+end;
+
+//***************************************************************************
+//
 //  FUNCTION  : ShowActivity
 //
 //  I/P       :
@@ -512,7 +545,9 @@ begin
       progressLabel.Caption := sNewActivityMessage;
     end; // if
     if (progressLayout = PL_LABEL_LEFT) then
+    begin
       AdjustLabelAndBar;
+    end;
     if (progressBar <> nil) then
     begin
       progressBar.Max := iProgressMax;
@@ -522,10 +557,7 @@ begin
     end;
   end; // if
 
-  if (progressBar <> nil) then
-  begin
-    progressBar.Visible := bVisible;
-  end;
+  ShowProgress(bVisible);
 
   if (progressLabel <> nil) then
   begin
@@ -534,6 +566,7 @@ begin
 
   if (progressPanel <> nil) then
   begin
+    progressPanel.Visible := bVisible;
     progressPanel.Update;
     progressPanel.Invalidate;
   end;
@@ -541,7 +574,7 @@ end; // ShowActivity
 
 //***************************************************************************
 //
-//  FUNCTION  :
+//  FUNCTION  : InitialiseTaskBar
 //
 //  I/P       :
 //
@@ -676,6 +709,24 @@ begin
     TaskbarList3.SetProgressState(FormHandle, TBPF_NOPROGRESS);
   tbProgress := 0;
 end; // StopTaskBarProgress
+
+//***************************************************************************
+//
+//  FUNCTION  : GetProgressBar
+//
+//  I/P       : None
+//
+//  O/P       : TProgressBar
+//
+//  OPERATION : Return the "registered" TProgressBar
+//
+//  UPDATED   : 2023-08-15
+//
+//***************************************************************************
+function GetProgressBar : TProgressBar;
+begin
+  result := progressBar;
+end;
 
 //***************************************************************************
 //

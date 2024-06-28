@@ -9,15 +9,21 @@ type
   TREPutAction = (paAppend, paInsert, paReplace);
 
 function REPutText(RE: TRichEdit; const Text: string; PutAction: TREPutAction): integer;
+procedure FixTCalendarViewDate(Sender : TObject);
 
 implementation
 
 uses
-  Vcl.ExtCtrls, Vcl.StdCtrls, System.Classes, Winapi.Windows,
-  Winapi.Messages, System.SysUtils,
+  System.Classes, System.SysUtils,
+  Winapi.Windows, Winapi.Messages,
+  Vcl.ExtCtrls, Vcl.StdCtrls, Vcl.WinXCalendars,
   RichEdit;
 
+const
+  NullDate: TDate = -700000;    // Lifted from the implementation section of Vcl.WinXCalendars
 
+var
+  lastDate : TDateTime;
 
 //***************************************************************************
 //
@@ -199,5 +205,63 @@ begin
  if s <> '' then
    result := REPutText(RE, s, paAppend);
 end; // REAppendFile
+
+//***************************************************************************
+//
+//  FUNCTION  : FixTCalendarViewDate
+//
+//  I/P       : Sender : TObject - Typically the target TCalendarView.
+//
+//  O/P       : None.
+//
+//  OPERATION : "Fix" a null date when double-clicking a TCalendarVliew.
+//
+//              If TCalendarView.SelectionMode = smSingle, the .Date
+//              property will toggle (between the selected date and NullDate)
+//              with each click. This function overrides the toggle function.
+//
+//              Note : If TCalendarView.SelectionMode = smNone, the selected
+//              date block does not get highlighted.
+//
+//  UPDATED   : 2023-07-04
+//
+//***************************************************************************
+procedure FixTCalendarViewDate(Sender : TObject);
+begin
+  if ((Sender is TCalendarView) and
+      (TCalendarView(Sender).SelectionMode = Vcl.WinXCalendars.TSelectionMode.smSingle)) then
+  begin
+    if (TCalendarView(Sender).Date = NullDate) then
+    begin
+      // Replace value that has toggled back to NullDate with the last chosen Date.
+      if (lastDate <> NullDate) then
+      begin
+        TCalendarView(Sender).Date := lastDate;
+      end // if
+      else
+      begin
+        // Fallbacl - select today's date
+        TCalendarView(Sender).Date := Date;
+      end;
+    end;
+    lastDate := TCalendarView(Sender).Date;
+  end;
+end; // FixTCalendarViewDate
+
+//***************************************************************************
+//
+//  FUNCTION  :
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION :
+//
+//  UPDATED   :
+//
+//***************************************************************************
+initialization
+  lastDate := NullDate;
 
 end.

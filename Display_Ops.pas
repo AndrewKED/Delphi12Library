@@ -14,8 +14,10 @@ const
 function GetDisplayOrientation : Integer;
 procedure ChangeDisplayOrientation(NewOrientation : DWord);
 procedure ChangeDisplayOrientation2(NewOrientation : DWord);
-function GetBestDisplayFit(RequiredX : Integer;
-                           RequiredY : Integer) : Integer;
+function GetBestDisplayFit(requiredWidth : Integer;
+                           requiredHeight : Integer) : Integer;
+function DisplayOK(RequiredX : DWord;
+                   RequiredY : DWord) : Boolean;
 
 implementation
 
@@ -207,8 +209,8 @@ end; // ChangeDisplayOrientation2
 //
 //  FUNCTION  : GetBestDisplayFit
 //
-//  I/P       : RequiredX : DWord - } The minimum-X and -Y screen resolution that
-//              RequiredY : DWord - } is required.
+//  I/P       : requiredWidth : DWord - } The minimum-X and -Y screen resolution that
+//              requiredHeight : DWord - } is required.
 //
 //  O/P       : Integer - -1 if the display will not fit in any orientation,
 //              else 0..3 for the best fit 0,90,180,270°
@@ -223,57 +225,80 @@ end; // ChangeDisplayOrientation2
     // 11.6 inch – 1366 x 768 pixels
     // 12.1 inch – 1280 x 800 pixels
 //
-//  UPDATED   : 2016-06-08
+//  UPDATED   : 2024-02-13
 //
 //***************************************************************************
-function GetBestDisplayFit(RequiredX : Integer;
-                           RequiredY : Integer) : Integer;
+function GetBestDisplayFit(requiredWidth : Integer;
+                           requiredHeight : Integer) : Integer;
+var
+  apparentWidth : Double;
+  apparentHeight : Double;
+
 begin
-  if (RequiredX > RequiredY) then
+  apparentWidth := Screen.Width * Screen.DefaultPixelsPerInch / Screen.PixelsPerInch;
+  apparentHeight := Screen.Height * Screen.DefaultPixelsPerInch / Screen.PixelsPerInch;
+
+  if (requiredWidth > requiredHeight) then
   begin
     // We would like to have a landscape display
     if (Screen.Width > Screen.Height) then
     begin
       // The display is currently in landscape mode
-      if ((Screen.Width < RequiredX) or (Screen.Height < RequiredY)) then
+      if ((apparentWidth < requiredWidth) or
+          (apparentHeight < requiredHeight)) then
+      begin
         // No fit
-        result := -1
+        result := -1;
+      end // if
       else
       begin
         // OK as we are (DMDO_DEFAULT or, less likely, DMDO_180)
         result := GetDisplayOrientation;
         if (result = -1) then
+        begin
           result := DMDO_DEFAULT;
+        end; // if
       end; // else
     end // if
     else
     begin
       // The display is currently in portrait mode
-      if ((Screen.Width < RequiredX) or (Screen.Height < RequiredY)) then
+      if ((apparentWidth < requiredWidth) or
+          (apparentHeight < requiredHeight)) then
       begin
         // The landscape requirements do not fit into the current portrait mode.
         // Check what might happen if we rotated the display to landscape mode.
-        if ((Screen.Height < RequiredX) or (Screen.Width < RequiredY)) then
+        if ((apparentHeight < requiredWidth) or
+            (apparentWidth < requiredHeight)) then
+        begin
           // The landscape requirements are not going to fit into a landscape display either
-          result := -1
+          result := -1;
+        end // if
         else
+        begin
           // Suggest rotating the display to landscape mode
           result := DMDO_DEFAULT;
+        end; // else
       end
       else
       begin
         // The resolution is acceptable this way, but may look better in landscape
-        if ((Screen.Height < RequiredX) or (Screen.Width < RequiredY)) then
+        if ((apparentHeight < requiredWidth) or
+            (apparentWidth < requiredHeight)) then
         begin
           // It will not fit into a rotated (landscape) display, so leave the
           // display as it is (DMDO_90 or DMDO_270).
           result := GetDisplayOrientation;
           if (result = -1) then
+          begin
             result := DMDO_90;
+          end; // if
         end
         else
+        begin
           // Suggest rotating the display to landscape mode
           result := DMDO_DEFAULT;
+        end; // else
       end; // else
     end; // else
   end
@@ -283,49 +308,105 @@ begin
     if (Screen.Width < Screen.Height) then
     begin
       // The display is currently in portrait mode
-      if ((Screen.Width < RequiredX) or (Screen.Height < RequiredY)) then
+      if ((apparentWidth < requiredWidth) or
+          (apparentHeight < requiredHeight)) then
+      begin
         // No fit
-        result := -1
+        result := -1;
+      end // if
       else
       begin
         // OK as we are (DMDO_90 or DMDO_270)
         result := GetDisplayOrientation;
         if (result = -1) then
+        begin
           result := DMDO_90;
+        end; // if
       end; // else
     end // if
     else
     begin
       // The display is currently in landscape mode
-      if ((Screen.Width < RequiredX) or (Screen.Height < RequiredY)) then
+      if ((apparentWidth < requiredWidth) or
+          (apparentHeight < requiredHeight)) then
       begin
         // The portrait requirements do not fit into the current landscape mode.
         // Check what might happen if we rotated the display to portrait mode.
-        if ((Screen.Height < RequiredX) or (Screen.Width < RequiredY)) then
+        if ((apparentHeight < requiredWidth) or
+            (apparentWidth < requiredHeight)) then
+        begin
           // The portrait requirements are not going to fit into a portrait display either
-          result := -1
+          result := -1;
+        end // if
         else
+        begin
           // Suggest rotating the display to portrait mode
           result := DMDO_90;
+        end; // else
       end
       else
       begin
         // The resolution is acceptable this way, but may look better in portrait mode
-        if ((Screen.Height < RequiredX) or (Screen.Width < RequiredY)) then
+        if ((apparentHeight < requiredWidth) or
+            (apparentWidth < requiredHeight)) then
         begin
           // It will not fit into a rotated (portrait) display, so leave the
           // display as it is (DMDO_DEFAULT or, less likely, DMDO_270).
           result := GetDisplayOrientation;
           if (result = -1) then
+          begin
             result := DMDO_DEFAULT;
+          end; // if
         end // if
         else
+        begin
           // Suggest rotating the display to portrait mode
           result := DMDO_90;
+        end; // else
       end; // else
     end; // else
   end;
 end; // GetBestDisplayFit
+
+//***************************************************************************
+//
+//  FUNCTION  : DisplayOK
+//
+//  I/P       : RequiredX : DWord - } The minimum-X and -Y screen resolution that
+//              RequiredY : DWord - } is required.
+//
+//  O/P       : Boolean - TRUE if display is OK to use.   FALSE if the
+//                requirements are not met.
+//
+//  OPERATION : Checks that the program will fit into the current display
+//              resolution and orientation.   Swaps orientation if it will
+//              produce a better display.
+//
+//              Note that a typical error message to display may be:
+//                Format('The current display resolution is %d by %d.', [Screen.Width, Screen.Height]) + #13 +
+//                Format('This program requires a minimum display resolution of %d by %d.',[RequiredX, RequiredY])
+//
+//  UPDATED   : 2024-01-22
+//
+//***************************************************************************
+function DisplayOK(RequiredX : DWord;
+                   RequiredY : DWord) : Boolean;
+var
+  BestOrientation : Integer;
+
+begin
+  result := TRUE;
+  BestOrientation := GetBestDisplayFit(RequiredX, RequiredY);
+  if (BestOrientation = -1) then
+  begin
+    result := FALSE;
+  end // if
+  else if ((GetDisplayOrientation <> -1) and
+           (BestOrientation <> GetDisplayOrientation)) then
+  begin
+    ChangeDisplayOrientation(BestOrientation);
+  end; // if
+end; // DisplayOK
 
 //***************************************************************************
 //
