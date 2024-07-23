@@ -5,9 +5,17 @@ interface
 uses
   System.IniFiles, System.SysUtils, System.Types, System.Classes,
   System.Win.Registry,
-  Vcl.StdCtrls, Vcl.Grids, Vcl.DBGrids, Vcl.Forms,
+  Vcl.StdCtrls, Vcl.Grids, Vcl.DBGrids, Vcl.Forms, Vcl.Graphics,
   SMDBGrid;
 
+function GetColumnIndex(grid : TSMDBGrid;
+                        column : TColumn) : Integer; overload;
+function GetColumnIndex(grid : TDBGrid;
+                        column : TColumn) : Integer; overload;
+procedure HighlightGridColumn(grid : TSMDBGrid;
+                              column : TColumn;
+                              changeColour : Integer;
+                              remap : array of Integer);
 function GetGridClientWidth(cgTarget : TCustomGrid) : Integer;
 procedure ResizeDBGridColumns(theGrid : TDBGrid;
                               columnRatios : array of Integer);
@@ -31,6 +39,9 @@ procedure DrawGridCellText(grid : TStringGrid;
                            const mRect : TRect;
                            const theText : String;
                            const textAlign : TAlignment); overload;
+procedure StrikeoutCell(cgTarget : TCustomGrid;
+                        cell : TRect;
+                        const colour : TColor = clRed);
 procedure TitleClickHandler(grid : TSMDBGrid;
                             Column : TColumn;
                             const indexesFwd : array of String;
@@ -58,9 +69,160 @@ procedure SelectAll(grid : TDBGrid); overload;
 implementation
 
 uses
-  Windows, Graphics,
+  Vcl.Themes,
+  Windows,
   DBISAMTb,
-  Colour_Ops, Str_Ops;
+  Colour_Ops, Str_Ops, VCL_Ops;
+
+//***************************************************************************
+//
+//  FUNCTION  : GetColumnIndex
+//
+//  I/P       : grid : TSMDBGrid or TDBGrid - The grid to which the column belongs
+//
+//              column : TColumn - the column of interest
+//
+//  O/P       : Integer - the index of the column, within the grid. Else -1.
+//
+//  OPERATION : Find the index of the given column within the given DB grid.
+//
+//  UPDATED   : 2024-07-22
+//
+//***************************************************************************
+function GetColumnIndex(grid : TSMDBGrid;
+                        column : TColumn) : Integer; overload;
+var
+  n : Integer;
+
+begin
+  // Determine the index of the column that has been clicked.
+  Result := -1;
+  for n := 0 to grid.Columns.Count-1 do
+  begin
+    if (grid.Columns[n] = column) then
+    begin
+      Result := n;
+      Break;
+    end; // if
+  end; // for
+end; // GetColumnIndex
+
+function GetColumnIndex(grid : TDBGrid;
+                        column : TColumn) : Integer; overload;
+var
+  n : Integer;
+
+begin
+  // Determine the index of the column that has been clicked.
+  Result := -1;
+  for n := 0 to grid.Columns.Count-1 do
+  begin
+    if (grid.Columns[n] = column) then
+    begin
+      Result := n;
+      Break;
+    end; // if
+  end; // for
+end; // GetColumnIndex
+
+//***************************************************************************
+//
+//  FUNCTION  : HighlightGridColumn
+//
+//  I/P       : grid : TSMDBGrid - The target TSMDBGrid
+//
+//              column : TColumn - the selected column for highlighting
+//
+//              changeColour : Integer - The amount by which the column
+//                background RGB elements are to be darkened (or lightened)
+//
+//              remap : array of Integer - An array of column indexes,
+//                allowing an alternative column to be highlighted. Elements
+//                may be -1, if no change is required. The array should be zero
+//                length if no remapping is required.
+//
+//  O/P       : None
+//
+//  OPERATION : Alter the background colour of a given column to show interest.
+//
+//              Un-highlighted column backgrounds are assumed to be clWindow and
+//              highlighted column backgrounds will be darkened by the given
+//              amount (if the theme permits) else lightened.
+//
+//              Typically used when a title has been clicked, and the column
+//              indicates sort order.
+//
+//              Remapping to a different column is optionally available.
+//
+//  UPDATED   : 2024-07-22
+//
+//***************************************************************************
+procedure HighlightGridColumn(grid : TSMDBGrid;
+                              column : TColumn;
+                              changeColour : Integer;
+                              remap : array of Integer);
+var
+  n : Integer;
+  idxColumnToHighlight : Integer;
+
+begin
+  with grid do
+  begin
+
+    if ((Length(remap) <> 0) and
+        (Length(remap) <> Columns.Count)) then
+    begin
+      // If highlighting a column other than the column offered, the remapping
+      // set should be valid.
+      Exit;
+    end;
+
+    // Determine the index of the column to be highlighted, remapping as needed.
+    idxColumnToHighlight := GetColumnIndex(grid, column);
+    if (Length(remap) <> 0) then
+    begin
+      idxColumnToHighlight := remap[idxColumnToHighlight];
+    end; // if
+
+    // Check whether a column has been selected for highlighting, or is valid.
+    // Make no changes otherwise.
+    if ((idxColumnToHighlight < 0) or
+        (idxColumnToHighlight > Columns.Count)) then
+    begin
+      Exit;
+    end;
+
+    // Remove the bold (active sorting) from each title and determine the
+    // index of the column that has been clicked.   (This operation assumes
+    // that the same field does not appear in more than one column)
+    for n := 0 to grid.Columns.Count-1 do
+    begin
+      grid.Columns[n].Title.Font.Style := [];
+      grid.Columns[n].Color := TStyleManager.ActiveStyle.GetSystemColor(clWindow);
+      // Columns[n].Color := TStyleManager.ActiveStyle.GetStyleColor(scGrid);
+    end; // for
+
+
+    // Set the title of the required column to Bold font
+    Columns[idxColumnToHighlight].Title.Font.Style := [fsBold];
+    // Set the column background to a slightly different colour, to indicate
+    // that it is the sorted column.
+    if (CanChangeColour(TStyleManager.ActiveStyle.GetSystemColor(clWindow), -changeColour)) then
+    begin
+      Columns[idxColumnToHighlight].Color := ChangeColourShade(
+        TStyleManager.ActiveStyle.GetSystemColor(clWindow),
+        -changeColour
+      )
+    end // if
+    else
+    begin
+      Columns[idxColumnToHighlight].Color := ChangeColourShade(
+        TStyleManager.ActiveStyle.GetSystemColor(clWindow), changeColour
+      );
+    end; // else
+
+  end; // whith
+end; // HighlightGridColumn
 
 //***************************************************************************
 //
@@ -478,6 +640,34 @@ begin
     end; // case
   end; // with
 end;
+
+//***************************************************************************
+//
+//  FUNCTION  : StrikeoutCell
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION :
+//
+//  UPDATED   : 2024-03-22
+//
+//***************************************************************************
+procedure StrikeoutCell(cgTarget : TCustomGrid;
+                        cell : TRect;
+                        const colour : TColor = clRed);
+var
+  OldPenColour : TColor;
+
+begin
+  OldPenColour := TGetCanvas(cgTarget).Canvas.Pen.Color;
+  TGetCanvas(cgTarget).Canvas.Pen.Color := clRed;
+  TGetCanvas(cgTarget).Canvas.Pen.Width := 1;
+  TGetCanvas(cgTarget).Canvas.MoveTo(cell.Left, cell.Top + (cell.Bottom - cell.Top) div 2+1);
+  TGetCanvas(cgTarget).Canvas.LineTo(cell.Right, cell.Top + (cell.Bottom - cell.Top) div 2+1);
+  TGetCanvas(cgTarget).Canvas.Pen.Color := OldPenColour;
+end; // StrikeoutGridLine
 
 //***************************************************************************
 //
