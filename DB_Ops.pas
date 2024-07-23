@@ -20,6 +20,12 @@ procedure AddFloatLookupField(ds : TDataSet;
                               keyFields : String;
                               lookupKeyFields : String;
                               lookupResultField : String);
+procedure AddBooleanLookupField(ds : TDataSet;
+                                fieldName : String;
+                                lookupDataSet : TDataSet;
+                                keyFields : String;
+                                lookupKeyFields : String;
+                                lookupResultField : String);
 
 implementation
 
@@ -54,7 +60,7 @@ end; // DataSetContainsRecords
 //  OPERATION : Create the default persistent fields in a given data set.
 //
 //              This might be used prior to adding dynamically assigned
-//              calculated fields.
+//              calculated/lookup fields.
 //
 //  UPDATED   : 2022-05-06
 //
@@ -65,7 +71,6 @@ var
   i : Integer;
 
 begin
-  // Dynamically add a Lookup field to Quotes
   ds.FieldDefs.Update;
   for i := 0 to ds.FieldDefs.Count - 1 do
   begin
@@ -173,5 +178,51 @@ begin
   newField.LookupResultField := lookupResultField;
 end; // AddFloatLookupField
 
+//***************************************************************************
+//
+//  FUNCTION  : AddBooleanLookupField
+//
+//  I/P       : ds : TDataSet - The dataset to which the field must be added
+//
+//              fieldName : String - The new field name
+//
+//              lookupDataSet : TDataSet - The lookup dataset
+//
+//              keyFields : String - The key field/s in the dataset
+//
+//              lookupKeyFields : String - The key field/s in the lookup dataset
+//
+//              lookupResultField : String - The result field in the lookup dataase
+//
+//  O/P       : None
+//
+//  OPERATION : Configure a lookup boolean field in a data set.
+//
+//              Fixed, persistent fields should be updated first, using the
+//              UpdateTableFields function, above.
+//
+//  UPDATED   : 2023-09-26
+//
+//***************************************************************************
+procedure AddBooleanLookupField(ds : TDataSet;
+                                fieldName : String;
+                                lookupDataSet : TDataSet;
+                                keyFields : String;
+                                lookupKeyFields : String;
+                                lookupResultField : String);
+var
+  newField : TField;
+
+begin
+  newField := TBooleanField.Create(ds);
+  newField.FieldName := fieldName;
+  newField.FieldKind := fkLookup;
+  newField.DataSet := ds;
+  newField.Lookup := TRUE;
+  newField.LookupDataSet := lookupDataSet;
+  newField.KeyFields := keyFields;
+  newField.LookupKeyFields := lookupKeyFields;
+  newField.LookupResultField := lookupResultField;
+end; // AddBooleanLookupField
 
 end.
