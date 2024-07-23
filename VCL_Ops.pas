@@ -41,7 +41,7 @@ uses
 //
 //  O/P       :
 //
-//  OPERATION : Update TComboBox.Items to include TCopmboBox.Text.
+//  OPERATION : Update TComboBox.Items to include TComboBox.Text.
 //
 //              If .Text is already in .Items, move it up to the top.
 //

@@ -3,7 +3,7 @@ unit Ini_Ops;
 interface
 
 uses
-  System.IniFiles;
+  System.IniFiles, System.Win.Registry;
 
 function GetIniFileFloat(targetFile : TCustomIniFile;
                          sSection : String;
@@ -15,7 +15,10 @@ procedure SetIniFileFloat(targetFile : TCustomIniFile;
                           valueGiven : Double);
 function CountValues(targetFile : TCustomIniFile;
                      sSection : String;
-                     filter : String = '.+') : Integer;
+                     filter : String = '.+') : Integer; overload;
+function CountValues(targetFile : TRegIniFile;
+                     sSection : String;
+                     filter : String = '.+') : Integer; overload;
 procedure ReloadInMemoryIni(var target : TMemIniFile;
                             updateFirst : Boolean = TRUE);
 
@@ -132,7 +135,31 @@ end; // SetIniFileFloat
 //***************************************************************************
 function CountValues(targetFile : TCustomIniFile;
                      sSection : String;
-                     filter : String = '.+') : Integer;
+                     filter : String = '.+') : Integer; overload;
+var
+  content : TStringList;
+  n: Integer;
+
+begin
+  Result := 0;
+  content := TStringList.Create;
+  try
+    targetFile.ReadSection(sSection, content);
+    for n := 0 to content.Count-1 do
+    begin
+      if (TRegEx.Match(content[n], filter).Index = 1) then
+      begin
+        Inc(Result);
+      end; // if
+    end; // for
+  finally
+    content.Free;
+  end;
+end;
+
+function CountValues(targetFile : TRegIniFile;
+                     sSection : String;
+                     filter : String = '.+') : Integer; overload;
 var
   content : TStringList;
   n: Integer;
