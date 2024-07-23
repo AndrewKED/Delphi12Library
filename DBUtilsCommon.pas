@@ -6,16 +6,6 @@ unit DBUtilsCommon;
 //  Common utilities to handle database maintenance using my standard table
 //  definition files.
 //
-// TO BE DONE:
-//
-// VERSIONS:
-//
-//    Update Date : 2010-10-12
-//    Changes Made :
-//      * Based on Delphi7 DBUtilsParadox, I removed all table-specific operations
-//        for movement to separate DBUtilsXXXX units
-//
-//
 //***************************************************************************
 
 interface
@@ -64,6 +54,12 @@ function GotLatestVersion : boolean;
 function VersionUpgradable(sTableDescriptive : String;
                            verSource : String) : boolean;
 function LatestIndexDefnsOK : Boolean;
+procedure CopyDataSetRecord(source : TDataSet;
+                            destination : TDataSet;
+                            numberOfFields : Integer = 0) overload;
+procedure CopyDataSetRecord(source : TDataSet;
+                            destination : TDataSet;
+                            const skipFields : TArray<integer>) overload;
 procedure SetLanguage(lcMain : TDKLanguageController);
 
 var
@@ -91,7 +87,7 @@ implementation
 
 uses Windows, SysUtils, StrUtils, Controls, Registry, Dialogs,
      DBISAMTb,
-     Str_Ops, File_Ops, TimeDate;
+     Str_Ops, File_Ops, TimeDate, Number_Ops;
 
 const
 
@@ -1130,6 +1126,74 @@ begin
   slIndexNos.Free;
   slIndexInfo.Free;
 end; // LatestIndexDefnsOK
+
+//***************************************************************************
+//
+//  FUNCTION  : CopyDataSetRecord
+//
+//  I/P       : source : TDataSet - The data set from which the record is to be
+//                copied.
+//
+//              destination : TDataSet - The data set to which the record is to
+//                be copied.
+//
+//              numberOfFields : Integer = 0 - The number of fields to be
+//                copied. Provide this if there may be additional fields in
+//                the target, e.g. lookup or calculated fields
+//
+//  O/P       :
+//
+//  OPERATION : Copy the current record in a source data set to a destination
+//              data set. Unless specified, the number of fields copied are as
+//              dicatated by the destination data set number of fields.
+//
+//              Both data sets should be open, and have the same structure.
+//
+//  UPDATED   : 2023-09-26
+//
+//***************************************************************************
+procedure CopyDataSetRecord(source : TDataSet;
+                            destination : TDataSet;
+                            numberOfFields : Integer = 0) overload;
+var
+  n : Integer;
+  fieldCount : Integer;
+
+begin
+  if (numberOfFields = 0) then
+  begin
+    fieldCount := destination.FieldDefs.Count;
+  end
+  else
+  begin
+    fieldCount := numberOfFields;
+  end;
+
+  destination.Append;
+  for n := 0 to fieldCount-1 do
+  begin
+    destination.Fields[n].Assign(source.Fields[n]);
+  end;
+  destination.Post;
+end; // CopyDataSetRecord
+
+procedure CopyDataSetRecord(source : TDataSet;
+                            destination : TDataSet;
+                            const skipFields : TArray<Integer>) overload;
+var
+  n : Integer;
+
+begin
+  destination.Append;
+  for n := 0 to destination.FieldDefs.Count-1 do
+  begin
+    if (not(IsNumberInArray(n, skipFields))) then
+    begin
+      destination.Fields[n].Assign(source.Fields[n]);
+    end;
+  end;
+  destination.Post;
+end; // CopyDataSetRecord
 
 //***************************************************************************
 //
