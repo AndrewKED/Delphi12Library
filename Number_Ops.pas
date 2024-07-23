@@ -61,6 +61,8 @@ function SwapEndianHex(hex : String) : String;
 function SwapEndian(theValue : Word) : Word;
 procedure SetDecimalSeparatorAsPoint;
 procedure RestoreDecimalSeparator;
+function IsNumberInArray(const ANumber: Integer;
+                         const AArray: array of Integer): Boolean;
 
 implementation
 
@@ -844,6 +846,50 @@ begin
   FormatSettings.DecimalSeparator := currentDecimalSeaprator;
 end; // RestoreDecimalSeparator
 
+//***************************************************************************
+//
+//  FUNCTION  : IsNumberInArray
+//
+//  I/P       : const ANumber: Integer - The number being searched for.
+//
+//              const AArray: array of Integer - The array of possible numbers.
+//
+//  O/P       : Boolean - True if the given number is the given array
+//
+//  OPERATION : Check if a given integer is in a given array of integer.
+//
+//  UPDATED   :
+//
+//***************************************************************************
+function IsNumberInArray(const ANumber: Integer;
+                         const AArray: array of Integer): Boolean;
+var
+  i: Integer;
+
+begin
+  for i := Low(AArray) to High(AArray) do
+  begin
+    if (ANumber = AArray[i]) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end; // IsNumberInArray
+
+//***************************************************************************
+//
+//  FUNCTION  :
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION :
+//
+//  UPDATED   :
+//
+//***************************************************************************
 initialization
   // Get the regional formats correct
   // see https://forums.embarcadero.com/thread.jspa?threadID=47770
