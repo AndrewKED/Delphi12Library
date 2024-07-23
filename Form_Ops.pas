@@ -89,7 +89,8 @@ procedure CloseAllChildren(fMain : TForm;
 procedure SetChildrenWindowState(fMain : TForm;
                                  wsState : TWindowState );
 procedure AdjustResolution(fForm:TForm);
-procedure WindowShake(wHandle: THandle);
+procedure WindowShake(wHandle: THandle;
+                      shakes : Integer = 500);
 procedure EditControlAvailability(cComponent : TObject;
                                   bAvailable : boolean);
 function ValidTEditFloat(eEdit : TEdit;
@@ -117,7 +118,9 @@ procedure SetFormLocnAndSize(fForm : TForm;
                              iFormWidth, iFormHeight : Integer;
                              iDesignPPI : integer);
 function FormSizePositionStored(cifConfig : TCustomIniFile;
-                                Section : string) : Boolean;
+                                Section : string) : Boolean; overload;
+function FormSizePositionStored(rifConfig : TRegIniFile;
+                                Section : string) : Boolean; overload;
 
 procedure ClearFormSizePosition(cifConfig : TCustomIniFile;
                                 Section : string); overload;
@@ -147,10 +150,6 @@ procedure EnabledAsParent(Container: TWinControl);
 procedure EnableInParent(Container: TWinControl;
                          state : Boolean);
 procedure FlipAsRequired(fForm : TForm);
-procedure Scroll(memTarget : TMemo;
-                 bToBottom : boolean); overload;
-procedure Scroll(reTarget : TRichEdit;
-                 bToBottom : boolean); overload;
 procedure WebBrowserScreenShot(const wb: TWebBrowser; const fileName: TFileName);
 procedure WebBrowserScreen2BMP(const wb: TWebBrowser;
                                bmTarget : TBitmap);
@@ -161,11 +160,6 @@ procedure VerticallyCentre(Target : TControl;
 procedure CentreControl(Target : TControl);
 procedure SetTEditText(Container: TWinControl;
                        TextToSet : string);
-procedure ToggleRichEditAttributeStyle(creTarget : TCustomRichEdit;
-                                       fsChange : TFontStyle);
-procedure RichEditAttributeSize(creTarget : TCustomRichEdit;
-                                iDifference : Integer;
-                                iSetTo : integer);
 procedure SetSpeedButtonFonts(Sender : TObject;
                               cParent : TWinControl);
 procedure SetFormAccessRights(ThisForm : TForm;
@@ -181,8 +175,8 @@ procedure SetFormAccessRights(ThisForm : TForm;
                               okReadOnlyCaption : String;
                               okReadOnlyHint : String); overload;
 procedure CloseFromFormActivate(ThisForm : TForm);
-function ManageChildModal(parentForm : TForm;
-                          childForm : TForm;
+function ManageChildModal(parentForm : TCustomForm;
+                          childForm : TCustomForm;
                           keepVisible : Boolean = FALSE) : TModalResult;
 
 implementation
@@ -457,7 +451,9 @@ end;
 //
 //  FUNCTION  : WindowShake
 //
-//  I/P       :
+//  I/P       : wHandle: THandle
+//
+//              shakes : Integer = 500 - The number of shaking actions.
 //
 //  O/P       :
 //
@@ -467,13 +463,14 @@ end;
 //              Usage: WindowShake(Application.MainForm.Handle) ; will shake
 //              the main form of your application.
 //
-//  UPDATED   : 2006/01/17
+//  UPDATED   : 2024-06-13
 //
 //***************************************************************************
-procedure WindowShake(wHandle: THandle);
+procedure WindowShake(wHandle: THandle;
+                      shakes : Integer = 500);
 const
    MAXDELTA = 4;
-   SHAKETIMES = 500;
+
 var
    oRect, wRect :TRect;
    deltax : Integer;
@@ -485,7 +482,7 @@ begin
    GetWindowRect(wHandle,wRect) ;
    oRect := wRect;
 
-   for cnt := 0 to SHAKETIMES do
+   for cnt := 0 to shakes do
    begin
      deltax := Round(Random(MAXDELTA)) ;
      deltay := Round(Random(MAXDELTA)) ;
@@ -573,10 +570,10 @@ begin
   end // if
 
   else
-  if (cComponent is TCheckbox) then
+  if (cComponent is TCustomCheckBox) then
   begin
-    TCheckbox(cComponent).TabStop := bAvailable;
-    TCheckbox(cComponent).Enabled := bAvailable;
+    TCustomCheckBox(cComponent).TabStop := bAvailable;
+    TCustomCheckBox(cComponent).Enabled := bAvailable;
   end // if
 
   else
@@ -967,8 +964,8 @@ end; // SetFormLocnAndSize
 //
 //  FUNCTION  : FormSizePositionStored
 //
-//  I/P       : ifConfig : TCustomIniFile - The registry entry that would be
-//                expeced to contain the last-recorded form information.
+//  I/P       : ifConfig : TCustomIniFile/TRegIniFile - The IniFile that would
+//                be expeced to contain the last-recorded form information.
 //
 //              Section : String - The name of the registry key for this form.
 //
@@ -980,9 +977,14 @@ end; // SetFormLocnAndSize
 //
 //***************************************************************************
 function FormSizePositionStored(cifConfig : TCustomIniFile;
-                                Section : string) : Boolean;
+                                Section : string) : Boolean; overload;
 begin
   result := cifConfig.SectionExists(Section);
+end; // FormSizePositionStored
+function FormSizePositionStored(rifConfig : TRegIniFile;
+                                Section : string) : Boolean; overload;
+begin
+  result := rifConfig.KeyExists(Section);
 end; // FormSizePositionStored
 
 //***************************************************************************
@@ -2129,18 +2131,20 @@ end; // CloseFromFormActivate
 //
 //  FUNCTION  : ManageChildModal
 //
-//  I/P       : parentForm : TForm - The form which is launching the child
-//                modal form.
+//  I/P       : parentForm : TCustomForm - The form which is launching the
+//                child modal form.
 //
-//              childForm : TForm - The child modal form to be launched.
+//              childForm : TFTCustomFormorm - The child modal form to be
+//                launched.
 //
-//              returnToParent : Boolean - FALSE - On child closure, always
-//                redisplay the parent form.
+//              keepVisible : Boolean = FALSE - Indicates whether the parent
+//                form should be restored (made visible) or closed on closing
+//                the child form.
 //
 //  O/P       : TModalResult - The Modal Result of the child form.
 //
 //  OPERATION : Manage launching and closing of a child Modal form from a
-//              parent modal form.
+//              parent (modal) form.
 //
 //              Hide the parent modal form while the child form has control.
 //
@@ -2150,8 +2154,8 @@ end; // CloseFromFormActivate
 //  UPDATED   : 2021-07-25
 //
 //***************************************************************************
-function ManageChildModal(parentForm : TForm;
-                          childForm : TForm;
+function ManageChildModal(parentForm : TCustomForm;
+                          childForm : TCustomForm;
                           keepVisible : Boolean = FALSE) : TModalResult;
 begin
   parentForm.Visible := FALSE;
