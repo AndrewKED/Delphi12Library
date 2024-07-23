@@ -16,6 +16,8 @@ procedure SetIniFileFloat(targetFile : TCustomIniFile;
 function CountValues(targetFile : TCustomIniFile;
                      sSection : String;
                      filter : String = '.+') : Integer;
+procedure ReloadInMemoryIni(var target : TMemIniFile;
+                            updateFirst : Boolean = TRUE);
 
 implementation
 
@@ -152,5 +154,45 @@ begin
   end;
 
 end;
+
+//***************************************************************************
+//
+//  FUNCTION  : ReloadInMemoryIni
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION : Refresh a TMemoryIni (typically a configuration file).
+//
+//              This can be useful in handling things in the IDE, when halting
+//              the program operation.
+//
+//  UPDATED   : 2023-09-21
+//
+//***************************************************************************
+procedure ReloadInMemoryIni(var target : TMemIniFile;
+                            updateFirst : Boolean = TRUE);
+var
+  originalFileName : String;
+  originalAutoSave : Boolean;
+
+
+begin
+  if (updateFirst) then
+  begin
+    // Note that this would be automatically done, on destruction below, if the
+    // .AutoSave property is TRUE.
+    target.UpdateFile;
+  end;
+
+  originalFileName := target.FileName;
+  originalAutoSave := target.AutoSave;
+
+  target.Free;
+  target := TMemIniFile.Create(originalFileName);
+
+  target.AutoSave := originalAutoSave;
+end; // ReloadInMemoryIni
 
 end.
