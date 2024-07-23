@@ -32,6 +32,7 @@ procedure SetProgressPosition(pb : TProgressBar;
 procedure SetProgressPosition(pb : TGauge;
                               newPosition : Integer) overload;
 procedure SetProgressPosition(newPosition : Integer) overload;
+procedure SetProgressPosition(percentPosition : Double) overload;
 procedure IncrementProgress(pb : TProgressBar;
                             increment : Integer) overload;
 procedure IncrementProgress(pb : TGauge;
@@ -269,6 +270,24 @@ begin
   else if (progressGauge <> nil) then
   begin
     SetProgressPosition(progressGauge, newPosition);
+  end; // if
+end; // SetProgressPosition
+
+procedure SetProgressPosition(percentPosition : Double) overload;
+begin
+  if (progressBar <> nil) then
+  begin
+    SetProgressPosition(
+      progressBar,
+      Trunc(percentPosition * progressBar.Max / 100.0)
+    );
+  end // if
+  else if (progressGauge <> nil) then
+  begin
+    SetProgressPosition(
+      progressGauge,
+      Trunc(percentPosition * progressGauge.MaxValue / 100.0)
+    );
   end; // if
 end; // SetProgressPosition
 
@@ -582,7 +601,10 @@ end; // ShowActivity
 //
 //  OPERATION : Get the TaskBar operational
 //
-//              Reference http://www.drbob42.com/examines/examinC5.htm
+//              Reference : http://www.drbob42.com/examines/examinC5.htm
+//                          https://forums.embarcadero.com/thread.jspa?messageID=905781
+//                          https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-itaskbarlist3-setprogressstate
+//                          https://www.delphipower.xyz/handbook_2010/working_with_taskbar_buttons_in_windows.html
 //
 //  UPDATED   : 2019-11-12
 //
@@ -608,6 +630,8 @@ end;
 //  O/P       :
 //
 //  OPERATION :
+//
+//              Reference : http://www.drbob42.com/examines/examinC5.htm
 //
 //  UPDATED   : 2019-11-12
 //
@@ -642,6 +666,8 @@ end; // StartTaskBarProgress
 //
 //  OPERATION :
 //
+//              Reference : http://www.drbob42.com/examines/examinC5.htm
+//
 //  UPDATED   : 2019-11-12
 //
 //***************************************************************************
@@ -674,6 +700,8 @@ end; // UpdateTaskBarProgress
 //
 //  OPERATION :
 //
+//              Reference : http://www.drbob42.com/examines/examinC5.htm
+//
 //  UPDATED   : 2019-11-12
 //
 //***************************************************************************
@@ -692,6 +720,8 @@ end; // IncrementTaskBarProgress
 //  O/P       :
 //
 //  OPERATION :
+//
+//              Reference : http://www.drbob42.com/examines/examinC5.htm
 //
 //  UPDATED   : 2019-11-12
 //
