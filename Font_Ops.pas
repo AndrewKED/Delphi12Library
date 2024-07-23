@@ -17,6 +17,8 @@ const
   FA_ICON_ARROW_LEFT = #$F060;
   FA_ICON_SHOW_PASSWORD = #$F06E;
   FA_ICON_HIDE_PASSWORD = #$F070;
+  FA_ICON_PLAY = #$F04B;
+  FA_ICON_PAUSE = #$F04C;
 
 function LoadResourceFont(const ResourceName : String) : Boolean;
 
