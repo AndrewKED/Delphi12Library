@@ -6,7 +6,7 @@ uses
   Vcl.Controls, Vcl.Graphics;
 
 procedure ShowErrorBorder(id : Integer;
-                          targets : array of TWinControl;
+                          targets : array of TControl;
                           errorColour : TColor = clRed;
                           transparentBackground : Boolean = FALSE);
 procedure HideErrorBorder(id : Integer;
@@ -35,9 +35,9 @@ var
 //
 //  FUNCTION  : ShowErrorBorder
 //
-//  I/P       : id : Integer;
+//  I/P       : id : Integer - The error group ID (Currently 0..1);
 //
-//              targets : array of TWinControl - A set of controls that can be
+//              targets : array of TControl - A set of controls that can be
 //                used to indicate the boundaries of the rectangle that will
 //                be coloured in.
 //
@@ -56,7 +56,7 @@ var
 //
 //***************************************************************************
 procedure ShowErrorBorder(id : Integer;
-                          targets : array of TWinControl;
+                          targets : array of TControl;
                           errorColour : TColor = clRed;
                           transparentBackground : Boolean = FALSE);
 var
