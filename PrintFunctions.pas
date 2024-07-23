@@ -263,8 +263,10 @@ procedure InsertTextIntoHeaderCell(sCellText : string;
 procedure InsertTextIntoBodyCell(sCellText : string;
                                  overrideIDs : TPrintOverrides = [];
                                  overrideValues : TPrintOverrideValues = []);
+function HeaderRowComplete : Boolean;
+procedure CompleteHeaderRow(sFill : string = '');
 function BodyRowComplete : Boolean;
-procedure CompleteBodyRow(sFill : string);
+procedure CompleteBodyRow(sFill : string = '');
 procedure PrintTableHeader;
 procedure EndTable;
 function PrintGraphic(iX,iY : Integer;
@@ -3498,6 +3500,55 @@ end; // InsertTextIntoBodyCell
 
 //***************************************************************************
 //
+//  FUNCTION  : HeaderRowComplete
+//
+//  I/P       : None
+//
+//  O/P       : Boolean - TRUE if the last body row was completed and/or the
+//                current body row has not yet received any cell insertions
+//
+//  OPERATION : Used to check if the current row has been partially created.
+//              This function may be called before a call to CompleteBodyRow
+//
+//  UPDATED   : 2024-04-30
+//
+//***************************************************************************
+function HeaderRowComplete : Boolean;
+begin
+  result := (tptTable[ct].siCurrentHeaderColumn = 0)
+end; // HeaderRowComplete
+
+//***************************************************************************
+//
+//  FUNCTION  : CompleteHeaderRow
+//
+//  I/P       : sFill (string) - The string to put in each of the remaining
+//                cells in the row
+//
+//  O/P       : None
+//
+//  OPERATION : Fills the remainder of the current row with empty cells.
+//              A new row must have been started i.e. this is not meant to be
+//              used to create an empty row.
+//
+//  UPDATED   : 2024-04-30
+//
+//***************************************************************************
+procedure CompleteHeaderRow(sFill : string = '');
+begin
+  if (tptTable[ct].siCurrentHeaderColumn <> 0) then
+  begin
+    InsertTextIntoHeaderCell(
+      DupeString(
+        sFill + #09,
+        tptTable[ct].iTableColumns - tptTable[ct].siCurrentHeaderColumn
+      )
+    );
+  end; // if
+end; // CompleteHeaderRow
+
+//***************************************************************************
+//
 //  FUNCTION  : BodyRowComplete
 //
 //  I/P       : None
@@ -3520,7 +3571,7 @@ end; // BodyRowComplete
 //
 //  FUNCTION  : CompleteBodyRow
 //
-//  I/P       : sFill (string) - The string to put in each of the remaining
+//  I/P       : sFill (string) = '' - The string to put in each of the remaining
 //                cells in the row
 //
 //  O/P       : None
@@ -3529,13 +3580,20 @@ end; // BodyRowComplete
 //              A new row must have been started i.e. this is not meant to be
 //              used to create an empty row.
 //
-//  UPDATED   : 2018-11-12
+//  UPDATED   : 2024-04-30
 //
 //***************************************************************************
-procedure CompleteBodyRow(sFill : string);
+procedure CompleteBodyRow(sFill : string = '');
 begin
   if (tptTable[ct].siCurrentBodyColumn <> 0) then
-    InsertTextIntoBodyCell(DupeString(sFill+#09,tptTable[ct].iTableColumns - tptTable[ct].siCurrentBodyColumn));
+  begin
+    InsertTextIntoBodyCell(
+      DupeString(
+        sFill + #09,
+        tptTable[ct].iTableColumns - tptTable[ct].siCurrentBodyColumn
+      )
+    );
+  end; // if
 end; // CompleteBodyRow
 
 //***************************************************************************
