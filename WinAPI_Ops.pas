@@ -10,12 +10,13 @@ function GetEdgeVersion : String;
 function Is64BitHardware: Boolean;
 function Is64BitWindows: Boolean;
 function GetWebView2RuntimeVersion : String;
+function ClosedRunningApplication(exeName : String) : Boolean;
 
 implementation
 
 uses
   System.SysUtils, System.Win.Registry,
-  WinApi.Windows;
+  WinApi.Windows, WinApi.TLHelp32;
 
 function ConvertSidToStringSid(Sid: PSID; out StringSid: PChar): BOOL; stdcall;  external 'ADVAPI32.DLL' name {$IFDEF UNICODE} 'ConvertSidToStringSidW'{$ELSE} 'ConvertSidToStringSidA'{$ENDIF};
 
@@ -465,5 +466,68 @@ begin
     Result := '';
   end;
 end; // GetWebView2RuntimeVersion
+
+//***************************************************************************
+//
+//  FUNCTION  : CloseRunningApplication
+//
+//  I/P       : exeName : String - The name of the application to be close.
+//                e.g. "yamsc.exe" (Note that there might be many instances of
+//                some named applications, and an alternative method may then
+//                need to be found.)
+//
+//  O/P       : Boolean : TRUE if the named application was closed (or not found)
+//
+//  OPERATION : Close the named application.
+//
+//  UPDATED   : 2024-01-05
+//
+//***************************************************************************
+function ClosedRunningApplication(exeName : String) : Boolean;
+var
+  snapshot: THandle;
+  ProcEntry: TProcessEntry32;
+  s: String;
+  targetProcess : THandle;
+  found : Boolean;
+
+begin
+  Result := FALSE;
+
+  snapshot := CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  if (snapshot <> INVALID_HANDLE_VALUE) then
+  begin
+    ProcEntry.dwSize := SizeOf(ProcessEntry32);
+    if (Process32First(snapshot, ProcEntry)) then
+    begin
+      s := ProcEntry.szExeFile;
+      // s contains image name of the first process
+
+      found := FALSE;
+      while Process32Next(snapshot, ProcEntry) do
+      begin
+        s := ProcEntry.szExeFile;
+        // s contains image name of the current process
+        if (s.ToUpper = exeName.ToUpper) then
+        begin
+          found := TRUE;
+          targetProcess := OpenProcess(PROCESS_TERMINATE, False, ProcEntry.th32ProcessID);
+          if targetProcess > 0 then
+          try
+            Result := Win32Check(WinApi.Windows.TerminateProcess(targetProcess,0));
+          finally
+            CloseHandle(targetProcess);
+          end;
+        end;
+      end;
+
+      if (not found) then
+      begin
+        Result := TRUE;
+      end;
+    end;
+  end;
+  CloseHandle(snapshot);
+end;
 
 end.
