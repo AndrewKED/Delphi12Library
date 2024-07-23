@@ -114,6 +114,7 @@ procedure PauseFastTimer(iTimerNumber : integer);
 procedure ResetFastTimer(iTimerNumber : integer);
 function FastTimerRunning(iTimerNumber : integer) : Boolean;
 function GetFastTimer(iTimerNumber : integer) : cardinal;
+function GetFastTimerIncrement(iTimerNumber : integer) : cardinal;
 function Valid_Date (year,month,day : integer) : boolean;
 function Valid_Time (iHour,iMinute,iSecond,iMsecond : integer) : boolean;
 function Prev_Month (datetime : TDateTime) : TDateTime;
@@ -212,6 +213,7 @@ var
   timerFast : array[0..9] of Cardinal;
   timerFastRunning : array[0..9] of Boolean;
   timerPauseValue : array[0..9] of Cardinal;
+  timerLast : array[0..9] of Cardinal;
   n : Integer;
 
 //***************************************************************************
@@ -227,7 +229,7 @@ var
 //              If the timer was paused, and already had a value, arrange to
 //              continue timing from that value
 //
-//  UPDATED   : 2020-05-29
+//  UPDATED   : 2024-01-11
 //
 //***************************************************************************
 procedure StartFastTimer(iTimerNumber : integer);
@@ -246,6 +248,7 @@ begin
     timerFast[iTimerNumber] := GetTickCount;
   end;
 
+  timerLast[iTimerNumber] := 0;
   timerFastRunning[iTimerNumber] := TRUE;
 end; // StartFastTimer
 
@@ -364,6 +367,37 @@ begin
     Result := ($FFFFFFFF - timerFast[iTimerNumber]) + c;
   end; // else
 end; // GetFastTimer
+
+//***************************************************************************
+//
+//  FUNCTION  : GetFastTimerIncrement
+//
+//  I/P       : iTimerNumber : Integer - The timer number to be stopped
+//
+//  O/P       : Cardinal - milliseconds since start/last call. 0 if not running.
+//
+//  OPERATION : Returns the number of milliseconds since a running timer was
+//              started, or this function was last called.
+//
+//  UPDATED   : 2023-10-27
+//
+//***************************************************************************
+function GetFastTimerIncrement(iTimerNumber : integer) : cardinal;
+var
+  c : Cardinal;
+
+begin
+  c := GetFastTimer(iTimerNumber);
+  if (c >= timerLast[iTimerNumber]) then
+  begin
+    Result := c - timerLast[iTimerNumber];
+  end // fi
+  else
+  begin
+    Result := ($FFFFFFFF - timerLast[iTimerNumber]) + c;
+  end;
+  timerLast[iTimerNumber] := c;
+end;
 
 //***************************************************************************
 //
@@ -1851,6 +1885,7 @@ initialization
     timerFast[n] := GetTickCount;
     timerFastRunning[n] := TRUE;
     timerPauseValue[n] := 0;
+    timerLast[n] := 0;
   end; // else
 
   sAbbrHour := 'hr';
