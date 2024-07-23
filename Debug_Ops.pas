@@ -24,12 +24,13 @@ procedure DebugLog(iIndex : Integer;
 procedure DebugLogException(iIndex : Integer;
                             sLine : string;
                             ex : Exception);
-procedure EraseLog(iIndex : Integer);
-procedure TrimLog(iIndex : Integer;
-                  numLines : Integer);
+procedure EraseDebugLog(iIndex : Integer);
+procedure TrimDebugLog(iIndex : Integer;
+                       numLines : Integer);
 
 var
   DebugFileNames : array[1..5] of string; // Allow up to 5 debug files
+  DebugLogActive : array[1..5] of Boolean;  // TRUE if the log has been defined
 
 implementation
 
@@ -125,7 +126,11 @@ begin
         DebugFileNames[iIndex] := GetTempFolder + ExtractFileName(sFileName);
     end
     else
+    begin
       DebugFileNames[iIndex] := GetTempFolder + 'Debug.log';
+    end;
+
+    DebugLogActive[iIndex] := TRUE;
 
     if (bClear) then
       Result := DeleteFile(DebugFileNames[iIndex])
@@ -268,7 +273,7 @@ end;
 
 //***************************************************************************
 //
-//  FUNCTION  : EraseLog
+//  FUNCTION  : EraseDebugLog
 //
 //  I/P       : iIndex : Integer - The index of the log file to be erased.
 //
@@ -279,17 +284,17 @@ end;
 //  UPDATED   : 2020-11-19
 //
 //***************************************************************************
-procedure EraseLog(iIndex : Integer);
+procedure EraseDebugLog(iIndex : Integer);
 begin
   if (LogExists(iIndex)) then
   begin
     DeleteFile(DebugFileNames[iIndex])
   end; // if
-end; // EraseLog
+end; // EraseDebugLog
 
 //***************************************************************************
 //
-//  FUNCTION  : TrimLog
+//  FUNCTION  : TrimDebugLog
 //
 //  I/P       : iIndex : Integer - Index to the log file, as created in
 //                the SetDebugLogFile procedure, above.
@@ -305,8 +310,8 @@ end; // EraseLog
 //  UPDATED   : 2023-05-18
 //
 //***************************************************************************
-procedure TrimLog(iIndex : Integer;
-                  numLines : Integer);
+procedure TrimDebugLog(iIndex : Integer;
+                       numLines : Integer);
 var
   wholeLog : TStringList;
 
@@ -326,7 +331,7 @@ begin
   finally
     wholeLog.Free;
   end;
-end; // TrimLog
+end; // TrimDebugLog
 
 //***************************************************************************
 //
@@ -343,7 +348,10 @@ end; // TrimLog
 //***************************************************************************
 initialization
   for n := Low(DebugFileNames) to High(DebugFileNames) do
+  begin
     DebugFileNames[n] := '';
+    DebugLogActive[n] := FALSE;
+  end;
   DebugFileNames[1] := GetTempFolder + 'Debug.log';
 
 end.
