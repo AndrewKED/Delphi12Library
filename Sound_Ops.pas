@@ -5,15 +5,6 @@ unit Sound_Ops;
 // DESCRIPTION:
 //  Sound-orientated utility routines.
 //
-// TO BE DONE:
-//
-//    Changes Made :
-//
-// VERSIONS:
-//
-//    Update Date : 2011-05-12
-//      * Added WAV volume control functions
-//
 //***************************************************************************
 
 interface
@@ -29,6 +20,7 @@ type
 
 function GetWaveVolume(var LVol: DWORD; var RVol: DWORD): Boolean;
 function SetWaveVolume(const AVolume: DWORD): Boolean;
+procedure ThreadPlaySound(sFileName : String);
 procedure PlayMediaPlayer(thePlayer : TMediaPlayer;
                           useNotify : Boolean;
                           errorWarning : TMediaPlayerWarning);
@@ -36,7 +28,8 @@ procedure PlayMediaPlayer(thePlayer : TMediaPlayer;
 implementation
 
 uses
-  System.SysUtils, Vcl.Dialogs,
+  System.SysUtils, System.Classes,
+  Vcl.Dialogs, Vcl.Forms,
   Dialog_Ops;
 
 var
@@ -103,6 +96,50 @@ begin
     if WaveOutCaps.dwSupport and WAVECAPS_VOLUME = WAVECAPS_VOLUME then
       Result := WaveOutSetVolume(WAVE_MAPPER, AVolume) = MMSYSERR_NOERROR;
 end; // SetWaveVolume
+
+//***************************************************************************
+//
+//  FUNCTION  : ThreadPlaySound
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION : Create a media player in a thread, and play the given sound file
+//
+//  UPDATED   : 2024-07-29
+//
+//***************************************************************************
+procedure ThreadPlaySound(sFileName : String);
+var
+  Thread: TThread;
+
+begin
+  if ((sFileName <> '') and
+      (FileExists(sFileName))) then
+  begin
+    Thread := TThread.CreateAnonymousThread(
+      procedure
+        var mp : TMediaPlayer;
+      begin
+        mp := TMediaPlayer.Create(Application.MainForm);
+        try
+          mp.Visible := FALSE;
+          mp.Parent := Application.MainForm;
+          mp.FileName := sFileName;
+          mp.Open;
+          mp.Wait := TRUE;
+          mp.Play;
+        finally
+          mp.Close;
+          // Since FreeAndNil here, there is no need for an owner/parent, above
+          FreeAndNil(mp);
+        end;
+      end // if
+    );
+    Thread.Start;
+  end; // if
+end; // ThreadPlaySound
 
 //***************************************************************************
 //
