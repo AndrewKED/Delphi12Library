@@ -5,128 +5,6 @@ UNIT File_Ops;
 // DESCRIPTION:
 // Provides a number of helpful file handling functions and procedures.
 //
-// TO BE DONE:
-//
-//  *
-//
-// VERSIONS:
-//
-//    Update Date : 2010-04-30
-//    changes Made :
-//      * Added FolderIsEmpty, GetParentFolder, GetSubFolders, DateTimeInfo,
-//          InitGetFolderSize and GetFolderSize functions
-//
-//    Update Date : 2010-03-11
-//    Changes Made :
-//      * Changed debug logging to optionally clear the file, and return a flag
-//
-//    Update Date : 2008-01-16
-//    Changes Made :
-//      * Changed Debug logging to go to a specified folder.
-//
-//    Update Date : 2007-04-26
-//    Changes Made :
-//      * Added FolderEmpty
-//
-//    Update Date : 2007-02-05
-//    Changes Made :
-//      * Added DebugLogTemp
-//
-//    Update Date : 2007-01-26
-//    Changes Made :
-//      * Added GetTempFolder
-//
-//    Update Date : 2006-12-14
-//    Changes Made :
-//      * Added LongestTextLine
-//
-//    Update Date : 2006-11-30
-//    Changes Made :
-//      * Added GetNetworkDriveMappings and IsOnLocalDrive
-//      * Remove DirectoryEndsWithBackSlash - Use IncludeTrailingDelimiter
-//
-//    Update Date : 2006-10-05
-//    Changes Made :
-//      * Added FilenameValid function
-//
-//    Update Date : 2006/10/05
-//    Changes Made :
-//      * Added access to a progress bar during FileCopied
-//
-//    Update Date : 2006/05/29
-//    Changes Made :
-//      * Check whether a directory exists before trying to create it in XCopyFiles
-//
-//    Update Date : 2006/05/24
-//    Changes Made :
-//      * Add FindClose operations to SizeOfFile, FindAllFiles, CountFiles
-//
-//    Update Date : 2006/03/28
-//    Changes Made :
-//      * Fixed XCopyFiles - it was trying to equate dates AFTER setting
-//        attributes.   If an attribute was set to ReadOnly, the dates would
-//        not be set!
-//
-//    Update Date : 2006/01/16
-//    Changes Made :
-//      * Added TestFilesMatch
-//      * Added IOResultString
-//
-//    Update Date : 2006/01/10
-//    Changes Made :
-//      * Added AlternateToLFN and LFNToAlternate
-//
-//    Update Date : 2005/12/12
-//    Changes Made :
-//      * Added XCountFiles
-//      * Add an attribute to CountFiles
-//      * Started adding a "delete-before" date on deletion routines
-//
-//    Update Date : 2005/12/01
-//    Changes Made :
-//      * Added SplitFile and MergeFile
-//
-//    Update Date : 2005/11/25
-//    Changes Made :
-//      * Replaced the workings of FileInUse (output sense may have changed -
-//        The result did not reflect the name)
-//
-//    Update Date : 2005/11/16
-//    Changes Made :
-//      * Removed the faANSReadOnly attribute (rather get the order of DB
-//        and SysUtils correct in the 'uses' clause.
-//
-//    Update Date : 2005/10/28
-//    Changes Made :
-//      * Added some more IO Result messages
-//      * Changed the return values from a number of routines
-//      * Added FOE error constants
-//
-//    Update Date : 2005/09/06
-//    Changes Made :
-//      * Changed the return value from XCopyFiles
-//
-//    Update Date : 2005/09/06
-//    Changes Made :
-//      * Added CountFiles routine
-//
-//    Update Date : 2005/06/02
-//    Changes Made :
-//      * Added WriteTextToFile routine
-//      * Added various IO functions to handle IOResult variable
-//      * Added CRC8 on a memory block, and changed CRC8 on a file to use this.
-//
-//    Update Date : 2005/01/27
-//    Changes Made :
-//      * Added FindAllFiles, to ripple through a directory structure and
-//        create a TStringList of files found.
-//
-//    Update Date : 2005/01/24
-//    Changes Made :
-//      * Updated SizeOfFile to handle files above 2Gb
-//      * Added FileTimeToDateTime function
-//      * Added this header
-//
 //***************************************************************************
 
 //*****************************************************************************
@@ -234,10 +112,6 @@ function GetTempFolder : String;
 function GetFileResourceString(sFileName : String;
                                sVersionKey : string) : String;
 function FolderEmpty(sDirectory : string) : boolean;
-procedure ExportRegKey(bLocalKey : boolean;
-                       sSection : String;
-                       sFileName : String;
-                       bIniFileFormat : boolean);
 //function ShellCopy(sFileNames : String;
 //                   sDestination : string) : boolean;
 //returns true if a given directory is empty, false otherwise
@@ -279,9 +153,10 @@ implementation
 
 uses
   WinProcs, Math, DateUtils, ShlObj, ActiveX,
-  System.Win.ComObj, System.Variants,
+  System.Win.ComObj, System.Variants, System.IOUtils,
   ShellAPI, Registry, IniFiles,
-  Str_Ops, Ini_Ops, WinAPI.Windows;
+  WinAPI.Windows,
+  Str_Ops, Ini_Ops;
 
 const
   CrcTable08 : array[0..255] of byte =
@@ -406,11 +281,6 @@ var
   iLastIOResult : Integer;
   iDirBytes : Integer;
 
-  rifKey : TRegistryIniFile;    // Used in recursive calls for registry exporting
-  mifRIFAll : TIniFile;      // Used in recursive calls for registry exporting
-
-  t1234 : String;
-
 //***************************************************************************}
 //
 //  FUNCTION    :   Filename_83Valid
@@ -463,33 +333,21 @@ end; {Filename_Valid}
 //  O/P       : (boolean) - FALSE if the filename is an empty string or
 //                contains one of a number of invalid characters
 //
-//  OPERATION : Checks the filename for validity
-//              From http://delphi.about.com/od/delphitips2009/qt/is-valid-file-name-delphi.htm
+//  OPERATION : Checks the filename for validity.
 //
 //              Disallow for space-only filenames.
 //
-//  UPDATED   : 2016-10-13
+//  UPDATED   : 2024-08-19
 //
 //***************************************************************************
 function FilenameValid(sFileName : string) : boolean;
-var
-   c : char;
 begin
   // Reducing all spaces in the given filename should not result in an
   // empty string or extension separator
   sFileName := SearchAndReplace(sFileName,' ','');
-  result := (sFileName <> '') and (sFileName <> '.');
-
-  // Search for invalid characters
-  if (result) then
-  begin
-    for c in sFileName do
-    begin
-     result := not CharInSet(c,['\','/',':','*','?','"','<','>','|']);
-     if (not result) then
-       break;
-   end;
-  end;
+  result := (sFileName <> '') and
+            (sFileName <> '.') and
+            (TPath.HasValidFileNameChars(sFileName, FALSE));
 end; // FilenameValid
 
 //***************************************************************************}
@@ -1242,12 +1100,12 @@ var
           end; // if
           SysUtils.FindClose(sr1);
 
-          if (ExtractFilePath(ctsource)[Length(ExtractFilePath(ctsource))] = '\') then
-            Copy_Tree(ExtractFilePath(ctsource) + sr.Name + '\' + ExtractFileName(ctsource),
-                      ctdest_dir + sr.Name + '\')
-          else
-            Copy_Tree(ExtractFilePath(ctsource) + '\' + sr.Name + '\' + ExtractFileName(ctsource),
-                      ctdest_dir + sr.Name + '\')
+          Copy_Tree(
+            IncludeTrailingPathDelimiter(ExtractFilePath(ctsource)) +
+            sr.Name + TPath.DirectorySeparatorChar +
+            ExtractFileName(ctsource),
+            ctdest_dir + sr.Name + TPath.DirectorySeparatorChar
+          );
         end; // if
       until (FindNext(sr)<>0);
     end; // if
@@ -1313,10 +1171,10 @@ begin
   // If a source directory was given as a drive letter and ':' only, append
   // the backslash.
   if (source[Length(source)] = ':') then
-    source := source + '\';
+    source := source + TPath.DirectorySeparatorChar;
 
   // If no source file name is given, assume that all files are to be copied.
-  if (source[Length(source)] = '\') then
+  if (source[Length(source)] = TPath.DirectorySeparatorChar) then
     source := source + '*.*';
 
   // If no destination directory is specified, use the current directory.
@@ -1327,8 +1185,7 @@ begin
   end; // if
 
   // Ensure that the destination directory is treated as a directory.
-  if (dest_dir[Length(dest_dir)] <> '\') then
-    dest_dir := dest_dir + '\';
+  dest_dir := IncludeTrailingPathDelimiter(dest_dir);
 
   // Everything is OK so far.
   iErrorCode := FOE_NONE;
@@ -1385,30 +1242,19 @@ function XDeleteFiles(target : String;
         if (sr.name<>'.') and             // We have found a valid sub-directory
            (sr.name<>'..') and
            ((sr.attr and faDirectory) > 0) then
-        begin                             // Go down one level
-
-          if (ExtractFilePath(dttarget)[Length(ExtractFilePath(dttarget))] = '\') then
-          begin
-            Delete_Tree(ExtractFilePath(dttarget) + sr.Name + '\' +
-                        ExtractFileName(dttarget));
-            if ((result = FOE_NONE) and
-                (ExtractFileName(dttarget) = '*.*')) then
-              if (RemoveDir(ExtractFilePath(dttarget) + sr.Name)) then
-                result := FOE_NONE
-              else
-                result := FOE_FOLDER_NOT_DELETED;
-          end // if
-          else
-          begin
-            Delete_Tree(ExtractFilePath(dttarget) + '\' + sr.Name + '\' +
-                        ExtractFileName(dttarget));
-            if ((result = FOE_NONE) and
-                (ExtractFileName(dttarget) = '*.*')) then
-              if (RemoveDir(ExtractFilePath(dttarget) + '\' + sr.Name)) then
-                result := FOE_NONE
-              else
-                result := FOE_FOLDER_NOT_DELETED;
-          end; // else
+        begin
+          // Go down one level
+          Delete_Tree(
+            IncludeTrailingPathDelimiter(ExtractFilePath(dttarget)) +
+            sr.Name + TPath.DirectorySeparatorChar +
+            ExtractFileName(dttarget)
+          );
+          if ((result = FOE_NONE) and
+              (ExtractFileName(dttarget) = '*.*')) then
+            if (RemoveDir(IncludeTrailingPathDelimiter(ExtractFilePath(dttarget)) + sr.Name)) then
+              result := FOE_NONE
+            else
+              result := FOE_FOLDER_NOT_DELETED;
         end; // if
       until (FindNext(sr)<>0);
       SysUtils.FindClose(sr);
@@ -1437,7 +1283,7 @@ begin
   end; // if
 
   // If no target file name is given, quit
-  if (target[Length(target)] = '\') then
+  if (target[Length(target)] = TPath.DirectorySeparatorChar) then
   begin
     result := FOE_INVALID_TARGET;
     Exit;
@@ -1509,7 +1355,7 @@ begin
         if ((srFile.Name <> '.') and
             (srFile.Name <> '..') and
             ((srFile.Attr and faDirectory) <> 0)) then
-        FindAllFiles(ExtractFilePath(sMask) + srFile.Name + '\' + ExtractFileName(sMask),
+        FindAllFiles(ExtractFilePath(sMask) + srFile.Name + TPath.DirectorySeparatorChar + ExtractFileName(sMask),
                      iAttr,bDrillDown,bProperties,slResult);
       until (FindNext(srFile) <> 0);
     end; // if
@@ -1864,7 +1710,7 @@ begin
   end; // if
 
   // If no target file name is given, quit
-  if (sMask[Length(sMask)] = '\') then
+  if (sMask[Length(sMask)] = TPath.DirectorySeparatorChar) then
   begin
     result := FOE_INVALID_TARGET;
     Exit;
@@ -1917,12 +1763,11 @@ var
            ((sr.attr and faDirectory) > 0) then
         begin
           // Go down one level
-          if (ExtractFilePath(sTMask)[Length(ExtractFilePath(sTMask))] = '\') then
-            Count_Tree(ExtractFilePath(sTMask) + sr.Name + '\' +
-                        ExtractFileName(sTMask))
-          else
-            Count_Tree(ExtractFilePath(sTMask) + '\' + sr.Name + '\' +
-                        ExtractFileName(sTMask));
+          Count_Tree(
+            IncludeTrailingPathDelimiter(ExtractFilePath(sTMask)) +
+            sr.Name + TPath.DirectorySeparatorChar +
+            ExtractFileName(sTMask)
+          );
         end; // if
       until (FindNext(sr)<>0);
       SysUtils.FindClose(sr);
@@ -1950,7 +1795,7 @@ begin
   end; // if
 
   // If no target file name is given, quit
-  if (sMask[Length(sMask)] = '\') then
+  if (sMask[Length(sMask)] = TPath.DirectorySeparatorChar) then
   begin
     result := FOE_INVALID_TARGET;
     Exit;
@@ -2043,7 +1888,7 @@ begin
   end; // if
 
   // If no target file name is given, quit
-  if (sMask[Length(sMask)] = '\') then
+  if (sMask[Length(sMask)] = TPath.DirectorySeparatorChar) then
   begin
     result := FOE_INVALID_TARGET;
     Exit;
@@ -2100,12 +1945,11 @@ var
            ((sr.attr and faDirectory) > 0) then
         begin
           // Go down one level
-          if (ExtractFilePath(sTMask)[Length(ExtractFilePath(sTMask))] = '\') then
-            Size_Tree(ExtractFilePath(sTMask) + sr.Name + '\' +
-                        ExtractFileName(sTMask))
-          else
-            Size_Tree(ExtractFilePath(sTMask) + '\' + sr.Name + '\' +
-                        ExtractFileName(sTMask));
+          Size_Tree(
+            IncludeTrailingPathDelimiter(ExtractFilePath(sTMask)) +
+            sr.Name + TPath.DirectorySeparatorChar +
+            ExtractFileName(sTMask)
+          );
         end; // if
       until (FindNext(sr)<>0);
       SysUtils.FindClose(sr);
@@ -2133,7 +1977,7 @@ begin
   end; // if
 
   // If no target file name is given, quit
-  if (sMask[Length(sMask)] = '\') then
+  if (sMask[Length(sMask)] = TPath.DirectorySeparatorChar) then
   begin
     result := FOE_INVALID_TARGET;
     Exit;
@@ -2609,161 +2453,6 @@ end;
 
 //***************************************************************************
 //
-//  FUNCTION  : ExportSection
-//
-//  I/P       : sSectionName : String - The section (key) of the given
-//                TRegIniFile to be exported to a text file
-//
-//              bIniFileFormat : Boolean - TRUE if the export text file should
-//                be in the format of a TIniFile
-//
-//  O/P       :
-//
-//  OPERATION : Exports a named key of a given TRegIniFile.
-//
-//  UPDATED   : 2012-09-25
-//
-//***************************************************************************
-procedure ExportSection(sSectionName : String;
-                        bIniFileFormat : boolean);
-var
-  slValues : TStringList;
-  m,i : Integer;
-  sTemp : String;
-  abBinData: array [0..7] of byte;
-  sKey : String;
-  sValue : String;
-
-begin
-  slValues := TStringList.Create;
-
-  // First export all the keys within this section
-  rifKey.ReadSectionValues(sSectionName,slValues);
-  m := 0;
-  while (m < slValues.Count) do
-  begin
-    sKey := Copy(slValues[m],1,Pos('=',slValues[m])-1);
-    sValue := Copy(slValues[m],Pos('=',slValues[m])+1,Length(slValues[m]));
-    if (sKey <> '') then
-    begin
-      // Simply adding each value to the output string list using
-      //      sRIFAll.Add(slSK.Strings[m]);
-      // will incluce key values of the form:
-      //      dword:xxxxxxxx and
-      //      hex:xx,xx,xx,xx,xx,xx,xx,xx
-      // I want the exported file to be readable as a TIniFile, so these must
-      // be converted to integers and floats, respectively
-      if (bIniFileFormat) then
-      begin
-        if ((sValue <> '') and
-            (Pos('dword',sValue) = 1)) then
-        begin
-          // Integer
-          sValue := Copy(sValue,7,Length(sValue));
-          mifRIFAll.WriteInteger(sSectionName,sKey,StrToInt('$' + sValue));
-
-          mifRIFAll.Free;
-          mifRIFAll := TIniFile.Create(t1234);
-        end // if
-        else
-          if ((sValue <> '') and
-              (Pos('hex',sValue) = 1)) then
-          begin
-            // Floating point value
-            sValue := Copy(sValue,5,Length(sValue));
-            for i := 0 to 7 do
-              abBinData[i] := StrToInt('$' + ExtractAndTrim(sValue,','));
-            SetInifileFloat(mifRIFAll, sSectionName,sKey,double(abBinData));
-          end // if
-          else
-          begin
-            // String
-            // Registry strings can contain carriage returns and line feeds (as might be found
-            // when writing a TMemo.Text to a registry)
-            // Handle these separately so that the they do not destroy the TIniFile format
-            // (This will mean a discontinuity in the way that this string is read and written.
-            // In TRegIniFile it could have been read/written into a single key.
-            // In TIniFile is must be read and written into separate, indexed keys.)
-            if (Pos(#$0D,sValue)<>0) or (Pos(#$0A,sValue) <> 0) then
-            begin
-              sValue := StringReplace(sValue,#$0D#$0A,#$0D,[rfReplaceAll]);
-              sValue := StringReplace(sValue,#$0A#$0D,#$0D,[rfReplaceAll]);
-              sValue := StringReplace(sValue,#$0A,#$0D,[rfReplaceAll]);
-              i := 0;
-              while (Pos(#$0D,sValue)<>0) do
-              begin
-                mifRIFAll.WriteString(sSectionName + '\' + sKey,IntToStr(i),ExtractAndTrim(sValue,#$0D));
-                Inc(i);
-              end;
-              mifRIFAll.WriteString(sSectionName + '\' + sKey,IntToStr(i),sValue);
-            end // if
-            else
-              mifRIFAll.WriteString(sSectionName,sKey,sValue);
-          end;
-      end // if
-      else
-        // We do not want the output in TIniFile format, so write as it was read from the registry
-        mifRIFAll.WriteString(sSectionName,sKey,sValue);
-    end; // else
-    Inc(m);
-  end;
-
-  // Then check if there are further sub sections
-  rifKey.ReadSections(sSectionName,slValues);
-  m := 0;
-  while (m < slValues.Count) do
-  begin
-    if (sSectionName <> '') then
-      sTemp := sSectionName + '\'
-    else
-      sTemp := '';
-    ExportSection(sTemp + slValues.Strings[m],bIniFileFormat);
-    Inc(m);
-  end;
-
-  slValues.Free;
-end; // ExportSection
-
-//***************************************************************************
-//
-//  FUNCTION  : ExportRegKey
-//
-//  I/P       :
-//
-//  O/P       :
-//
-//  OPERATION : Note that this can cause problems with Windows 7 UAC.
-//
-//  UPDATED   : 2012-09-25
-//
-//***************************************************************************
-procedure ExportRegKey(bLocalKey : boolean;
-                       sSection : String;
-                       sFileName : String;
-                       bIniFileFormat : boolean);
-begin
-  rifKey := TRegistryIniFile.Create('');
-
-  if (bLocalKey) then
-    rifKey.RegIniFile.RootKey := HKEY_LOCAL_MACHINE
-  else
-    rifKey.RegIniFile.RootKey := HKEY_CURRENT_USER;
-  rifKey.RegIniFile.OpenKey(sSection,True);
-
-  // Use Unicode in the output export file, so that it can handle any input characters
-//  mifRIFAll := TMemIniFile.Create(sFileName,TEncoding.Unicode);
-  mifRIFAll := TIniFile.Create(sFileName);
-  t1234 := sFileName;
-  ExportSection('',bIniFileFormat);
-
-//  mifRIFAll.UpdateFile;
-
-  mifRIFAll.Free;
-  rifKey.Free;
-end; // ExportRegKey
-
-//***************************************************************************
-//
 //  FUNCTION  : FolderIsEmpty
 //
 //  I/P       : sFolder : String - Folder to be examined (with or without
@@ -2959,10 +2648,10 @@ var
   Separator : String;
 
 begin
-  if Copy(sFolder,Length(sFolder),1)='\' then
+  if (Copy(sFolder,Length(sFolder),1) = TPath.DirectorySeparatorChar) then
     Separator := ''
   else
-    Separator := '\';
+    Separator := TPath.DirectorySeparatorChar;
 
   if (FindFirst(sFolder + Separator + '*.*',faAnyFile,SearchRec) = 0) then
   begin
@@ -3123,15 +2812,16 @@ end; // GetKnownFolder
 *)
 //***************************************************************************
 //
-//  FUNCTION  :
+//  FUNCTION  : GetDriveSerialNo
 //
-//  I/P       : sDrive : String - 'c:' or such-like, without trailing delimiter
+//  I/P       : sDrive : String - 'c:' or such-like, with or without a
+//                trailing delimiter.
 //
 //  O/P       :
 //
 //  OPERATION :
 //
-//  UPDATED   :
+//  UPDATED   : 2024-08-19
 //
 //***************************************************************************
 function GetDriveSerialNo(sDrive : string) : String;
@@ -3139,8 +2829,10 @@ var VolSerNum: DWORD;
     Dummy1, Dummy2: DWORD;
 
 begin
-  if GetVolumeInformation(PWideChar(sDrive + '\'), NIL, 0, @VolSerNum, Dummy1, Dummy2, NIL, 0) then
+  if GetVolumeInformation(PWideChar(IncludeTrailingPathDelimiter(sDrive)), NIL, 0, @VolSerNum, Dummy1, Dummy2, NIL, 0) then
+  begin
     Result := Format('%.4x:%.4x', [HiWord(VolSerNum), LoWord(VolSerNum)]);
+  end;
 end; // GetDriveSerialNo
 
 //***************************************************************************
@@ -5677,6 +5369,10 @@ initialization;
 begin
   iLastIOResult := 0;
   InitGetFolderSize;
+
+  var t1234 : String;
+  t1234 := TPath.GetHomePath;
+
 end; // initialization
 
 end.

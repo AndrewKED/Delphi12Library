@@ -1489,7 +1489,7 @@ end; // RemoveHours
 function RoundToSecond(dtGiven : TDateTime) : TDateTime;
 begin
   if (MilliSecondOf(dtGiven) >= 500) then
-    result := RemoveMilliSeconds(dtGiven) + ONESECOND
+    result := RemoveMilliSeconds(dtGiven) + OneSecond
   else
     result := RemoveMilliSeconds(dtGiven);
 end; // RoundToSecond
