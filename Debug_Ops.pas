@@ -35,7 +35,7 @@ var
 implementation
 
 uses
-  System.Math, System.Classes,
+  System.Math, System.Classes, System.IOUtils,
   File_Ops, Str_Ops;
 
 var
@@ -110,9 +110,6 @@ function SetDebugLogFile(iIndex : Integer;
                          sFileName : String;
                          bClear : Boolean;
                          addHeader : Boolean = FALSE) : Boolean;
-var
-  fLogFile : TextFile;
-
 begin
   Result := FALSE;
   if (InRange(iIndex, Low(DebugFileNames), High(DebugFileNames))) then
@@ -133,19 +130,22 @@ begin
     DebugLogActive[iIndex] := TRUE;
 
     if (bClear) then
-      Result := DeleteFile(DebugFileNames[iIndex])
-    else
-      Result := TRUE;
-
-    if (addHeader) then
     begin
-      AssignFile(fLogFile,DebugFileNames[iIndex]);
-      if (not FileExists(DebugFileNames[iIndex])) then
-      begin
-        Rewrite(fLogFile);
-        Writeln(fLogFile, 'PC Date/Time,Details');
-        System.CloseFile(fLogFile);
-      end;
+      Result := DeleteFile(DebugFileNames[iIndex])
+    end // if
+    else
+    begin
+      Result := TRUE;
+    end; // else
+
+    if ((addHeader) and
+        (not TFile.Exists(DebugFileNames[iIndex]))) then
+    begin
+      // A header is requested, and file does not already exist
+      TFile.WriteAllText(
+        DebugFileNames[iIndex],
+        'PC Date/Time,Details' + sLineBreak
+      );
     end;
   end;
 end; // SetDebugLogFile
@@ -169,7 +169,7 @@ begin
   begin
     // Ensure that a debug file has been specified
     Result := (DebugFileNames[iIndex] <> '') and
-              (FileExists(DebugFileNames[iIndex]));
+              (TFile.Exists(DebugFileNames[iIndex]));
   end // if
   else
   begin
@@ -208,7 +208,6 @@ procedure DebugLog(iIndex : Integer;
                    entryType : TLogEntry = LOG_ENTRY_NONE;
                    includeDT : Boolean = TRUE);
 var
-  fLogFile : TextFile;
   logLine : String;
 
 begin
@@ -221,12 +220,6 @@ begin
       SetDebugLogFile(iIndex, '', FALSE);
 
     try
-      AssignFile(fLogFile,DebugFileNames[iIndex]);
-      if (FileExists(DebugFileNames[iIndex])) then
-        Append(fLogFile)
-      else
-        Rewrite(fLogFile);
-
       logLine := ifthens(includeDT, DebugLineHeader + ',', '');
       case entryType of
         LOG_ENTRY_OK :
@@ -236,8 +229,10 @@ begin
         else
           logLine := logLine + '0,';
       end;
-      Writeln(fLogFile, logLine + sLine);
-      System.CloseFile(fLogFile);
+      TFile.AppendAllText(
+        DebugFileNames[iIndex],
+        logLine + sLine + sLineBreak
+      );
     except
     end; // except
   end; // if
@@ -288,7 +283,7 @@ procedure EraseDebugLog(iIndex : Integer);
 begin
   if (LogExists(iIndex)) then
   begin
-    DeleteFile(DebugFileNames[iIndex])
+    TFile.Delete(DebugFileNames[iIndex])
   end; // if
 end; // EraseDebugLog
 

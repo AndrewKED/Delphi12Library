@@ -973,6 +973,9 @@ end; // SetFormLocnAndSize
 //
 //  OPERATION : Check whether this form size and position has ever been stored.
 //
+//              Note that the TRegIniFile overload version is probably not used
+//              as it is Windows95/NT-specific
+//
 //  UPDATED   : 2019-07-30
 //
 //***************************************************************************
@@ -991,14 +994,17 @@ end; // FormSizePositionStored
 //
 //  FUNCTION  : ClearFormSizePosition
 //
-//  I/P       : cifConfig : TCustomIniFile - The registry entry that will contains
-//                the form information.
+//  I/P       : cifConfig : TCustomIniFile/TRegIniFile - The ini file/registry
+//                entry that will contains the form information.
 //
 //              Section : String - The name of the registry key for this form.
 //
 //  O/P       : None
 //
 //  OPERATION : Clears any record of form size/postion under this section name.
+//
+//              Note that the TRegIniFile overload version is probably not used
+//              as it is Windows95/NT-specific
 //
 //  UPDATED   : 2019-11-20
 //
@@ -1021,8 +1027,8 @@ end; // ClearFormSizePosition
 //
 //  I/P       : ThisForm : TForm - The form whose size/position is to be saved
 //
-//              cifConfig : TCustomIniFile - The registry entry that will contains
-//                the form information.
+//              cifConfig : TCustomIniFile/TRegIniFile - The ini file / registry
+//                entry that will contains the form information.
 //
 //              Section : String - The name of the registry key for this form.
 //
@@ -1033,6 +1039,9 @@ end; // ClearFormSizePosition
 //
 //              Normally called during OnClose of the form, to maintain a
 //              user's choices.
+//
+//              Note that the TRegIniFile overload version is probably not used
+//              as it is Windows95/NT-specific
 //
 //  UPDATED   : 2021-03-09
 //
@@ -1247,8 +1256,8 @@ end;
 //
 //  I/P       : ThisForm : TForm - The form that is to be sized/positioned
 //
-//              ifConfig : TCustomIniFile - The registry entry that contains the
-//                last-recorded form information.
+//              ifConfig : TCustomIniFile/TRegIniFile - The ini file / registry
+//                entry that contains the last-recorded form information.
 //
 //              Section : String - The name of the registry key for this form.
 //
@@ -1274,6 +1283,9 @@ end;
 //                WindowState := wsNormal
 //              if Position := poMainFormCenter, then size is set, but position
 //                will be MainFormCenter (which is sometimes useful for neatness).
+//
+//              Note that the TRegIniFile overload version is probably not used
+//              as it is Windows95/NT-specific
 //
 //  UPDATED   : 2021-03-09
 //

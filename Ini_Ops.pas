@@ -21,12 +21,23 @@ function CountValues(targetFile : TRegIniFile;
                      filter : String = '.+') : Integer; overload;
 procedure ReloadInMemoryIni(var target : TMemIniFile;
                             updateFirst : Boolean = TRUE);
+procedure ExportRegKey(bLocalKey : boolean;
+                       sSection : String;
+                       sFileName : String;
+                       bIniFileFormat : boolean);
 
 implementation
 
 uses
   System.SysUtils, System.Classes, System.RegularExpressions,
+  WinAPI.Windows,
   Str_Ops;
+
+var
+  rifKey : TRegistryIniFile;  // Used in recursive calls for registry exporting
+  mifRIFAll : TIniFile;       // Used in recursive calls for registry exporting
+
+  t1234 : String;
 
 //***************************************************************************
 //
@@ -221,5 +232,160 @@ begin
 
   target.AutoSave := originalAutoSave;
 end; // ReloadInMemoryIni
+
+//***************************************************************************
+//
+//  FUNCTION  : ExportSection
+//
+//  I/P       : sSectionName : String - The section (key) of the given
+//                TRegIniFile to be exported to a text file
+//
+//              bIniFileFormat : Boolean - TRUE if the export text file should
+//                be in the format of a TIniFile
+//
+//  O/P       :
+//
+//  OPERATION : Exports a named key of a given TRegIniFile.
+//
+//  UPDATED   : 2012-09-25
+//
+//***************************************************************************
+procedure ExportSection(sSectionName : String;
+                        bIniFileFormat : boolean);
+var
+  slValues : TStringList;
+  m,i : Integer;
+  sTemp : String;
+  abBinData: array [0..7] of byte;
+  sKey : String;
+  sValue : String;
+
+begin
+  slValues := TStringList.Create;
+
+  // First export all the keys within this section
+  rifKey.ReadSectionValues(sSectionName,slValues);
+  m := 0;
+  while (m < slValues.Count) do
+  begin
+    sKey := Copy(slValues[m],1,Pos('=',slValues[m])-1);
+    sValue := Copy(slValues[m],Pos('=',slValues[m])+1,Length(slValues[m]));
+    if (sKey <> '') then
+    begin
+      // Simply adding each value to the output string list using
+      //      sRIFAll.Add(slSK.Strings[m]);
+      // will incluce key values of the form:
+      //      dword:xxxxxxxx and
+      //      hex:xx,xx,xx,xx,xx,xx,xx,xx
+      // I want the exported file to be readable as a TIniFile, so these must
+      // be converted to integers and floats, respectively
+      if (bIniFileFormat) then
+      begin
+        if ((sValue <> '') and
+            (Pos('dword',sValue) = 1)) then
+        begin
+          // Integer
+          sValue := Copy(sValue,7,Length(sValue));
+          mifRIFAll.WriteInteger(sSectionName,sKey,StrToInt('$' + sValue));
+
+          mifRIFAll.Free;
+          mifRIFAll := TIniFile.Create(t1234);
+        end // if
+        else
+          if ((sValue <> '') and
+              (Pos('hex',sValue) = 1)) then
+          begin
+            // Floating point value
+            sValue := Copy(sValue,5,Length(sValue));
+            for i := 0 to 7 do
+              abBinData[i] := StrToInt('$' + ExtractAndTrim(sValue,','));
+            SetInifileFloat(mifRIFAll, sSectionName,sKey,double(abBinData));
+          end // if
+          else
+          begin
+            // String
+            // Registry strings can contain carriage returns and line feeds (as might be found
+            // when writing a TMemo.Text to a registry)
+            // Handle these separately so that the they do not destroy the TIniFile format
+            // (This will mean a discontinuity in the way that this string is read and written.
+            // In TRegIniFile it could have been read/written into a single key.
+            // In TIniFile is must be read and written into separate, indexed keys.)
+            if (Pos(#$0D,sValue)<>0) or (Pos(#$0A,sValue) <> 0) then
+            begin
+              sValue := StringReplace(sValue,#$0D#$0A,#$0D,[rfReplaceAll]);
+              sValue := StringReplace(sValue,#$0A#$0D,#$0D,[rfReplaceAll]);
+              sValue := StringReplace(sValue,#$0A,#$0D,[rfReplaceAll]);
+              i := 0;
+              while (Pos(#$0D,sValue)<>0) do
+              begin
+                mifRIFAll.WriteString(sSectionName + '\' + sKey,IntToStr(i),ExtractAndTrim(sValue,#$0D));
+                Inc(i);
+              end;
+              mifRIFAll.WriteString(sSectionName + '\' + sKey,IntToStr(i),sValue);
+            end // if
+            else
+              mifRIFAll.WriteString(sSectionName,sKey,sValue);
+          end;
+      end // if
+      else
+        // We do not want the output in TIniFile format, so write as it was read from the registry
+        mifRIFAll.WriteString(sSectionName,sKey,sValue);
+    end; // else
+    Inc(m);
+  end;
+
+  // Then check if there are further sub sections
+  rifKey.ReadSections(sSectionName,slValues);
+  m := 0;
+  while (m < slValues.Count) do
+  begin
+    if (sSectionName <> '') then
+      sTemp := sSectionName + '\'
+    else
+      sTemp := '';
+    ExportSection(sTemp + slValues.Strings[m],bIniFileFormat);
+    Inc(m);
+  end;
+
+  slValues.Free;
+end; // ExportSection
+
+//***************************************************************************
+//
+//  FUNCTION  : ExportRegKey
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION : Note that this can cause problems with Windows 7 UAC.
+//
+//  UPDATED   : 2012-09-25
+//
+//***************************************************************************
+procedure ExportRegKey(bLocalKey : boolean;
+                       sSection : String;
+                       sFileName : String;
+                       bIniFileFormat : boolean);
+begin
+  rifKey := TRegistryIniFile.Create('');
+
+  if (bLocalKey) then
+    rifKey.RegIniFile.RootKey := HKEY_LOCAL_MACHINE
+  else
+    rifKey.RegIniFile.RootKey := HKEY_CURRENT_USER;
+  rifKey.RegIniFile.OpenKey(sSection,True);
+
+  // Use Unicode in the output export file, so that it can handle any input characters
+//  mifRIFAll := TMemIniFile.Create(sFileName,TEncoding.Unicode);
+  mifRIFAll := TIniFile.Create(sFileName);
+  t1234 := sFileName;
+  ExportSection('',bIniFileFormat);
+
+//  mifRIFAll.UpdateFile;
+
+  mifRIFAll.Free;
+  rifKey.Free;
+end; // ExportRegKey
 
 end.
