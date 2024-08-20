@@ -1873,7 +1873,7 @@ begin
   result := 0;
 
   // Check if there are one or more of the required files in the directory
-  if (FindFirst(sMask,iAttr,srResult) = 0) then
+  if (FindFirst(sMask, iAttr, srResult) = 0) then
     // Scan through all the files in the directory
     repeat
       Inc(result);

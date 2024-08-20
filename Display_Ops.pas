@@ -240,7 +240,7 @@ begin
 
   if (requiredWidth > requiredHeight) then
   begin
-    // We would like to have a landscape display
+    // A landscape display is required
     if (Screen.Width > Screen.Height) then
     begin
       // The display is currently in landscape mode
@@ -267,7 +267,7 @@ begin
           (apparentHeight < requiredHeight)) then
       begin
         // The landscape requirements do not fit into the current portrait mode.
-        // Check what might happen if we rotated the display to landscape mode.
+        // Check what might happen if the display is rotated to landscape mode.
         if ((apparentHeight < requiredWidth) or
             (apparentWidth < requiredHeight)) then
         begin
@@ -304,7 +304,7 @@ begin
   end
   else
   begin
-    // We would like to have a portrait display
+    // A portrait display is required
     if (Screen.Width < Screen.Height) then
     begin
       // The display is currently in portrait mode
