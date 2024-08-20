@@ -108,6 +108,7 @@ const
   PF_TABLE_LEFT     = 14;
   PF_TABLE_RIGHT    = 15;
   PF_TABLE_WIDTH    = 16;
+  PF_1MM            = 17;
 
 type
   TSimpleHdrFunction = function : String;
@@ -282,6 +283,8 @@ function PageBreakIfLTmm(MinMMRemaining : integer) : boolean;
 function GetPrnFnValue(iValueID : integer) : Integer;
 procedure SetPrnFnValue(valueID : Integer;
                         newValue : Integer);
+function GetBodyCellHeight(colNumber : Integer;
+                           lines : Integer = 1) : Integer;
 procedure SetLanguage(lcMain : TDKLanguageController);
 procedure PrintPreview2PDF(ppToPDF : TPrintPreview;
                            FirstPage : Integer;
@@ -467,13 +470,13 @@ begin
     taRightJustify :
       ppOutput^.Canvas.TextOut(iPrnAreaRight -
                                ppOutput^.ConvertX(tpParagraph.iRightMM100,mmHiMetric,ppOutput^.Units) -
-                               iLineLength,iCurrentYPos,sLineToPrint);
+                               iLineLength, iCurrentYPos, sLineToPrint);
     taCenter :
         ppOutput^.Canvas.TextOut(iPrnAreaLeft +
                                  ppOutput^.ConvertX(tpParagraph.iLeftMM100,mmHiMetric,ppOutput^.Units) +
                                  (iPrnAreaWidth -
                                   ppOutput^.ConvertX(tpParagraph.iLeftMM100,mmHiMetric,ppOutput^.Units) -
-                                  ppOutput^.ConvertX(tpParagraph.iRightMM100,mmHiMetric,ppOutput^.Units) - iLineLength) div 2,iCurrentYPos,
+                                  ppOutput^.ConvertX(tpParagraph.iRightMM100,mmHiMetric,ppOutput^.Units) - iLineLength) div 2, iCurrentYPos,
                                   sLineToPrint)
     else
     begin
@@ -484,17 +487,17 @@ begin
         if (bFirstParaLine) then
           ppOutput^.Canvas.TextOut(iPrnAreaLeft +
                                    ppOutput^.ConvertX(tpParagraph.iLeftMM100,mmHiMetric,ppOutput^.Units),
-                                   iCurrentYPos,sLineToPrint)
+                                   iCurrentYPos, sLineToPrint)
         else
           ppOutput^.Canvas.TextOut(iPrnAreaLeft +
                                    ppOutput^.ConvertX(tpParagraph.iLeftMM100,mmHiMetric,ppOutput^.Units) +
                                    ppOutput^.ConvertX(tpParagraph.iHangingIndentLeftMM100,mmHiMetric,ppOutput^.Units),
-                                   iCurrentYPos,sLineToPrint)
+                                   iCurrentYPos, sLineToPrint)
       end // if
       else
         // Handle Tab stop positions
         ppOutput^.Canvas.TextOut(iPrnAreaLeft + iaTabs[siCurrentTabStop],
-                                 iCurrentYPos,sLineToPrint)
+                                 iCurrentYPos, sLineToPrint)
     end; // if
   end; // case
 end; // PrintParagraphLine
@@ -1309,9 +1312,9 @@ begin
 
     ppOutput^.Canvas.MoveTo(iPrnAreaLeft,iTopOfParagraph);
     if (bParagraphEnded) then
-      ppOutput^.Canvas.LineTo(iPrnAreaLeft,iCurrentYPos)
+      ppOutput^.Canvas.LineTo(iPrnAreaLeft, iCurrentYPos)
     else
-      ppOutput^.Canvas.LineTo(iPrnAreaLeft,iPrnAreaBottom);
+      ppOutput^.Canvas.LineTo(iPrnAreaLeft, iPrnAreaBottom);
   end; // if
 
 // Check whether a right border has been defined
@@ -1322,9 +1325,9 @@ begin
 
     ppOutput^.Canvas.MoveTo(iPrnAreaRight,iTopOfParagraph);
     if (bParagraphEnded) then
-      ppOutput^.Canvas.LineTo(iPrnAreaRight,iCurrentYPos)
+      ppOutput^.Canvas.LineTo(iPrnAreaRight, iCurrentYPos)
     else
-      ppOutput^.Canvas.LineTo(iPrnAreaRight,iPrnAreaBottom);
+      ppOutput^.Canvas.LineTo(iPrnAreaRight, iPrnAreaBottom);
   end; // if
 
 // Check if we may be printing a bottom border
@@ -1336,8 +1339,8 @@ begin
       ppOutput^.Canvas.Pen.Color := tpParagraph.cBorderColour;
       ppOutput^.Canvas.Pen.Width := ppOutput^.ConvertX(tpParagraph.iBottomBorderTWIPS,mmTWIPS,ppOutput^.Units);
 
-      ppOutput^.Canvas.MoveTo(iPrnAreaLeft,iCurrentYPos);
-      ppOutput^.Canvas.LineTo(iPrnAreaRight,iCurrentYPos);
+      ppOutput^.Canvas.MoveTo(iPrnAreaLeft, iCurrentYPos);
+      ppOutput^.Canvas.LineTo(iPrnAreaRight, iCurrentYPos);
 
       // Compensate for the thickness of the bottom border line
       Inc(iCurrentYPos, ppOutput^.Canvas.Pen.Width div 2);
@@ -1435,7 +1438,7 @@ begin
   // Initially, the paragraph has not spanned a page break.
   bPageSpanned := FALSE;
   // Move the starting position down by the "space before" amount
-  iCurrentYPos := iCurrentYPos + ppOutput^.ConvertY(tpParagraph.iSpaceBeforePt,mmPoints,ppOutput^.Units);
+  iCurrentYPos := iCurrentYPos + ppOutput^.ConvertY(tpParagraph.iSpaceBeforePt, mmPoints, ppOutput^.Units);
   // Every paragraph starts off against the left edge, at tabstop 0.
   siCurrentTabStop := 0;
 
@@ -3868,7 +3871,7 @@ end; // MM100ToBottomOfPage
 //  FUNCTION  : PageBreakIfLTmm
 //
 //  I/P       : MinMMRemaining : Integer - Minimum permissable remaining printing
-//                area at the bottom of the page
+//                area at the bottom of the page, in mm
 //
 //  O/P       : Boolean - TRUE if a new page was started.
 //
@@ -3880,7 +3883,7 @@ end; // MM100ToBottomOfPage
 //***************************************************************************
 function PageBreakIfLTmm(MinMMRemaining : integer) : boolean;
 begin
-  if (MM100ToBottomOfPage >= ppOutput^.ConvertY(MinMMRemaining*10,mmLoMetric,ppOutput^.Units)) then
+  if (MM100ToBottomOfPage >= ppOutput^.ConvertY(MinMMRemaining*10, mmLoMetric, ppOutput^.Units)) then
     result := FALSE
   else
   begin
@@ -3954,6 +3957,9 @@ begin
                   tptTable[ct].bodyColumns[1].iColumnRightMM100
       else
         Result := -1;
+    PF_1MM :
+      Result := ppOutput^.ConvertY(10, mmLoMetric, ppOutput^.Units);
+
     else
       Result := -1;
   end; // case
@@ -3987,6 +3993,35 @@ begin
       iCurrentYPos := newValue;
   end; // case
 end; // SetPrnFnValue
+
+//***************************************************************************
+//
+//  FUNCTION  : GetBodyCellHeight
+//
+//  I/P       : colNumber : Integer - The table column number
+//
+//              lines : Integer = 1 - The number of lines
+//
+//  O/P       : Integer : The height in output units.
+//
+//  OPERATION : Return the height of the cell, in printer output units, of the
+//              body cell in a given column, should it contain a given number
+//              of text lines (within a single paragraph).
+//
+//  UPDATED   : 2024-08-20
+//
+//***************************************************************************
+function GetBodyCellHeight(colNumber : Integer;
+                           lines : Integer = 1) : Integer;
+begin
+  ppOutput^.Canvas.Font.Style := tptTable[ct].bodyColumns[colNumber].sfsFontStyle;
+  ppOutput^.Canvas.Font.Size := tptTable[ct].bodyColumns[colNumber].iFontSize;
+
+  Result := ppOutput^.ConvertY(tptTable[ct].bodyColumns[colNumber].iTopGutterPt, mmPoints, ppOutput^.Units) +
+            lines * ppOutput^.Canvas.TextHeight('A') +
+            (lines - 1) * ppOutput^.ConvertY(tptTable[ct].bodyColumns[colNumber].iInterParaPt, mmPoints, ppOutput^.Units) +
+            ppOutput^.ConvertY(tptTable[ct].bodyColumns[colNumber].iBottomGutterPt, mmPoints, ppOutput^.Units);
+end; // GetBodyCellHeight
 
 //***************************************************************************
 //
@@ -4185,7 +4220,7 @@ var
   pSetDocumentInfo: function(What: Integer; Value: PAnsiChar): Integer; stdcall;
 
 begin
-  LastPage := Min(LastPage,ppToPDF.TotalPages);
+  LastPage := Min(LastPage, ppToPDF.TotalPages);
 
   if ((FirstPage >= 1) and
       (FirstPage <= LastPage)) then
