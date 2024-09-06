@@ -132,7 +132,7 @@ begin
           mp.Play;
         finally
           mp.Close;
-          // Since FreeAndNil here, there is no need for an owner/parent, above
+          // Use FreeAndNil here, there is no need for an owner/parent, above
           FreeAndNil(mp);
         end;
       end // if
