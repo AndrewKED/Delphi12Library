@@ -6,9 +6,9 @@ uses
   Graphics, LED;
 
 function ChangeColourShade(colourOriginal : TColor;
-                           iChange : Longint) : Integer;
+                           change : Integer) : Integer;
 function CanChangeColour(colourOriginal : TColor;
-                         proposedChange : Longint) : Boolean;
+                         proposedChange : Integer) : Boolean;
 function ShadeBetween(StartColour : TColor;
                       EndColour : TColor;
                       Percentage : double) : TColor;
@@ -138,7 +138,7 @@ uses
 //
 //  I/P       : colourOriginal : TColor - The colour to be changed
 //
-//              iChange : Integer - the amount by which each of the RGB
+//              change : Integer - the amount by which each of the RGB
 //                element values is to be changed.
 //
 //  O/P       : Longint - the new colour
@@ -148,37 +148,43 @@ uses
 //
 //              Note that this does not work for system colours (e.g. clHighlight)
 //              One would have to use TStyleManager.ActiveStyle.GetSystemColor()
-//              to determine the actual RGB
+//              to determine the actual RGB.
 //
-//  UPDATED   : 2017-07-21
+//              Final R, G and B valies are limited to $00 to $FF.
+//
+//  UPDATED   : 2024-08-20
 //
 //***************************************************************************
 function ChangeColourShade(colourOriginal : TColor;
-                           iChange : Integer) : Longint;
+                           change : Integer) : Longint;
 var
   iBlue : Integer;
   iRed : Integer;
   iGreen : Integer;
 
 begin
+  change := EnsureRange(change, -$FF, $FF);
+
   colourOriginal := Graphics.ColorToRGB(colourOriginal);
 
   iBlue := (colourOriginal and $00FF0000) shr 16;
   iGreen := (colourOriginal and $0000FF00) shr 8;
   iRed := (colourOriginal and $000000FF);
 
-  iBlue := EnsureRange(iBlue + iChange,$00,$FF);
-  iGreen := EnsureRange(iGreen + iChange,$00,$FF);
-  iRed := EnsureRange(iRed + iChange,$00,$FF);
+  iBlue := EnsureRange(iBlue + change, $00, $FF);
+  iGreen := EnsureRange(iGreen + change, $00, $FF);
+  iRed := EnsureRange(iRed + change, $00, $FF);
 
   result := (iBlue shl 16) + (iGreen shl 8) + iRed;
-end;
+end; // ChangeColourShade
 
 //***************************************************************************
 //
 //  FUNCTION  : CanChangeColour
 //
-//  I/P       :
+//  I/P       : colourOriginal : TColor - The original colour, to be changed
+//
+//              proposedChange : Integer - Shade change per colour
 //
 //  O/P       :
 //
@@ -188,11 +194,11 @@ end;
 //              "appreciable change" is where any one of the colours is able
 //              to be changed by the proposed colour change.
 //
-//  UPDATED   : 2024-07-22
+//  UPDATED   : 2024-08-20
 //
 //***************************************************************************
 function CanChangeColour(colourOriginal : TColor;
-                         proposedChange : Longint) : Boolean;
+                         proposedChange : Integer) : Boolean;
 var
   blue : Integer;
   red : Integer;
@@ -202,6 +208,8 @@ var
   greenNew : Integer;
 
 begin
+  proposedChange := EnsureRange(proposedChange, -$FF, $FF);
+
   colourOriginal := Graphics.ColorToRGB(colourOriginal);
 
   blue := (colourOriginal and $00FF0000) shr 16;

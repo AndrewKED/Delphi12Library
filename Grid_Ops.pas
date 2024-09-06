@@ -16,6 +16,16 @@ procedure HighlightGridColumn(grid : TSMDBGrid;
                               column : TColumn;
                               changeColour : Integer;
                               remap : array of Integer);
+procedure SetGridCellBackground(grid : TSMDBGrid;
+                                cellRect : TRect;
+                                Column: TColumn;
+                                State: TGridDrawState;
+                                clOddRows : TColor); overload
+procedure SetGridCellBackground(grid : TDBGrid;
+                                cellRect : TRect;
+                                Column: TColumn;
+                                State: TGridDrawState;
+                                clOddRows : TColor); overload;
 function GetGridClientWidth(cgTarget : TCustomGrid) : Integer;
 procedure ResizeDBGridColumns(theGrid : TDBGrid;
                               columnRatios : array of Integer);
@@ -23,7 +33,9 @@ procedure LoadDBGridColumnWidths(grid : TDBGrid;
                                  reg : TCustomIniFile;
                                  key : String);
 procedure ResizeGridColumns(theGrid : TDrawGrid;
-                            columnRatios : array of Integer);
+                            columnRatios : array of Integer); overload;
+procedure ResizeGridColumns(theGrid : TDBGrid;
+                            columnRatios : array of Integer); overload;
 procedure LoadGridColumnWidths(grid : TDrawGrid;
                                reg : TCustomIniFile;
                                key : String); overload;
@@ -226,6 +238,97 @@ end; // HighlightGridColumn
 
 //***************************************************************************
 //
+//  FUNCTION  :
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION :
+//
+//  UPDATED   :
+//
+//***************************************************************************
+procedure SetGridCellBackground(grid : TSMDBGrid;
+                                cellRect : TRect;
+                                Column: TColumn;
+                                State: TGridDrawState;
+                                clOddRows : TColor); overload
+var
+  oddLine : Boolean;
+
+begin
+  if (gdSelected in State) then
+  begin
+    grid.Canvas.Brush.Color := clHighlight;
+  end // if
+  else
+  begin
+    oddLine := ((grid.DataSource.DataSet.RecNo mod 2) <> 0);
+    if ((oddLine) and (not grid.DataSource.DataSet.Filtered)) then
+    begin
+      if (CanChangeColour(clOddRows, - (TStyleManager.ActiveStyle.GetSystemColor(clWindow) - Column.Color))) then
+      begin
+        grid.Canvas.Brush.Color := (
+          clOddRows - (TStyleManager.ActiveStyle.GetSystemColor(clWindow) - Column.Color)
+        ) AND $00FFFFFF;
+      end // if
+      else
+      begin
+        grid.Canvas.Brush.Color := (
+          clOddRows + (TStyleManager.ActiveStyle.GetSystemColor(clWindow) - Column.Color)
+        ) AND $00FFFFFF;
+      end;
+    end // if
+    else
+    begin
+      grid.Canvas.Brush.Color := Column.Color;
+    end; // else
+  end; // else
+  grid.Canvas.FillRect(cellRect);
+end; // SetGridCellBackground
+
+procedure SetGridCellBackground(grid : TDBGrid;
+                                cellRect : TRect;
+                                Column: TColumn;
+                                State: TGridDrawState;
+                                clOddRows : TColor); overload;
+var
+  oddLine : Boolean;
+
+begin
+  if (gdSelected in State) then
+  begin
+    grid.Canvas.Brush.Color := clHighlight;
+  end // if
+  else
+  begin
+    oddLine := ((grid.DataSource.DataSet.RecNo mod 2) <> 0);
+    if ((oddLine) and (not grid.DataSource.DataSet.Filtered)) then
+    begin
+      if (CanChangeColour(clOddRows, - (TStyleManager.ActiveStyle.GetSystemColor(clWindow) - Column.Color))) then
+      begin
+        grid.Canvas.Brush.Color := (
+          clOddRows - (TStyleManager.ActiveStyle.GetSystemColor(clWindow) - Column.Color)
+        ) AND $00FFFFFF;
+      end // if
+      else
+      begin
+        grid.Canvas.Brush.Color := (
+          clOddRows + (TStyleManager.ActiveStyle.GetSystemColor(clWindow) - Column.Color)
+        ) AND $00FFFFFF;
+      end;
+    end // if
+    else
+    begin
+      grid.Canvas.Brush.Color := Column.Color;
+    end; // else
+  end; // else
+  grid.Canvas.FillRect(cellRect);
+end; // SetGridCellBackground
+
+//***************************************************************************
+//
 //  FUNCTION  : GetGridClientWidth
 //
 //  I/P       :
@@ -398,13 +501,17 @@ end; // LoadDBGridColumnWidths
 //
 //  OPERATION : Ratiometrically set the size of columns in a TStringGrid.
 //              Differences with the TDBGrid, above, related to property
-//              names, and the inability to set the visibility of a particular column.
+//              names, and the inability to set the visibility of a particular
+//              column.
 //
-//  UPDATED   : 2020-05-22
+//              Note that the overloaded TDBGrid version can deal with columns
+//              that are not visible.
+//
+//  UPDATED   : 2024-08-12
 //
 //***************************************************************************
 procedure ResizeGridColumns(theGrid : TDrawGrid;
-                            columnRatios : array of Integer);
+                            columnRatios : array of Integer); overload
 var
   iClientWidth : Integer;
   t : Integer;
@@ -416,7 +523,9 @@ begin
     iTotal := 0;
     for t := 0 to theGrid.ColCount-1 do
     begin
-      iTotal := iTotal + columnRatios[t];
+      begin
+        iTotal := iTotal + columnRatios[t];
+      end;
     end; // for
 
     iClientWidth := GetGridClientWidth(theGrid);
@@ -426,6 +535,40 @@ begin
       for t := 0 to theGrid.ColCount-1 do
       begin
         theGrid.ColWidths[t] := iClientWidth * columnRatios[t] div iTotal;
+      end; // for
+    end; // if
+  end;
+end; // ResizeGridColumns
+
+procedure ResizeGridColumns(theGrid : TDBGrid;
+                            columnRatios : array of Integer); overload;
+var
+  iClientWidth : Integer;
+  t : Integer;
+  iTotal : Integer;
+
+begin
+  if (Length(columnRatios) = theGrid.Columns.Count) then
+  begin
+    iTotal := 0;
+    for t := 0 to theGrid.Columns.Count-1 do
+    begin
+      if (theGrid.Columns[t].Visible) then
+      begin
+        iTotal := iTotal + columnRatios[t];
+      end;
+    end; // for
+
+    iClientWidth := GetGridClientWidth(theGrid);
+
+    if (iTotal <> 0) then
+    begin
+      for t := 0 to theGrid.Columns.Count-1 do
+      begin
+        if (theGrid.Columns[t].Visible) then
+        begin
+          theGrid.Columns[t].Width := iClientWidth * columnRatios[t] div iTotal;
+        end;
       end; // for
     end; // if
   end;

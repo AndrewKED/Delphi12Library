@@ -51,7 +51,7 @@ procedure SetProgressControls(fActivity : TForm;
 procedure UpdateActivity(sNewActivityMessage : String;
                          iNewPosition : Integer;
                          iProgressIncrement : Integer = 1);
-procedure ShowProgress(bVisible : Boolean);
+procedure ShowProgressBar(bVisible : Boolean);
 procedure ShowActivity(bVisible : Boolean;
                        sNewActivityMessage : String = '';
                        iProgressMax : Integer = 100;
@@ -518,26 +518,26 @@ end; // UpdateActivity
 
 //***************************************************************************
 //
-//  FUNCTION  : ShowProgress
+//  FUNCTION  : ShowProgressBar
 //
 //  I/P       : bVisible : Boolean - TRUE to show, FALSE to hide
 //
 //  O/P       : None
 //
-//  OPERATION : Show/hid a predefined TProgressbar.
+//  OPERATION : Show and update (or hide) a predefined TProgressbar.
 //
 //  UPDATED   : 2023-08-15
 //
 //***************************************************************************
-procedure ShowProgress(bVisible : Boolean);
+procedure ShowProgressBar(bVisible : Boolean);
 begin
   if (progressBar <> nil) then
   begin
     progressBar.Visible := bVisible;
     progressBar.Update;
     progressBar.Invalidate;
-  end;
-end;
+  end; // if
+end; // ShowProgressBar
 
 //***************************************************************************
 //
@@ -547,7 +547,7 @@ end;
 //
 //  O/P       :
 //
-//  OPERATION :
+//  OPERATION : Setup display of the Progress controls.
 //
 //  UPDATED   : 2020-05-26
 //
@@ -576,7 +576,8 @@ begin
     end;
   end; // if
 
-  ShowProgress(bVisible);
+  // Show+update (or hide) the defined progress bar
+  ShowProgressBar(bVisible);
 
   if (progressLabel <> nil) then
   begin

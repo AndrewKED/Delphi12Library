@@ -82,7 +82,7 @@ var
 begin
  nSize := 1024;
  SetLength(Result, nSize);
- if not GetUserName(PChar(Result), nSize) then
+ if not WinApi.Windows.GetUserName(PChar(Result), nSize) then
  begin
    Result := '';
    Exit;
