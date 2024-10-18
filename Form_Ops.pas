@@ -1594,65 +1594,6 @@ end;
 
 //***************************************************************************
 //
-//  FUNCTION  : Scroll
-//
-//  I/P       :
-//
-//  O/P       :
-//
-//  OPERATION : http://fgaillard.com/2010/11/richedit-on-scrolling-strike/
-//
-//              Scrolls given TRichEdit to the caret or the bottom.
-//
-//  UPDATED   : 2012-08-06
-//
-//***************************************************************************
-procedure Scroll(memTarget : TMemo;
-                 bToBottom : boolean); overload;
-var
-  isSelectionHidden: Boolean;
-
-begin
-  with memTarget do
-  begin
-    SelStart := Perform(EM_LINEINDEX, Lines.Count, 0);//Set caret at end
-    isSelectionHidden := HideSelection;
-    try
-      HideSelection := False;
-      if (bToBottom) then
-        Perform(WM_VSCROLL, SB_BOTTOM, 0) // Scroll to bottom
-      else
-        Perform(EM_SCROLLCARET, 0, 0);    // Scroll to caret
-    finally
-      HideSelection := isSelectionHidden;
-    end;
-  end;
-end; // Scroll
-
-procedure Scroll(reTarget : TRichEdit;
-                 bToBottom : boolean); overload;
-var
-  isSelectionHidden: Boolean;
-
-begin
-  with reTarget do
-  begin
-    SelStart := Perform(EM_LINEINDEX, Lines.Count, 0);//Set caret at end
-    isSelectionHidden := HideSelection;
-    try
-      HideSelection := False;
-      if (bToBottom) then
-        Perform(WM_VSCROLL, SB_BOTTOM, 0) // Scroll to bottom
-      else
-        Perform(EM_SCROLLCARET, 0, 0);    // Scroll to caret
-    finally
-      HideSelection := isSelectionHidden;
-    end;
-  end;
-end; // Scroll
-
-//***************************************************************************
-//
 //  FUNCTION  : WebBrowserScreenShot
 //
 //  I/P       :
