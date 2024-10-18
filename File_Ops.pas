@@ -5370,9 +5370,6 @@ begin
   iLastIOResult := 0;
   InitGetFolderSize;
 
-  var t1234 : String;
-  t1234 := TPath.GetHomePath;
-
 end; // initialization
 
 end.

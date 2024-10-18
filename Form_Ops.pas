@@ -5,48 +5,6 @@ unit Form_Ops;
 // DESCRIPTION:
 //  Form-orientated utility routines.
 //
-// TO BE DONE:
-//
-//    Changes Made :
-//
-// VERSIONS:
-//
-//    Update Date : 2007/01/30
-//      * Added more controls to EditControlAvailability
-//
-//    Update Date : 2008-05-27
-//      * Added DimMainForm and UndimMainForm
-//
-//    Update Date : 2008-04-24
-//      * Added GetDBGridClientWidth
-//
-//    Update Date : 2007/02/14
-//      * Added SetFormLocnAndSize
-//
-//    Update Date : 2007/01/30
-//      * Added more controls to EditControlAvailability
-//
-//    Update Date : ?
-//      * WindowShake added
-//      * Clean up CloseAllChildren
-//
-//    Update Date : 2006/08/22
-//    Changes Made :
-//      * Added bFocus parameter to ValidTEditFloat and ValidTEditInteger
-//
-//    Update Date : 2006/08/22
-//    Changes Made :
-//      * Added ValidTEditFloat and ValidTEditInteger
-//
-//    Update Date : 2005/04/11
-//    Changes Made :
-//      * Added EnableAllMenuItems
-//
-//    Update Date : 2005/04/11
-//    Changes Made :
-//      * Added AdjustResolution (not tested)
-//      * Added this header
-//
 //***************************************************************************
 
 interface
@@ -156,8 +114,11 @@ procedure WebBrowserScreen2BMP(const wb: TWebBrowser;
 procedure SetTabsVisible(pcGiven : TPageControl;
                          bVisible : boolean);
 procedure VerticallyCentre(Target : TControl;
-                           Reference : TControl);
-procedure CentreControl(Target : TControl);
+                           Reference : TControl = nil);
+procedure HorizontallyCentre(Target : TControl;
+                           Reference : TControl = nil);
+procedure CentreControl(Target : TControl;
+                        Reference : TControl = nil);
 procedure SetTEditText(Container: TWinControl;
                        TextToSet : string);
 procedure SetSpeedButtonFonts(Sender : TObject;
@@ -1636,65 +1597,6 @@ end;
 
 //***************************************************************************
 //
-//  FUNCTION  : Scroll
-//
-//  I/P       :
-//
-//  O/P       :
-//
-//  OPERATION : http://fgaillard.com/2010/11/richedit-on-scrolling-strike/
-//
-//              Scrolls given TRichEdit to the caret or the bottom.
-//
-//  UPDATED   : 2012-08-06
-//
-//***************************************************************************
-procedure Scroll(memTarget : TMemo;
-                 bToBottom : boolean); overload;
-var
-  isSelectionHidden: Boolean;
-
-begin
-  with memTarget do
-  begin
-    SelStart := Perform(EM_LINEINDEX, Lines.Count, 0);//Set caret at end
-    isSelectionHidden := HideSelection;
-    try
-      HideSelection := False;
-      if (bToBottom) then
-        Perform(WM_VSCROLL, SB_BOTTOM, 0) // Scroll to bottom
-      else
-        Perform(EM_SCROLLCARET, 0, 0);    // Scroll to caret
-    finally
-      HideSelection := isSelectionHidden;
-    end;
-  end;
-end; // Scroll
-
-procedure Scroll(reTarget : TRichEdit;
-                 bToBottom : boolean); overload;
-var
-  isSelectionHidden: Boolean;
-
-begin
-  with reTarget do
-  begin
-    SelStart := Perform(EM_LINEINDEX, Lines.Count, 0);//Set caret at end
-    isSelectionHidden := HideSelection;
-    try
-      HideSelection := False;
-      if (bToBottom) then
-        Perform(WM_VSCROLL, SB_BOTTOM, 0) // Scroll to bottom
-      else
-        Perform(EM_SCROLLCARET, 0, 0);    // Scroll to caret
-    finally
-      HideSelection := isSelectionHidden;
-    end;
-  end;
-end; // Scroll
-
-//***************************************************************************
-//
 //  FUNCTION  : WebBrowserScreenShot
 //
 //  I/P       :
@@ -1812,44 +1714,108 @@ end;
 //
 //  FUNCTION  : VerticallyCentre
 //
-//  I/P       : Target : TControl
+//  I/P       : Target : TControl - the control to be positioned
 //
-//              Reference : TControl
+//              Reference : TControl = nil - The reference control. If nil,
+//                this is treated as the parent of Target
 //
-//  O/P       :
+//  O/P       : None
 //
-//  OPERATION : Used to dynamically set one control (Target) to vertically
-//              centre on another (Reference);
+//  OPERATION : Used to position one control (Target) to vertically
+//              centre on another (Reference)
 //
-//  UPDATED   :
+//  UPDATED   : 2024-09-05
 //
 //***************************************************************************
 procedure VerticallyCentre(Target : TControl;
-                           Reference : TControl);
+                           Reference : TControl = nil);
 begin
-  Target.Top := Reference.Top + (Reference.Height - Target.Height) div 2;
+  if (Reference = nil) then
+  begin
+    Reference := Target.Parent;
+  end;
+
+  if (Reference <> nil) then
+  begin
+    if (Target.Parent = Reference) then
+    begin
+      // The target is an immediate child of the reference.
+      // Its top position is therefore relative.
+      Target.Top := (Reference.ClientHeight - Target.Height) div 2;
+    end // if
+    else
+    begin
+      // The target is not a child of the reference
+      // Its left position is therefor offset in the same way as the reference.
+      Target.Top := Reference.Top + (Reference.ClientHeight - Target.Height) div 2;
+    end; // else
+  end;
 end; // VerticallyCentre
+
+//***************************************************************************
+//
+//  FUNCTION  : HorizontallyCentre
+//
+//  I/P       : Target : TControl - the control to be positioned
+//
+//              Reference : TControl = nil - The reference control. If nil,
+//                this is treated as the parent of Target
+//
+//  O/P       : None
+//
+//  OPERATION : Used to position one control (Target) to horizontally
+//              centre on another (Reference);
+//
+//  UPDATED   : 2024-09-05
+//
+//***************************************************************************
+procedure HorizontallyCentre(Target : TControl;
+                             Reference : TControl = nil);
+begin
+  if (Reference = nil) then
+  begin
+    Reference := Target.Parent;
+  end;
+
+  if (Reference <> nil) then
+  begin
+    if (Target.Parent = Reference) then
+    begin
+      // The target is an immediate child of the reference.
+      // Its left position is therefore relative.
+      Target.Left := (Reference.ClientWidth - Target.Width) div 2;
+    end // if
+    else
+    begin
+      // The target is not a child of the reference
+      // Its left position is therefor offset in the same way as the reference.
+      Target.Left := Reference.Left + (Reference.ClientWidth - Target.Width) div 2;
+    end;
+  end;
+end; // HorizontallyCentre
 
 //***************************************************************************
 //
 //  FUNCTION  : CentreControl
 //
-//  I/P       : Target : TControl - The control to be centred
+//  I/P       : Target : TControl - the control to be positioned
+//
+//              Reference : TControl = nil - The reference control. If nil,
+//                this is treated as the parent of Target
 //
 //  O/P       : None
 //
-//  OPERATION : Centres a given control within its parent
+//  OPERATION : Used to position one control (Target) to horizontally and
+//              vertically centre on another (Reference);
 //
-//  UPDATED   : 2017-12-08
+//  UPDATED   : 2024-09-05
 //
 //***************************************************************************
-procedure CentreControl(Target : TControl);
+procedure CentreControl(Target : TControl;
+                        Reference : TControl = nil);
 begin
-  if ((Target as TControl).Parent <> nil) then
-  begin
-    (Target as TControl).Left := ((Target as TControl).Parent.ClientWidth - (Target as TControl).Width) div 2;
-    (Target as TControl).Top := ((Target as TControl).Parent.ClientHeight - (Target as TControl).Height) div 2;
-  end;
+  HorizontallyCentre(Target, Reference);
+  VerticallyCentre(Target, Reference);
 end;
 
 //***************************************************************************
@@ -2147,7 +2113,7 @@ end; // CloseFromFormActivate
 //  FUNCTION  : ManageChildModal
 //
 //  I/P       : parentForm : TCustomForm - The form which is launching the
-//                child modal form.
+//                child modal form. (May be nil)
 //
 //              childForm : TFTCustomFormorm - The child modal form to be
 //                launched.
@@ -2173,17 +2139,25 @@ function ManageChildModal(parentForm : TCustomForm;
                           childForm : TCustomForm;
                           keepVisible : Boolean = FALSE) : TModalResult;
 begin
-  parentForm.Visible := FALSE;
-  result := childForm.ShowModal;
-  if ((keepVisible) or
-      (childForm.ModalResult = mrAbort)) then
+  if (parentForm <> nil) then
   begin
-    parentForm.Visible := TRUE;
-  end // if
-  else
-  begin
-    parentForm.Close;
+    parentForm.Visible := FALSE;
   end;
+
+  result := childForm.ShowModal;
+
+  if (parentForm <> nil) then
+  begin
+    if ((keepVisible) or
+        (childForm.ModalResult = mrAbort)) then
+    begin
+      parentForm.Visible := TRUE;
+    end // if
+    else
+    begin
+      parentForm.Close;
+    end;
+  end; // if
 end; // ManageChildModal
 
 //***************************************************************************

@@ -57,8 +57,8 @@ function DewPoint(dTemperature : Double;
                   dHumidity : Double) : Double;
 function DerivedRH(dDPTemperature : Double;
                    dTemperature : Double) : Double;
-function FrostPoint(dFPTemperature : Double;
-                    dFPHumidity : Double) : Double;
+function FrostPoint(dTemperature : Double;
+                    dHumidity : Double) : Double;
 function DewPointDepression(dDPTemperature : Double;
                             dDPHumidity : Double) : Double;
 procedure GetWindFromEndPoints(var dSpeed : Double;
@@ -292,7 +292,8 @@ end; // SaturationVapourPressure
 //                Humidity & Moisture, Teddington, London, England, April 1998
 //                "ITS-90 FORMULATIONS FOR VAPOR PRESSURE, FROSTPOINT
 //                TEMPERATURE, DEWPOINT TEMPERATURE, AND
-//                ENHANCEMENT FACTORS IN THE RANGE �100 TO +100 C"
+//                ENHANCEMENT FACTORS IN THE RANGE -100 TO +100 C"
+//                "its90formulas for Vapour Pressure, Frost Point, Temperature, DewpointT -100to+100 - Hardy.pdf"
 //
 //              Note : I think the text in the document is a bit confusing.
 //                The parameter given mut be Vapour Pressure and NOT
@@ -344,7 +345,8 @@ end; // Td_From_VP
 //                Humidity & Moisture, Teddington, London, England, April 1998
 //                "ITS-90 FORMULATIONS FOR VAPOR PRESSURE, FROSTPOINT
 //                TEMPERATURE, DEWPOINT TEMPERATURE, AND
-//                ENHANCEMENT FACTORS IN THE RANGE �100 TO +100 C"
+//                ENHANCEMENT FACTORS IN THE RANGE -100 TO +100 C"
+//                "its90formulas for Vapour Pressure, Frost Point, Temperature, DewpointT -100to+100 - Hardy.pdf"
 //
 // = (2.1257969E2 - 1.0264612E1 * LN(B2) + 1.4354796E-1 * POWER(LN(B2),2)) / (1 - 8.2871619E-2 * LN(B2) + 2.3540411E-3 * POWER(LN(B2),2) - 2.4363951E-5 * POWER(LN(B2),3)) - 273.15
 //
@@ -402,16 +404,10 @@ end; // Tf_From_VP
 //***************************************************************************
 function VapourPressure(dTemperature : Double;
                         dHumidity : Double) : Double;
-//var
-//  dDPTemperature : Double;
 begin
   if ((dTemperature < INVALID_TEST) and
       (dHumidity < INVALID_TEST)) then
   begin
-//    Use either
-//    dDPTemperature := DewPoint(dTemperature,dHumidity);
-//    result := SaturationVapourPressure(dDPTemperature);
-//    or
     result := SaturationVapourPressure(dTemperature) * dHumidity / 100.0;
   end // if
   else
@@ -849,49 +845,27 @@ end;
 //
 //  O/P       : Double - The dew point temperature in degC
 //
-//  OPERATION : This function returns the dew point (celsius) given the
-//              temperature (Celsius) and relative humidity (%).
+//  OPERATION : Return the dew point (Celsius) given the temperature (Celsius)
+//              and relative humidity (%).
 //
-//              Definition : This is the temperature to which the air
-//              must be cooled before dew condenses from it. At this
-//              temperature the actual water vapour content of the air
-//              is equal to the saturation water vapour pressure.
-//
-//					    The equations used were obtained from WMO-No.8 "Guide
-//              to Meteorological Instruments and Methods of
-//              Observation" Annex 4B
-//
-//  UPDATED   : 2004/10/14
+//  UPDATED   : 2024-09-30
 //
 //***************************************************************************
 function DewPoint(dTemperature : Double;
                   dHumidity : Double) : Double;
 var
-  es : Double;
-  ed : Double;
-//  dTemp : Double;
+  vp : Double;
 
 begin
-  if ((dTemperature < INVALID_TEST) and
-      (dHumidity < INVALID_TEST)) then
+  vp := VapourPressure(dTemperature, dHumidity);
+  if (vp < INVALID_TEST) then
   begin
-    // Determine the saturation vapour pressure at this temperature
-    // Note: the effect of pressure will be cancelled out below, so we may use
-    // a constant here.
-    es := SaturationVapourPressure(dTemperature);//,STANDARD_SL_PRESSURE);
-    // From the humidity, work out the current vapour pressure
-    if (dHumidity < 1.0) then
-      dHumidity := 1.0;
-    ed := (dHumidity * es) / 100.0;
-    // Now reverse the saturated vapour pressure calculation to work out the
-    // temperature at which this vapour pressure would be the saturated vapour
-    // pressure.   This is Dew Point.
-  //  dTemp := Ln(ed / (6.112 * fp(STANDARD_SL_PRESSURE)));
-  //  result := (243.12 * dTemp) / (17.62 - dTemp);
-    result := Td_From_VP(ed);
+    result := Td_From_VP(vp);
   end // if
   else
+  begin
     result := INVALID_VALUE;
+  end;
 end; // DewPoint
 
 //***************************************************************************
@@ -940,44 +914,27 @@ end; // DerivedRH
 //
 //  O/P       : (double) - The dew point temperature in �C
 //
-//  OPERATION : This function returns the dew point (celsius) given the
-//              temperature (Celsius) and relative humidity (%).
+//  OPERATION : Return the frost point (Celsius) given the temperature (Celsius)
+//              and relative humidity (%).
 //
-//              Definition : This is the temperature to which the air
-//              must be cooled before dew condenses from it. At this
-//              temperature the actual water vapour content of the air
-//              is equal to the saturation water vapour pressure.
-//
-//					    The equations used were obtained from WMO-No.8 "Guide
-//              to Meteorological Instruments and Methods of
-//              Observation" Annex 4B
-//
-//  UPDATED   : 2017-12-07
+//  UPDATED   : 2024-09-30
 //
 //***************************************************************************
-function FrostPoint(dFPTemperature : Double;
-                    dFPHumidity : Double) : Double;
+function FrostPoint(dTemperature : Double;
+                    dHumidity : Double) : Double;
 var
-  es : Double;
-  ed : Double;
+  vp : Double;
 
 begin
-  if ((dFPTemperature < INVALID_TEST) and
-      (dFPHumidity < INVALID_TEST)) then
+  vp := VapourPressure(dTemperature, dHumidity);
+  if (vp < INVALID_TEST) then
   begin
-    // Determine the saturation vapour pressure at this temperature
-    // Note: the effect of pressure will be cancelled out below, so we may use
-    // a constant here.
-    es := SaturationVapourPressure(dFPTemperature);
-    // From the humidity, work out the current vapour pressure
-    if (dFPHumidity < 1.0) then
-      dFPHumidity := 1.0;
-    ed := (dFPHumidity * es) / 100.0;
-
-    result := Tf_From_VP(ed);
+    result := Tf_From_VP(vp);
   end // if
   else
+  begin
     result := INVALID_VALUE;
+  end;
 end; // FrostPoint
 
 //***************************************************************************

@@ -25,6 +25,7 @@ type
     ggaDGPSStationID : Double;
   end;
 
+function DMToD(valueDM : Double) : Double;
 function NMEASentenceOK(sentence : AnsiString) : Boolean;
 function GotRMCData(var sentence : AnsiString;
                     var gnssData : TGNSSData) : Boolean;
@@ -36,6 +37,36 @@ implementation
 uses
   System.SysUtils,
   Str_Ops, KEDConstants;
+
+//***************************************************************************
+//
+//  FUNCTION  : DMToD
+//
+//  I/P       : valueDM : Double - A degrees value, of the form
+//                degrees*100 + minutes
+//
+//  O/P       : Double - the converted value, being decimal degrees.
+//
+//  OPERATION : Convert a degrees value from the standard NMEA form into decimal
+//              degrees.
+//
+//              Latitude and longitude from the sonde are reported in this
+//              fashion, as per the NMEA message standard.
+//
+//  UPDATED   : 2024-09-06
+//
+//***************************************************************************
+function DMToD(valueDM : Double) : Double;
+var
+  temp : Double;
+
+begin
+  temp := 1.0;
+  if (valueDM < 0.0) then
+    temp := -1.0;
+  valueDM := Abs(valueDM);
+  Result := temp * (Int(valueDM / 100.0) + Frac(valueDM / 100.0) / 0.6);
+end; // DMToD
 
 //***************************************************************************
 //
@@ -67,11 +98,9 @@ begin
 
   currentDS := FormatSettings.DecimalSeparator;
   FormatSettings.DecimalSeparator := '.';
-  result := StrToFloat(String(sTemp));
+  result := DMToD(StrToFloat(String(sTemp)));
   FormatSettings.DecimalSeparator := currentDS;
 
-  result := Int(result / 100.0) +
-            Frac(result / 100.0) / 0.6;
   if (ExtractAndTrim(sentence,',') = negativeIndicator) then
     result := - result;
 end; // GetDegrees

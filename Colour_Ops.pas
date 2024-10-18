@@ -13,6 +13,7 @@ function ShadeBetween(StartColour : TColor;
                       EndColour : TColor;
                       Percentage : double) : TColor;
 function LEDRedGreen(Good : boolean) : TLEDColor;
+function Colour2Text(value : TColor) : String;
 
 const
 // Colours
@@ -130,6 +131,7 @@ const
 implementation
 
 uses
+  Vcl.GraphUtil,
   Math;
 
 //***************************************************************************
@@ -293,6 +295,138 @@ begin
     result := lcGreen
   else
     result := lcRed;
+end;
+
+//***************************************************************************
+//
+//  FUNCTION  : Colour2Text
+//
+//  I/P       : value : TColor - The colour to be named
+//
+//  O/P       : String - the name
+//
+//  OPERATION : Attempt to get a reasonable English name for the given colour.
+//
+//  UPDATED   : 2024-09-27
+//
+//***************************************************************************
+function Colour2Text(value : TColor) : String;
+var
+  h : Word;
+  l : Word;
+  s : word;
+
+begin
+  value := Graphics.ColorToRGB(value);
+
+  Result := ColorToWebColorName(value);
+//  if (Pos('clWeb', Result) <> 1) then
+  begin
+    // This did not "hit" one of the standard Web Colours,
+    // so make an attempt
+    ColorRGBToHLS(value, h, l, s);
+
+    // Get the basic description of the colour hue
+    // https://www.beachpainting.com/blog/color-hue-tint-tone-and-shade/
+
+    if (h <= 11) then
+      Result := 'red'
+    else if (h <= 31) then
+      Result := 'red-yellow'
+    else if (h <= 53) then
+      Result := 'yellow'
+    else if (h <= 74) then
+      Result := 'green-yellow'
+    else if (h <= 96) then
+      Result := 'green'
+    else if (h <= 117) then
+      Result := 'green-cyan'
+    else if (h <=138) then
+      Result := 'cyan'
+    else if (h <= 159) then
+      Result := 'blue-cyan'
+    else if (h <= 181) then
+      Result := 'blue'
+    else if (h <= 202) then
+      Result := 'blue-magenta'
+    else if (h <= 223) then
+      Result := 'magenta'
+    else if (h <= 245) then
+      Result := 'red-magenta'
+    else
+      Result := 'red';
+
+    // Imagine a square of a particular hue with
+    //    min(s) on left, max(s) on right
+    //    min(l) at bottom, max(l) at top
+    // Top side will go l-to-r white to pale colour to bright colour
+    // Bottom side will go l-to-r black to black
+    // Right side will go t-to-b bright colour to dark colour to black.
+    // Left side will go t-to-b white to grey to black.
+
+    // AArgh! GIMP also uses a triangle, which is why the bottom of the above
+    // square is all black.
+
+    // changing S if V (L?) is 0 does nothing (stays black).
+
+    // Try this out on GIMP colour dialog.
+
+
+    // White / Soft / Bright
+    // Grey / Pale / Mid
+    // Black / Dark / Deep
+
+    // Ths L and S terms from ColorRGBToHLS do not match to the V and S terms in Gimp,
+    // so the descriptions below/here are wrong.
+
+    // Luminosity
+    if (l < 83) then
+    begin
+      if (s < 83) then
+        Result := 'Black ' + Result
+      else if (s < 166) then
+        Result := 'Grey ' + Result
+      else
+        Result := 'White ' + Result
+    end
+    else if (l < 166) then
+    begin
+      if (s < 83) then
+        Result := 'Dark ' + Result
+      else if (s < 166) then
+        Result := 'Pale ' + Result
+      else
+        Result := 'Soft ' + Result
+    end
+    else
+    begin
+      if (s < 83) then
+        Result := 'Deep ' + Result
+      else if (s < 166) then
+        Result := 'Mid ' + Result
+      else
+        Result := 'Bright ' + Result
+    end;
+
+//
+
+//    // Luminosity
+//    if (l < 83) then
+//      Result := Result + ' (dark, '
+//    else if (l < 166) then
+//      Result := Result + ' (mid, '
+//    else
+//      Result := Result + ' (light, ';
+//
+//    // Saturation
+//    if (s < 128) then
+//      Result := Result + ' unsaturated)'
+//    else
+//      Result := Result + ' saturated)';
+
+
+    // Add descriptions of saturation and lightness
+  end; // else
 end;
 
 end.

@@ -18,11 +18,19 @@ function GetBestDisplayFit(requiredWidth : Integer;
                            requiredHeight : Integer) : Integer;
 function DisplayOK(RequiredX : DWord;
                    RequiredY : DWord) : Boolean;
+function DarkModeIsEnabled: boolean;
+procedure SetAppropriateThemeMode(const DarkModeThemeName, LightModeThemeName: string);
+procedure SetSpecificThemeMode(const AsDarkMode: Boolean; const DarkModeThemeName, LightModeThemeName: string);
 
 implementation
 
 uses
-  Winapi.Windows, System.SysUtils, Vcl.Forms;
+{$IFDEF MSWINDOWS}
+  Winapi.Windows,       // for the pre-defined registry key constants
+  System.Win.Registry,  // for the registry read access
+{$ENDIF}
+  System.SysUtils,
+  Vcl.Forms, Vcl.Themes;
 
 const
   ENUM_CURRENT_SETTINGS: DWORD = $FFFFFFFF;
@@ -407,6 +415,126 @@ begin
     ChangeDisplayOrientation(BestOrientation);
   end; // if
 end; // DisplayOK
+
+//***************************************************************************
+//
+//  FUNCTION  : DarkModeIsEnabled
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION : Checks the Windows registry to see if Windows Dark Mode is enabled
+//
+//              Originally written by Ian Barker
+//                https://github.com/checkdigits
+//
+//              Ian recommends that one should use API calls, as MS will likely
+//              change this hard-coding in future! (2024-08-19 I don't see any
+//              WinAPI functions that access this setting.)
+//
+//  UPDATED   : 2024-08-19
+//
+//***************************************************************************
+function DarkModeIsEnabled: boolean;
+{$IFDEF MSWINDOWS}
+const
+  TheKey   = 'Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\';
+  TheValue = 'AppsUseLightTheme';
+var
+  Reg: TRegistry;
+{$ENDIF}
+begin
+
+  Result := False;  // There is no dark side - the Jedi are victorious!
+
+// This relies on a registry setting only available on MS Windows
+// If the developer has somehow managed to get to this point then tell
+// them not to do this!
+{$IFNDEF MSWINDOWS}
+{$MESSAGE WARN '"DarkModeIsEnabled" will only work on MS Windows targets'}
+{$ELSE}
+  Reg    := TRegistry.Create(KEY_READ);
+  try
+    Reg.RootKey := HKEY_CURRENT_USER;
+    if Reg.KeyExists(TheKey) then
+      if Reg.OpenKey(TheKey, False) then
+      try
+        if Reg.ValueExists(TheValue) then
+          Result := Reg.ReadInteger(TheValue) = 0;
+      finally
+        Reg.CloseKey;
+      end;
+  finally
+    Reg.Free;
+  end;
+{$ENDIF}
+end; // DarkModeIsEnabled
+
+//***************************************************************************
+//
+//  FUNCTION  : SetAppropriateThemeMode
+//
+//  I/P       : DarkModeThemeName : string - The theme name for "dark mode"
+//
+//              LightModeThemeName : string - The theme name for "light mode"
+//
+//  O/P       : None
+//
+//  OPERATION : Automatically sets a Dark Mode theme is Windows is running in Dark Mode
+//
+//              To use:
+//              1. Got to project properties
+//              2. Select appearance and choose two or more themes.  Note down the names!
+//              3. In your FormCreate (or wherever) put the following line:
+//                SetAppropriateThemeMode(**name_of_the_dark_theme**, **namme_of_the_non_dark_theme**);
+//
+//              For example:
+//                SetAppropriateThemeMode('Carbon', 'Windows10');
+//
+//              Originally written by Ian Barker
+//                https://github.com/checkdigits
+//
+//  UPDATED   : 2024-08-19
+//
+//***************************************************************************
+procedure SetAppropriateThemeMode(const DarkModeThemeName, LightModeThemeName : string);
+begin
+  SetSpecificThemeMode(DarkModeIsEnabled, DarkModeThemeName, LightModeThemeName);
+end; // SetAppropriateThemeMode
+
+//***************************************************************************
+//
+//  FUNCTION  : SetSpecificThemeMode
+//
+//  I/P       : AsDarkMode : Boolean - TRUE to select the "dark mode"
+//
+//              DarkModeThemeName : string - The theme name for "dark mode"
+//
+//              LightModeThemeName : string - The theme name for "light mode"
+//
+//  O/P       :
+//
+//  OPERATION : Set a dark or light mode theme.
+//
+//              Originally written by Ian Barker
+//                https://github.com/checkdigits
+//
+//  UPDATED   : 2024-08-19
+//
+//***************************************************************************
+procedure SetSpecificThemeMode(const AsDarkMode: Boolean;
+                               const DarkModeThemeName, LightModeThemeName : string);
+var
+  ChosenTheme: string;
+
+begin
+  if AsDarkMode then
+    ChosenTheme := DarkModeThemeName
+  else
+    ChosenTheme := LightModeThemeName;
+  TStyleManager.TrySetStyle(ChosenTheme, False);
+end; // SetSpecificThemeMode
 
 //***************************************************************************
 //
