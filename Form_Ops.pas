@@ -2110,7 +2110,7 @@ end; // CloseFromFormActivate
 //  FUNCTION  : ManageChildModal
 //
 //  I/P       : parentForm : TCustomForm - The form which is launching the
-//                child modal form.
+//                child modal form. (May be nil)
 //
 //              childForm : TFTCustomFormorm - The child modal form to be
 //                launched.
@@ -2136,17 +2136,25 @@ function ManageChildModal(parentForm : TCustomForm;
                           childForm : TCustomForm;
                           keepVisible : Boolean = FALSE) : TModalResult;
 begin
-  parentForm.Visible := FALSE;
-  result := childForm.ShowModal;
-  if ((keepVisible) or
-      (childForm.ModalResult = mrAbort)) then
+  if (parentForm <> nil) then
   begin
-    parentForm.Visible := TRUE;
-  end // if
-  else
-  begin
-    parentForm.Close;
+    parentForm.Visible := FALSE;
   end;
+
+  result := childForm.ShowModal;
+
+  if (parentForm <> nil) then
+  begin
+    if ((keepVisible) or
+        (childForm.ModalResult = mrAbort)) then
+    begin
+      parentForm.Visible := TRUE;
+    end // if
+    else
+    begin
+      parentForm.Close;
+    end;
+  end; // if
 end; // ManageChildModal
 
 //***************************************************************************
