@@ -1235,7 +1235,10 @@ begin
     // Set left first, to correctly create maximized forms on the applicable monitor
     thisForm.Left := Screen.Monitors[useMonitor].Left;
     thisForm.Top := Screen.Monitors[useMonitor].Top;
-    ThisForm.WindowState := wsMaximized;
+    thisForm.Height := Screen.Monitors[useMonitor].Height;
+    thisForm.Width := Screen.Monitors[useMonitor].Width;
+    thisForm.WindowState := wsMaximized;
+    thisForm.Repaint;
   end // if
   else
   begin
