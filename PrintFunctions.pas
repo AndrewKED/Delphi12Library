@@ -3703,7 +3703,7 @@ end; // EndTable
 //
 //  OPERATION : Prints the given BMP
 //
-//  UPDATED   : 2020-05-04
+//  UPDATED   : 2024-10-18
 //
 //***************************************************************************
 function PrintGraphic(iX,iY : Integer;
@@ -3714,42 +3714,45 @@ var
   iBMPHeight : Integer;
 
 begin
-  if (Assigned(ppOutput)) then
+  if (gPicture.Width <> 0) then
   begin
-    iBMPWidth := ppOutput^.ConvertX(iWidth, mmHiMetric, ppOutput^.Units);
-    iBMPHeight := ppOutput^.ConvertX((gPicture.Height * iWidth) div  gPicture.Width, mmHiMetric, ppOutput^.Units);
+    if (Assigned(ppOutput)) then
+    begin
+      iBMPWidth := ppOutput^.ConvertX(iWidth, mmHiMetric, ppOutput^.Units);
+      iBMPHeight := ppOutput^.ConvertX((gPicture.Height * iWidth) div  gPicture.Width, mmHiMetric, ppOutput^.Units);
 
-  (*
-    ppOutput^.Canvas.StretchDraw(Rect(ppOutput^.ConvertX(iX,mmHiMetric,ppOutput^.Units),
-                                      ppOutput^.ConvertY(iY,mmHiMetric,ppOutput^.Units),
-                                      ppOutput^.ConvertX(iX,mmHiMetric,ppOutput^.Units) + iBMPWidth,
-                                      ppOutput^.ConvertY(iY,mmHiMetric,ppOutput^.Units) + iBMPHeight),
-                                 bmPicture);
-  *)
-  //!!ANS*BUSY HERE
-  (*
-  // Had problems with PaintGraphicEx at TraX in Sept 2015.
-  // It occasionally produced black (or sometimes even other colour) images
-  // Although it did not happen every time I used the PC, I did a test one day in which graphics (the TraX logo)
-  // placed on TPrintPreview using PaintGraphicEx would cause solid colour blocks (typically black) about
-  // 12% of the time.   On another day, I could not get the error to happen.
-  // Using ppOutput^.Canvas.StretchDraw resulted in 0% errors on the day when I was getting 12%
-  // error with PaintGraphicEx.
-  // I need to investigate further on a day when black blocks are being produced.
-  // 1) Check typecasting of the TBitmap before passing it to PaintGraphicEx
-  // 2) Check pre-clearing the rectangle, as is done in DrawPageLogo, above.
-  // 3) Try to write a small application that produces the problem, for demonstration and
-  //    return to Kambiz.
-  *)
+    (*
+      ppOutput^.Canvas.StretchDraw(Rect(ppOutput^.ConvertX(iX,mmHiMetric,ppOutput^.Units),
+                                        ppOutput^.ConvertY(iY,mmHiMetric,ppOutput^.Units),
+                                        ppOutput^.ConvertX(iX,mmHiMetric,ppOutput^.Units) + iBMPWidth,
+                                        ppOutput^.ConvertY(iY,mmHiMetric,ppOutput^.Units) + iBMPHeight),
+                                   bmPicture);
+    *)
+    //!!ANS*BUSY HERE
+    (*
+    // Had problems with PaintGraphicEx at TraX in Sept 2015.
+    // It occasionally produced black (or sometimes even other colour) images
+    // Although it did not happen every time I used the PC, I did a test one day in which graphics (the TraX logo)
+    // placed on TPrintPreview using PaintGraphicEx would cause solid colour blocks (typically black) about
+    // 12% of the time.   On another day, I could not get the error to happen.
+    // Using ppOutput^.Canvas.StretchDraw resulted in 0% errors on the day when I was getting 12%
+    // error with PaintGraphicEx.
+    // I need to investigate further on a day when black blocks are being produced.
+    // 1) Check typecasting of the TBitmap before passing it to PaintGraphicEx
+    // 2) Check pre-clearing the rectangle, as is done in DrawPageLogo, above.
+    // 3) Try to write a small application that produces the problem, for demonstration and
+    //    return to Kambiz.
+    *)
 
-    ppOutput^.PaintGraphicEx(Rect(ppOutput^.ConvertX(iX, mmHiMetric, ppOutput^.Units),
-                                  ppOutput^.ConvertY(iY, mmHiMetric, ppOutput^.Units),
-                                  ppOutput^.ConvertX(iX, mmHiMetric, ppOutput^.Units) + iBMPWidth,
-                                  ppOutput^.ConvertY(iY, mmHiMetric, ppOutput^.Units) + iBMPHeight),
-                             gPicture,FALSE,FALSE,FALSE);
+      ppOutput^.PaintGraphicEx(Rect(ppOutput^.ConvertX(iX, mmHiMetric, ppOutput^.Units),
+                                    ppOutput^.ConvertY(iY, mmHiMetric, ppOutput^.Units),
+                                    ppOutput^.ConvertX(iX, mmHiMetric, ppOutput^.Units) + iBMPWidth,
+                                    ppOutput^.ConvertY(iY, mmHiMetric, ppOutput^.Units) + iBMPHeight),
+                               gPicture,FALSE,FALSE,FALSE);
+    end; // if
+
+    Result := iY + (gPicture.Height * iWidth) div  gPicture.Width;
   end; // if
-
-  Result := iY + (gPicture.Height * iWidth) div  gPicture.Width;
 end; // PrintGraphic
 
 //***************************************************************************

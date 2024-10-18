@@ -54,6 +54,8 @@ function String2Longint(sInput : String;
                         var liOutput : longint) : boolean;
 function ExtractAndTrim (var sInput : String; sSeparator : string) : String; overload;
 function ExtractAndTrim (var sInput : AnsiString; sSeparator : AnsiString) : AnsiString; overload;
+function ExtractAndTrimQ (var sInput : String; sSeparator : string) : String; overload;
+function ExtractAndTrimQ (var sInput : AnsiString; sSeparator : AnsiString) : AnsiString; overload;
 function Strip_Front(sMain : String; cRemove : Char) : String;
 function ExtractAndTrimTo(var sInput : String; uiLength : word) : String; overload;
 function ExtractAndTrimTo(var sInput : AnsiString; uiLength : word) : AnsiString; overload;
@@ -893,10 +895,9 @@ end; // String2Longint
 //              sInput (string) - The initial source string, less the extracted
 //                portion and the separator string.
 //
-//  OPERATION : Extracts a string from a given string, from the front,
-//              up to a given string.   The original string then has
-//              the extracted string removed from it, as well as the
-//              separator string.
+//  OPERATION : Extracts a string from the front of a given string, using a given
+//              separator. The original string is returned with the extracted
+//              string and separator strings removed.
 //
 //              If no occurrance of the separator is found, the entire
 //              input string is returned as the result, and the original
@@ -936,10 +937,9 @@ end; // ExtractAndTrim
 //              sInput (AnsiString) - The initial source string, less the extracted
 //                portion and the separator string.
 //
-//  OPERATION : Extracts a string from a given string, from the front,
-//              up to a given string.   The original string then has
-//              the extracted string removed from it, as well as the
-//              separator string.
+//  OPERATION : Extracts a string from the front of a given string, using a given
+//              separator. The original string is returned with the extracted
+//              string and separator strings removed.
 //
 //              If no occurrance of the separator is found, the entire
 //              input string is returned as the result, and the original
@@ -963,6 +963,122 @@ begin
     sInput := '';
   end; // else
 end; // ExtractAndTrim
+
+//***************************************************************************
+//
+//  FUNCTION  : ExtractAndTrimQ
+//
+//  I/P       : sInput (string) - The initial source string.
+//
+//              sSeparator (string) - The string of characters (usually just
+//                one character e.g. ',') up to which the string must be
+//                extracted.
+//
+//  O/P       : (string) - The extracted string.
+//
+//              sInput (string) - The initial source string, less the extracted
+//                portion and the separator string.
+//
+//  OPERATION : Extracts a string from the front of a given string, using a given
+//              separator. The original string is returned with the extracted
+//              string and separator strings removed.
+//
+//              The extracted string may be optionally enclosed in single or
+//              double quotes, which are removed in the result.
+//
+//              If no occurrance of the separator is found, the entire
+//              input string (less any surrounding quotes) is returned as the
+//              result, and the original string is set to an empty string.
+//
+//              This function may be used for CSV file parsing.
+//
+//  UPDATED   : 2024-09-26
+//
+//***************************************************************************
+function ExtractAndTrimQ (var sInput : String; sSeparator : string) : String; overload;
+begin
+  if (Length(sInput) > 0) then
+  begin
+    if (sInput[1] = '"') then
+    begin
+      ExtractAndTrim(sInput, '"');
+      Result := ExtractAndTrim(sInput,'"');
+      ExtractAndTrim(sInput, sSeparator);
+    end // if
+    else if (sInput[1] = '''') then
+    begin
+      ExtractAndTrim(sInput, '''');
+      Result := ExtractAndTrim(sInput,'''');
+      ExtractAndTrim(sInput, sSeparator);
+    end // if
+    else
+      Result := ExtractAndTrim(sInput, sSeparator);
+  end // else
+  else
+  begin
+    result := sInput;
+    sInput := '';
+  end;
+end; // ExtractAndTrimQ
+
+//***************************************************************************
+//
+//  FUNCTION  : ExtractAndTrimQ
+//
+//  I/P       : sInput (AnsiString) - The initial source string.
+//
+//              sSeparator (AnsiString) - The string of characters (usually just
+//                one character e.g. ',') up to which the string must be
+//                extracted.
+//
+//  O/P       : (AnsiString) - The extracted string.
+//
+//              sInput (AnsiString) - The initial source string, less the extracted
+//                portion and the separator string.
+//
+//  OPERATION : Extracts a string from the front of a given string, using a given
+//              separator. The original string is returned with the extracted
+//              string and separator strings removed.
+//
+//              The extracted string may be optionally enclosed in single or
+//              double quotes, which are removed in the result.
+//
+//              If no occurrance of the separator is found, the entire
+//              input string (less any surrounding quotes) is returned as the
+//              result, and the original string is set to an empty string.
+//
+//              This function may be used for CSV file parsing.
+//
+//  UPDATED   : 2024-09-26
+//
+//***************************************************************************
+function ExtractAndTrimQ (var sInput : AnsiString; sSeparator : AnsiString) : AnsiString; overload;
+begin
+  if (Length(sInput) > 0) then
+  begin
+    if (sInput[1] = '"') then
+    begin
+      sInput := Copy(sInput, 2, Length(sInput));
+      Result := ExtractAndTrim(sInput, '"');
+      sInput := Copy(sInput, 2, Length(sInput));
+      ExtractAndTrim(sInput, sSeparator);
+    end // if
+    else if (sInput[1] = '''') then
+    begin
+      sInput := Copy(sInput, 2, Length(sInput));
+      Result := ExtractAndTrim(sInput, '''');
+      sInput := Copy(sInput, 2, Length(sInput));
+      ExtractAndTrim(sInput, sSeparator);
+    end // if
+    else
+      Result := ExtractAndTrim(sInput, sSeparator);
+  end // else
+  else
+  begin
+    result := sInput;
+    sInput := '';
+  end;
+end; // ExtractAndTrimQ
 
 //***************************************************************************
 //

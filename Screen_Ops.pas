@@ -12,6 +12,12 @@ uses
   Vcl.Forms, Vcl.Dialogs,
   Dialog_Ops;
 
+      // 96ppi = normal (100%)
+      // 120ppi = 125%
+      // 144ppi = 150%
+      // 168ppi = 175%
+
+
 //***************************************************************************
 //
 //  FUNCTION  : ScreenSizeOK
