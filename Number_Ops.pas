@@ -380,6 +380,8 @@ end; // UInt642Bytes
 //  OPERATION : Given an ordered set of bytes, return the single (floating
 //                point) value that they represent.
 //
+//              Useful : https://gregstoll.com/~gregstoll/floattohex/
+//
 //  UPDATED   : 2014-06-04
 //
 //***************************************************************************
@@ -407,6 +409,8 @@ end; // Bytes2Single
 //
 //  OPERATION : Given a single (floating point) value, return the ordered set
 //                of bytes that is used to store/represent it.
+//
+//              Useful : https://gregstoll.com/~gregstoll/floattohex/
 //
 //  UPDATED   : 2014-06-04
 //
