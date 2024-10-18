@@ -18,6 +18,14 @@ const
 // Colours
 //------------------------------------------------------------------------------
 
+// ICAPE Colours
+ICAPE_GREY = $00353535;     // "Deep Anthracite Grey"
+ICAPE_BLUE = $00BF7C12;     // Also $00EFAE35 / $00C87D00 / $00C97E00
+ICAPE_GREEN1 = $006ECB94;   //
+ICAPE_GREEN2 = $009FE1BA;   //
+
+
+
 //                       BBGGRR
   clLtLtGrey        = $00F0F0F0;
   clLtSilver        = $00E0E0E0;
