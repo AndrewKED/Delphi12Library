@@ -8,17 +8,6 @@ const
   VER_CMP_A_NEWER_THAN_B = 1;
 
 type
-  TSystemCritical = class
-  private
-    FIsCritical: Boolean;
-    procedure SetIsCritical(const Value: Boolean) ;
-  protected
-    procedure UpdateCritical(Value: Boolean) ; virtual;
-  public
-    constructor Create;
-    property IsCritical: Boolean read FIsCritical write SetIsCritical;
-  end;
-
   TSWVersion = record
     filename : String;
     version : String;
@@ -26,6 +15,9 @@ type
 
   TSWVersions = array of TSWVersion;
 
+function runningUnderIDE : Boolean;
+function debugCompilation : Boolean;
+function folderApplication : String;
 function CompareVersions(sAppVer1 : String;
                          sAppVer2 : String;
                          iDepth : integer) : Integer;
@@ -41,12 +33,6 @@ function LinkerTimeStamp(const FileName: string): TDateTime; overload;
 function LinkerTimestamp: TDateTime; overload;
 function GetCopyrightYear : Integer;
 
-var
-  SystemCritical: TSystemCritical;
-  runningUnderIDE : Boolean;
-  debugCompilation : Boolean;
-  folderApplication : String;
-
 implementation
 
 uses
@@ -57,9 +43,6 @@ uses
   ImageHlp,
   File_Ops, Str_Ops;
 
-{ TSystemCritical }
-type
-  EXECUTION_STATE = DWORD;
 const
   ES_SYSTEM_REQUIRED = $00000001;
   ES_DISPLAY_REQUIRED = $00000002;
@@ -68,9 +51,82 @@ const
   ES_CONTINUOUS = $80000000;
   KernelDLL = 'kernel32.dll';
 
+type
+  EXECUTION_STATE = DWORD;
+
+  TSystemCritical = class
+  private
+    FIsCritical: Boolean;
+    procedure SetIsCritical(const Value: Boolean) ;
+  protected
+    procedure UpdateCritical(Value: Boolean) ; virtual;
+  public
+    constructor Create;
+    property IsCritical: Boolean read FIsCritical write SetIsCritical;
+  end;
+
 var
   LastPeekMessageTime: Cardinal = 0;
   Handle : HMODULE;
+  SystemCritical: TSystemCritical;
+
+//***************************************************************************
+//
+//  FUNCTION  : runningUnderIDE
+//
+//  I/P       : None
+//
+//  O/P       : Boolean - TRUE if the application is running under the IDE
+//
+//  OPERATION : Indicate if the program is running under the IDE
+//
+//  UPDATED   : 2024-10-08
+//
+//***************************************************************************
+function runningUnderIDE : Boolean;
+begin
+  Result := (DebugHook <> 0)
+end; // runningUnderIDE
+
+//***************************************************************************
+//
+//  FUNCTION  : debugCompilation
+//
+//  I/P       : None
+//
+//  O/P       : Boolean - TRUE if the application has been compiled as DEBUG
+//
+//  OPERATION : Indicate if the application has been compiled as DEBUG
+//
+//  UPDATED   : 2024-10-08
+//
+//***************************************************************************
+function debugCompilation : Boolean;
+begin
+{$IFDEF DEBUG}
+  Result := TRUE;
+{$ELSE}
+  Result := FALSE;
+{$ENDIF}
+end; // debugCompilation
+
+//***************************************************************************
+//
+//  FUNCTION  : folderApplication
+//
+//  I/P       : None
+//
+//  O/P       : String - The folder in which the application is found.
+//
+//  OPERATION : Get the full path of the folder in which the application is found.
+//
+//  UPDATED   : 2024-10-08
+//
+//***************************************************************************
+function folderApplication : String;
+begin
+  Result := IncludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName));
+end; // folderApplication
 
 //***************************************************************************
 //
@@ -655,17 +711,6 @@ begin
       SystemCritical := TSystemCritical.Create;
     end;
   end;
-
-  // Indicate if the program is running under the IDE
-  runningUnderIDE := (DebugHook <> 0);
-
-{$IFDEF DEBUG}
-  debugCompilation := TRUE;
-{$ELSE}
-  debugCompilation := FALSE;
-{$ENDIF}
-
-  folderApplication := IncludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName));
 end;
 
 //***************************************************************************
