@@ -583,6 +583,7 @@ end; // ProcessExists
 procedure HookResourceString(rs: PResStringRec; newStr: PChar);
 var
   oldprotect: DWORD;
+
 begin
   VirtualProtect(rs, SizeOf(rs^), PAGE_EXECUTE_READWRITE, @oldProtect);
   rs^.Identifier := Integer(newStr);

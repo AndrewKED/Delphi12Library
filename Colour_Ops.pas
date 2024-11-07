@@ -3,7 +3,11 @@ unit Colour_Ops;
 interface
 
 uses
-  Graphics, LED;
+  Graphics
+{$IFDEF WIN32}
+  , LED
+{$ENDIF}
+  ;
 
 function ChangeColourShade(colourOriginal : TColor;
                            change : Integer) : Integer;
@@ -12,7 +16,9 @@ function CanChangeColour(colourOriginal : TColor;
 function ShadeBetween(StartColour : TColor;
                       EndColour : TColor;
                       Percentage : double) : TColor;
+{$IFDEF WIN32}
 function LEDRedGreen(Good : boolean) : TLEDColor;
+{$ENDIF}
 function Colour2Text(value : TColor) : String;
 
 const
@@ -283,6 +289,7 @@ begin
   result := (iBlue shl 16) + (iGreen shl 8) + iRed;
 end; // ShadeBetween
 
+{$IFDEF WIN32}
 //***************************************************************************
 //
 //  FUNCTION  : LEDRedGreen
@@ -304,6 +311,7 @@ begin
   else
     result := lcRed;
 end;
+{$ENDIF}
 
 //***************************************************************************
 //
