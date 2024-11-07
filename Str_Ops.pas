@@ -1790,13 +1790,13 @@ end; // MatchingChars
 //              I would really like to get rid of the Compiler Hint:
 //                'H2077 Value assigned to 'iTarget' never used'
 //
-//  UPDATED   : 2012-09-18
+//  UPDATED   : 2024-11-07
 //
 //***************************************************************************
 function IsAnInteger(sNumber : string) : boolean;
 var
   iCode : Integer;
-  iTarget : Integer;
+  iTarget : Int64; // To handle really big numbers!
 
 begin
   Val(sNumber, iTarget, iCode);
