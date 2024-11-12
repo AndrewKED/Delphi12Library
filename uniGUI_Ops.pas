@@ -22,14 +22,18 @@ procedure CentreYAonB(controlA : TUniPanel;
 procedure CentreYAonB(controlA : TUniControl;
                       controlB : TUniControl) overload;
 procedure SetReadOnly(owner : TUniContainer;
-                      state : Boolean);
+                      state : Boolean;
+                      handleButtons : Boolean);
+procedure SetDateFormat(owner : TUniContainer;
+                        newFormat : String);
 
 implementation
 
 uses
   System.TypInfo,
-  uniCheckBox, uniEdit, uniDateTimePicker, uniMemo,
-  uniDBCheckBox, uniDBEdit, uniDBDateTimePicker, uniDBMemo;
+  uniButton;
+//  uniCheckBox, uniEdit, uniDateTimePicker, uniMemo,
+//  uniDBCheckBox, uniDBEdit, uniDBDateTimePicker, uniDBMemo;
 
 //***************************************************************************
 //
@@ -110,13 +114,18 @@ end; // CentreYAonB
 //
 //  O/P       :
 //
-//  OPERATION :
+//  OPERATION : Force all components that have a DateFormat property to use
+//              the given format.
 //
-//  UPDATED   :
+//              Optionally also set the Enable property of TUniButtons to give
+//              a similar effect (i.e. can/cannot be clicked)
+//
+//  UPDATED   : 2024-11-12
 //
 //***************************************************************************
 procedure SetReadOnly(owner : TUniContainer;
-                      state : Boolean);
+                      state : Boolean;
+                      handleButtons : Boolean);
 var
   n : Integer;
   propList : PPropList;
@@ -128,7 +137,17 @@ begin
   begin
     if (owner.Controls[n] is TUniContainer) then
     begin
-      SetReadOnly(TUniContainer(owner.Controls[n]), state);
+      SetReadOnly(TUniContainer(owner.Controls[n]), state, handleButtons);
+    end;
+
+    // If required, treat a button's Enabled state like not ReadOnly.
+    if (owner.Controls[n] is TUniButton) then
+    begin
+      if (handleButtons) then
+      begin
+        TUniButton(owner.Controls[n]).Enabled := not state;
+      end;
+      Continue;
     end;
 
     propCount := GetPropList(owner.Controls[n], propList);
@@ -144,43 +163,51 @@ begin
       FreeMem(propList);
     end;
   end; // for
+end;
 
-//    if (owner.Controls[n] is TUniCheckbox) then
-//    begin
-//      (owner.Controls[n] as TUniCheckbox).ReadOnly := state;
-//    end;
-//    if (owner.Controls[n] is TUniDBCheckbox) then
-//    begin
-//      (owner.Controls[n] as TUniDBCheckbox).ReadOnly := state;
-//    end;
+//***************************************************************************
 //
-//    if (owner.Controls[n] is TUniEdit) then
-//    begin
-//      (owner.Controls[n] as TUniEdit).ReadOnly := state;
-//    end;
-//    if (owner.Controls[n] is TUniDBEdit) then
-//    begin
-//      (owner.Controls[n] as TUniDBEdit).ReadOnly := state;
-//    end;
+//  FUNCTION  : SetDateFormat
 //
-//    if (owner.Controls[n] is TuniDateTimePicker) then
-//    begin
-//      (owner.Controls[n] as TuniDateTimePicker).ReadOnly := state;
-//    end;
-//    if (owner.Controls[n] is TuniDBDateTimePicker) then
-//    begin
-//      (owner.Controls[n] as TuniDBDateTimePicker).ReadOnly := state;
-//    end;
+//  I/P       :
 //
-//    if (owner.Controls[n] is TuniMemo) then
-//    begin
-//      (owner.Controls[n] as TuniMemo).ReadOnly := state;
-//    end;
-//    if (owner.Controls[n] is TuniDBMemo) then
-//    begin
-//      (owner.Controls[n] as TuniDBMemo).ReadOnly := state;
-//    end;
-//  end;
+//  O/P       :
+//
+//  OPERATION : Force all components that have a DateFormat property to use
+//              the given format.
+//
+//  UPDATED   : 2024-11-12
+//
+//***************************************************************************
+procedure SetDateFormat(owner : TUniContainer;
+                        newFormat : String);
+var
+  n : Integer;
+  propList : PPropList;
+  propCount : Integer;
+  m: Integer;
+
+begin
+  for n := 0 to owner.ControlCount-1 do
+  begin
+    if (owner.Controls[n] is TUniContainer) then
+    begin
+      SetDateFormat(TUniContainer(owner.Controls[n]), newFormat);
+    end;
+
+    propCount := GetPropList(owner.Controls[n], propList);
+    try
+      for m := 0 to propCount-1 do
+      begin
+        if (propList[m].Name = 'DateFormat') then
+        begin
+          SetPropValue(owner.Controls[n], 'DateFormat', newFormat);
+        end;
+      end;
+    finally
+      FreeMem(propList);
+    end;
+  end; // for
 end;
 
 end.
