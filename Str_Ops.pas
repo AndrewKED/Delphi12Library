@@ -73,6 +73,9 @@ procedure StuffString(sNew : String;
                       var sOriginal : String;
                       iOffset : integer);
 procedure RemoveDuplicates(var sMain : String; cChar : Char);
+procedure RemoveMarkedSections(var original : String;
+                               markStart : String;
+                               markEnd : String);
 function SuppressMiddle(sMain :string;
                         iAvailableSpace :integer): string;
 function SuppressEnd(sMain : String;
@@ -1503,6 +1506,39 @@ begin
   while (Pos(cChar+cChar,sMain) <> 0) do
     sMain := StringReplace(sMain,cChar+cChar,cChar,[rfReplaceAll]);
 end; // RemoveDuplicates
+
+//***************************************************************************
+//
+//  FUNCTION  : RemoveMarkedSections
+//
+//  I/P       : var original : String - The string to be modified
+//
+//              markStart : String - The indicator of the start of the text
+//                to be removed.
+//
+//              markEnd : String - The indicator of the end of the text to be
+//                removed.
+//
+//  O/P       : None
+//
+//  OPERATION : Remove all text found between the indicated markers. Remove
+//              the markers as well. Do this for all occurrances of the markers
+//
+//  UPDATED   : 2024-11-21
+//
+//***************************************************************************
+procedure RemoveMarkedSections(var original : String;
+                               markStart : String;
+                               markEnd : String);
+begin
+  while ((Pos(markStart, original) > 0) and
+         (Pos(markEnd, original) > 0) and
+         (Pos(markEnd, original) > Pos(markStart, original))) do
+  begin
+    original := Copy(original, 1, Pos(markStart, original)-1) +
+                Copy(original, Pos(markEnd, original) + Length(markEnd), Length(original));
+  end;
+end; // RemoveMarkedSections
 
 //***************************************************************************
 //
