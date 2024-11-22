@@ -26,6 +26,8 @@ procedure Scroll(memTarget : TMemo;
                  bToBottom : boolean); overload;
 procedure Scroll(reTarget : TRichEdit;
                  bToBottom : boolean); overload;
+procedure LimitLines(target : TCustomMemo;
+                     maxLines : Integer);
 
 implementation
 
@@ -226,9 +228,11 @@ end; // RichEditAttributeSize
 //
 //  FUNCTION  : Scroll
 //
-//  I/P       :
+//  I/P       : memTarget : TMemo or reTarget : TRichEdit
 //
-//  O/P       :
+//              bToBottom : Boolean - TRUE to scroll to the bottom
+//
+//  O/P       : None
 //
 //  OPERATION : http://fgaillard.com/2010/11/richedit-on-scrolling-strike/
 //
@@ -238,7 +242,7 @@ end; // RichEditAttributeSize
 //
 //***************************************************************************
 procedure Scroll(memTarget : TMemo;
-                 bToBottom : boolean); overload;
+                 bToBottom : Boolean); overload;
 var
   isSelectionHidden: Boolean;
 
@@ -260,7 +264,7 @@ begin
 end; // Scroll
 
 procedure Scroll(reTarget : TRichEdit;
-                 bToBottom : boolean); overload;
+                 bToBottom : Boolean); overload;
 var
   isSelectionHidden: Boolean;
 
@@ -280,5 +284,29 @@ begin
     end;
   end;
 end; // Scroll
+
+//***************************************************************************
+//
+//  FUNCTION  : LimitLines
+//
+//  I/P       : target : TCustomMemo
+//
+//              maxLines : Integer - the maximum number of lines
+//
+//  O/P       :
+//
+//  OPERATION : Limit the number of lines in a TMemo or TRichEdit
+//
+//  UPDATED   : 2024-11-22
+//
+//***************************************************************************
+procedure LimitLines(target : TCustomMemo;
+                     maxLines : Integer);
+begin
+  while (target.Lines.Count > maxLines) do
+  begin
+    target.Lines.Delete(0);
+  end;
+end; // LimitLines
 
 end.
