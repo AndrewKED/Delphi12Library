@@ -3,7 +3,11 @@ unit Colour_Ops;
 interface
 
 uses
-  Graphics, LED;
+  Graphics
+{$IFDEF WIN32}
+  , LED
+{$ENDIF}
+  ;
 
 function ChangeColourShade(colourOriginal : TColor;
                            change : Integer) : Integer;
@@ -12,12 +16,22 @@ function CanChangeColour(colourOriginal : TColor;
 function ShadeBetween(StartColour : TColor;
                       EndColour : TColor;
                       Percentage : double) : TColor;
+{$IFDEF WIN32}
 function LEDRedGreen(Good : boolean) : TLEDColor;
+{$ENDIF}
 function Colour2Text(value : TColor) : String;
 
 const
 // Colours
 //------------------------------------------------------------------------------
+
+// ICAPE Colours
+ICAPE_GREY = $00353535;     // "Deep Anthracite Grey"
+ICAPE_BLUE = $00BF7C12;     // Also $00EFAE35 / $00C87D00 / $00C97E00
+ICAPE_GREEN1 = $006ECB94;   //
+ICAPE_GREEN2 = $009FE1BA;   //
+
+
 
 //                       BBGGRR
   clLtLtGrey        = $00F0F0F0;
@@ -275,6 +289,7 @@ begin
   result := (iBlue shl 16) + (iGreen shl 8) + iRed;
 end; // ShadeBetween
 
+{$IFDEF WIN32}
 //***************************************************************************
 //
 //  FUNCTION  : LEDRedGreen
@@ -296,6 +311,7 @@ begin
   else
     result := lcRed;
 end;
+{$ENDIF}
 
 //***************************************************************************
 //

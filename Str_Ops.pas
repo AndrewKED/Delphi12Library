@@ -54,6 +54,8 @@ function String2Longint(sInput : String;
                         var liOutput : longint) : boolean;
 function ExtractAndTrim (var sInput : String; sSeparator : string) : String; overload;
 function ExtractAndTrim (var sInput : AnsiString; sSeparator : AnsiString) : AnsiString; overload;
+function ExtractAndTrimQ (var sInput : String; sSeparator : string) : String; overload;
+function ExtractAndTrimQ (var sInput : AnsiString; sSeparator : AnsiString) : AnsiString; overload;
 function Strip_Front(sMain : String; cRemove : Char) : String;
 function ExtractAndTrimTo(var sInput : String; uiLength : word) : String; overload;
 function ExtractAndTrimTo(var sInput : AnsiString; uiLength : word) : AnsiString; overload;
@@ -71,6 +73,9 @@ procedure StuffString(sNew : String;
                       var sOriginal : String;
                       iOffset : integer);
 procedure RemoveDuplicates(var sMain : String; cChar : Char);
+procedure RemoveMarkedSections(var original : String;
+                               markStart : String;
+                               markEnd : String);
 function SuppressMiddle(sMain :string;
                         iAvailableSpace :integer): string;
 function SuppressEnd(sMain : String;
@@ -120,9 +125,24 @@ function BreakText(theText : String;
                    linesRequired : Integer) : String;
 function JoinStrings(theStrings : array of String;
                      inBetween : String) : String;
-function StringHasCharacters(theString : String;
-                             theCharacters : TSysCharSet;
-                             only : Boolean) : Boolean;
+function StringHasCharacters(const theString : AnsiString;
+                             const theCharacters : TSysCharSet;
+                             const only : Boolean) : Boolean; overload;
+function StringHasCharacters(const theString : String;
+                             const theCharacters : TArray<Char>;
+                             const only : Boolean) : Boolean; overload;
+function StringIncludes(const theString : AnsiString;
+                        const needs_lower : Boolean;
+                        const needs_upper : Boolean;
+                        const needs_number : Boolean;
+                        const needs_special : Boolean;
+                        const special_set : TSysCharSet) : Boolean; overload;
+function StringIncludes(const theString : String;
+                        const needs_lower : Boolean;
+                        const needs_upper : Boolean;
+                        const needs_number : Boolean;
+                        const needs_special : Boolean;
+                        const special_set : TArray<Char>) : Boolean; overload;
 function NoneSingleMultiple(items : Integer;
                             noneText : String;
                             oneText : String;
@@ -894,10 +914,9 @@ end; // String2Longint
 //              sInput (string) - The initial source string, less the extracted
 //                portion and the separator string.
 //
-//  OPERATION : Extracts a string from a given string, from the front,
-//              up to a given string.   The original string then has
-//              the extracted string removed from it, as well as the
-//              separator string.
+//  OPERATION : Extracts a string from the front of a given string, using a given
+//              separator. The original string is returned with the extracted
+//              string and separator strings removed.
 //
 //              If no occurrance of the separator is found, the entire
 //              input string is returned as the result, and the original
@@ -937,10 +956,9 @@ end; // ExtractAndTrim
 //              sInput (AnsiString) - The initial source string, less the extracted
 //                portion and the separator string.
 //
-//  OPERATION : Extracts a string from a given string, from the front,
-//              up to a given string.   The original string then has
-//              the extracted string removed from it, as well as the
-//              separator string.
+//  OPERATION : Extracts a string from the front of a given string, using a given
+//              separator. The original string is returned with the extracted
+//              string and separator strings removed.
 //
 //              If no occurrance of the separator is found, the entire
 //              input string is returned as the result, and the original
@@ -964,6 +982,122 @@ begin
     sInput := '';
   end; // else
 end; // ExtractAndTrim
+
+//***************************************************************************
+//
+//  FUNCTION  : ExtractAndTrimQ
+//
+//  I/P       : sInput (string) - The initial source string.
+//
+//              sSeparator (string) - The string of characters (usually just
+//                one character e.g. ',') up to which the string must be
+//                extracted.
+//
+//  O/P       : (string) - The extracted string.
+//
+//              sInput (string) - The initial source string, less the extracted
+//                portion and the separator string.
+//
+//  OPERATION : Extracts a string from the front of a given string, using a given
+//              separator. The original string is returned with the extracted
+//              string and separator strings removed.
+//
+//              The extracted string may be optionally enclosed in single or
+//              double quotes, which are removed in the result.
+//
+//              If no occurrance of the separator is found, the entire
+//              input string (less any surrounding quotes) is returned as the
+//              result, and the original string is set to an empty string.
+//
+//              This function may be used for CSV file parsing.
+//
+//  UPDATED   : 2024-09-26
+//
+//***************************************************************************
+function ExtractAndTrimQ (var sInput : String; sSeparator : string) : String; overload;
+begin
+  if (Length(sInput) > 0) then
+  begin
+    if (sInput[1] = '"') then
+    begin
+      ExtractAndTrim(sInput, '"');
+      Result := ExtractAndTrim(sInput,'"');
+      ExtractAndTrim(sInput, sSeparator);
+    end // if
+    else if (sInput[1] = '''') then
+    begin
+      ExtractAndTrim(sInput, '''');
+      Result := ExtractAndTrim(sInput,'''');
+      ExtractAndTrim(sInput, sSeparator);
+    end // if
+    else
+      Result := ExtractAndTrim(sInput, sSeparator);
+  end // else
+  else
+  begin
+    result := sInput;
+    sInput := '';
+  end;
+end; // ExtractAndTrimQ
+
+//***************************************************************************
+//
+//  FUNCTION  : ExtractAndTrimQ
+//
+//  I/P       : sInput (AnsiString) - The initial source string.
+//
+//              sSeparator (AnsiString) - The string of characters (usually just
+//                one character e.g. ',') up to which the string must be
+//                extracted.
+//
+//  O/P       : (AnsiString) - The extracted string.
+//
+//              sInput (AnsiString) - The initial source string, less the extracted
+//                portion and the separator string.
+//
+//  OPERATION : Extracts a string from the front of a given string, using a given
+//              separator. The original string is returned with the extracted
+//              string and separator strings removed.
+//
+//              The extracted string may be optionally enclosed in single or
+//              double quotes, which are removed in the result.
+//
+//              If no occurrance of the separator is found, the entire
+//              input string (less any surrounding quotes) is returned as the
+//              result, and the original string is set to an empty string.
+//
+//              This function may be used for CSV file parsing.
+//
+//  UPDATED   : 2024-09-26
+//
+//***************************************************************************
+function ExtractAndTrimQ (var sInput : AnsiString; sSeparator : AnsiString) : AnsiString; overload;
+begin
+  if (Length(sInput) > 0) then
+  begin
+    if (sInput[1] = '"') then
+    begin
+      sInput := Copy(sInput, 2, Length(sInput));
+      Result := ExtractAndTrim(sInput, '"');
+      sInput := Copy(sInput, 2, Length(sInput));
+      ExtractAndTrim(sInput, sSeparator);
+    end // if
+    else if (sInput[1] = '''') then
+    begin
+      sInput := Copy(sInput, 2, Length(sInput));
+      Result := ExtractAndTrim(sInput, '''');
+      sInput := Copy(sInput, 2, Length(sInput));
+      ExtractAndTrim(sInput, sSeparator);
+    end // if
+    else
+      Result := ExtractAndTrim(sInput, sSeparator);
+  end // else
+  else
+  begin
+    result := sInput;
+    sInput := '';
+  end;
+end; // ExtractAndTrimQ
 
 //***************************************************************************
 //
@@ -1376,6 +1510,39 @@ end; // RemoveDuplicates
 
 //***************************************************************************
 //
+//  FUNCTION  : RemoveMarkedSections
+//
+//  I/P       : var original : String - The string to be modified
+//
+//              markStart : String - The indicator of the start of the text
+//                to be removed.
+//
+//              markEnd : String - The indicator of the end of the text to be
+//                removed.
+//
+//  O/P       : None
+//
+//  OPERATION : Remove all text found between the indicated markers. Remove
+//              the markers as well. Do this for all occurrances of the markers
+//
+//  UPDATED   : 2024-11-21
+//
+//***************************************************************************
+procedure RemoveMarkedSections(var original : String;
+                               markStart : String;
+                               markEnd : String);
+begin
+  while ((Pos(markStart, original) > 0) and
+         (Pos(markEnd, original) > 0) and
+         (Pos(markEnd, original) > Pos(markStart, original))) do
+  begin
+    original := Copy(original, 1, Pos(markStart, original)-1) +
+                Copy(original, Pos(markEnd, original) + Length(markEnd), Length(original));
+  end;
+end; // RemoveMarkedSections
+
+//***************************************************************************
+//
 //  FUNCTION  : SuppressMiddle
 //
 //  I/P       : sMain (string) - The long string, that is to be fitted in a
@@ -1675,13 +1842,13 @@ end; // MatchingChars
 //              I would really like to get rid of the Compiler Hint:
 //                'H2077 Value assigned to 'iTarget' never used'
 //
-//  UPDATED   : 2012-09-18
+//  UPDATED   : 2024-11-07
 //
 //***************************************************************************
 function IsAnInteger(sNumber : string) : boolean;
 var
   iCode : Integer;
-  iTarget : Integer;
+  iTarget : Int64; // To handle really big numbers!
 
 begin
   Val(sNumber, iTarget, iCode);
@@ -2610,20 +2777,20 @@ end; // JoinStrings
 //  O/P       : Boolean
 //
 //  OPERATION : Test if the given string has ONLY characters in the given set,
-//              or if the given string contains one or more characters from the
-//              given set.
+//              or if the given string has at least one character in the given set.
 //
 //  UPDATED   : 2019-11-23
 //
 //***************************************************************************
-function StringHasCharacters(theString : String;
-                             theCharacters : TSysCharSet;
-                             only : Boolean) : Boolean;
+function StringHasCharacters(const theString : AnsiString;
+                             const theCharacters : TSysCharSet;
+                             const only : Boolean) : Boolean; overload;
 var
   i: integer;
 
 begin
   result := only;
+
   i := 1;
   while (i <= Length(theString)) do
   begin
@@ -2646,6 +2813,235 @@ begin
     Inc(i);
   end; // while
 end; // StringHasCharacters
+
+function StringHasCharacters(const theString : String;
+                             const theCharacters : TArray<Char>;
+                             const only : Boolean) : Boolean; overload;
+var
+  i: integer;
+
+begin
+  result := only;
+
+  i := 1;
+  while (i <= Length(theString)) do
+  begin
+    if (only) then
+    begin
+      if (not theString[i].IsInArray(theCharacters)) then
+      begin
+        result := false;
+        exit;
+      end; // if
+    end // if
+    else
+    begin
+      if (theString[i].IsInArray(theCharacters)) then
+      begin
+        result := TRUE;
+        exit;
+      end; // if
+    end;
+    Inc(i);
+  end; // while
+end; // StringHasCharacters
+
+//***************************************************************************
+//
+//  FUNCTION  : StringIncludes
+//
+//  I/P       : theString : AnsiString / String - the string to test
+//
+//              lower_case : Boolean - TRUE if string must contain at least one
+//                lower case letter
+//
+//              upper_case : Boolean- TRUE if string must contain at least one
+//                upper case letter
+//
+//              numbers : Boolean- TRUE if string must contain at least one
+//                number
+//
+//              special : Boolean- TRUE if string must contain at least one
+//                special character from the following set
+//
+//              special_set : TSysCharSet / TArray<Char> - Set of required specail
+//                characters.
+//
+//  O/P       : Boolean;
+//
+//  OPERATION : Check that the string contains at least one character from
+//              each of the indicated sets of characters.
+//
+//  UPDATED   : 2024-11-11
+//
+//***************************************************************************
+function StringIncludes(const theString : AnsiString;
+                        const needs_lower : Boolean;
+                        const needs_upper : Boolean;
+                        const needs_number : Boolean;
+                        const needs_special : Boolean;
+                        const special_set : TSysCharSet) : Boolean; overload;
+const
+  setLower : TSysCharSet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+                                 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
+  setUpper : TSysCharSet = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
+                                 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+  setNumbers : TSysCharSet = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+var
+  n: Integer;
+  found_lower : Boolean;
+  found_upper : Boolean;
+  found_number : Boolean;
+  found_special : Boolean;
+
+begin
+  found_lower := not needs_lower;
+  found_upper := not needs_upper;
+  found_number := not needs_number;
+  found_special := not needs_special;
+
+  if (needs_lower) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (CharInSet(theString[n], setLower)) then
+      begin
+        // A lower case character has been found
+        found_lower := TRUE;
+        Break;
+      end;
+    end; // for
+  end;
+
+  if (needs_upper) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (CharInSet(theString[n], setUpper)) then
+      begin
+        // An upper case character has been found
+        found_upper := TRUE;
+        Break;
+      end;
+    end; // for
+  end;
+
+  if (needs_number) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (CharInSet(theString[n], setNumbers)) then
+      begin
+        // A number character has been found
+        found_number := TRUE;
+        Break;
+      end;
+    end; // for
+  end;
+
+  if (needs_special) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (CharInSet(theString[n], special_set)) then
+      begin
+        // A special character has been found
+        found_special := TRUE;
+        Break;
+      end;
+    end; // for
+  end; // if
+
+  Result := (found_lower) and
+            (found_upper) and
+            (found_number) and
+            (found_special);
+end;
+
+function StringIncludes(const theString : String;
+                        const needs_lower : Boolean;
+                        const needs_upper : Boolean;
+                        const needs_number : Boolean;
+                        const needs_special : Boolean;
+                        const special_set : TArray<Char>) : Boolean; overload;
+const
+  setLower : TArray<Char> = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+                             'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
+  setUpper : TArray<Char> = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
+                             'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+  setNumbers : TArray<Char> = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+var
+  n: Integer;
+  found_lower : Boolean;
+  found_upper : Boolean;
+  found_number : Boolean;
+  found_special : Boolean;
+
+begin
+  found_lower := not needs_lower;
+  found_upper := not needs_upper;
+  found_number := not needs_number;
+  found_special := not needs_special;
+
+  if (needs_lower) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (theString[n].IsInArray(setLower)) then
+      begin
+        // A lower case character has been found
+        found_lower := TRUE;
+        Break;
+      end;
+    end; // for
+  end;
+
+  if (needs_upper) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (theString[n].IsInArray(setUpper)) then
+      begin
+        // An upper case character has been found
+        found_upper := TRUE;
+        Break;
+      end;
+    end; // for
+  end;
+
+  if (needs_number) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (theString[n].IsInArray(setNumbers)) then
+      begin
+        // A number character has been found
+        found_number := TRUE;
+        Break;
+      end;
+    end; // for
+  end;
+
+  if (needs_special) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (theString[n].IsInArray(special_set)) then
+      begin
+        // A special character has been found
+        found_special := TRUE;
+        Break;
+      end;
+    end; // for
+  end; // if
+
+  Result := (found_lower) and
+            (found_upper) and
+            (found_number) and
+            (found_special);
+end;
 
 //***************************************************************************
 //
