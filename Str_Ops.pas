@@ -95,6 +95,7 @@ function IsAFloat(sNumber : string) : boolean;
 function IsAlphaNumeric(sInput : string) : boolean;
 function IsIP4Address(sInput : string) : boolean;
 function IsAHexadecimal(sInput : String) : Boolean;
+function IsADateTime(sInput : String) : Boolean;
 function ForcedStrToFloat(sValue : String;
                           dInvalid : Extended) : Extended;
 function InitialUpperCase(sInput : string) : String;
@@ -1842,6 +1843,41 @@ begin
     result := FALSE;
   end;
 end;
+
+//***************************************************************************
+//
+//  FUNCTION  : IsADateTime
+//
+//  I/P       : sInput : String - The string to be tested
+//
+//  O/P       : Boolean - TRUE if the string appears to be a valid date time
+//
+//  OPERATION : Check that the given string contains a convertable date time.
+//
+//  UPDATED   : 2024-11-18
+//
+//***************************************************************************
+function IsADateTime(sInput : String) : Boolean;
+var
+  n : Integer;
+
+begin
+  result := TRUE;
+  n := Length(sInput);
+  if (n > 3) then
+  begin
+    // The shortest valid datetime string is probably something like "0:0"
+    try
+      StrToDateTime(sInput);
+    except
+      Result := False;
+    end;
+  end
+  else
+  begin
+    result := FALSE;
+  end;
+end; // IsADateTime
 
 //***************************************************************************
 //
