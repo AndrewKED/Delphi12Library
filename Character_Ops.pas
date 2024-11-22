@@ -12,6 +12,9 @@ const
   DEGREE_SYMBOL = #$00B0;
   COPYRIGHT_SYMBOL = #$00A9;
 
+  CHAR_FA_TOGGLE_OFF = #$F204;
+  CHAR_FA_TOGGLE_ON = #$F205;
+
 implementation
 
 end.

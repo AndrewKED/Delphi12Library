@@ -40,7 +40,7 @@ function CR95HFDll_GpsOn(stringReply : array of Byte) : Integer; stdcall; extern
 function CR95HFDll_GpsOff(stringReply : array of Byte) : Integer; stdcall; external CR95HF_USB_DLL;
 function CR95HFDll_GetGps(stringReply : array of Byte) : Integer; stdcall; external CR95HF_USB_DLL;
 
-//function CR95HFUDLL_USBinit(comport : Integer) : Integer; stdcall; external GCRCU_INTERFACE_DLL;
+function CR95HFDLL_USBinit() : Integer; stdcall; external CR95HF_USB_DLL;
 function CR95HFDLL_USBfinal() : Integer; stdcall; external CR95HF_USB_DLL;
 
 // Serial interface DLL Functions
@@ -90,6 +90,8 @@ var
   CR95HF_GpsOff : TCR95HFDLLReply;
   CR95HF_GetGps : TCR95HFDLLReply;
   CR95HF_Close : TCR95HFDLLNoParameters;
+//  CR95HF_Init : the serial and USB versions have differing parameters, so must be handled at a different level.
+  CR95HF_Final : TCR95HFDLLNoParameters;
 
 implementation
 
@@ -131,7 +133,7 @@ begin
     CR95HF_GpsOn := CR95HFSDll_GpsOn;
     CR95HF_GpsOff := CR95HFSDll_GpsOff;
     CR95HF_GetGps := CR95HFSDll_GetGps;
-//    CR95HF_Close := CR95HFSDLL_Close;
+//    CR95HF_Close := nil;    // Nothing to be shut down
   end // if
   else
   begin
