@@ -1882,21 +1882,21 @@ end; // IsAnInteger
 //***************************************************************************
 function IsAFloat(sNumber : string) : boolean;
 begin
-  if ((sNumber <> '') and
-      (sNumber <> '-') and
-      (sNumber <> 'NAN')) then
+  if (StringIncludes(sNumber, FALSE, FALSE, TRUE, FALSE, [])) then
   begin
     try
   {$O-}
       StrToFloat(sNumber);
   {$O+}
-      result := TRUE;
+      Result := TRUE;
     except
-      result := FALSE;
+      Result := FALSE;
     end;
   end // if
   else
-    result := FALSE;
+  begin
+    Result := FALSE;
+  end;
 end; // IsAFloat
 
 //***************************************************************************
