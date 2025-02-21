@@ -1975,7 +1975,6 @@ begin
   Result := p;
 end; // GetLCLPressure
 
-
 (*
   Water vapour pressure
 
