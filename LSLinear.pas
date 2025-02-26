@@ -117,7 +117,7 @@ uses Math;
 //              from a fixed number of points.   Pre-filling of the points
 //              to create a curve holds no value otherwise.
 //
-//  UPDATED   : 2006/06/12
+//  UPDATED   : 2025-02-26
 //
 //***************************************************************************
 procedure TLSqLinFit.ForceEquation(eSlope : extended;
@@ -131,7 +131,7 @@ begin
   begin
     for n := 1 to Size do
     begin
-      Add(eStartingX,Slope * eStartingX + eYIntercept);
+      Add(eStartingX, eSlope * eStartingX + eYIntercept);
       eStartingX := eStartingX + eXIncrement;
     end; // for
   end; // if
