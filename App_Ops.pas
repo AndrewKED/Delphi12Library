@@ -32,6 +32,7 @@ procedure TellWindowsWeArentFrozen;
 function LinkerTimeStamp(const FileName: string): TDateTime; overload;
 function LinkerTimestamp: TDateTime; overload;
 function GetCopyrightYear : Integer;
+function DelphiVersion : String;
 
 implementation
 
@@ -685,6 +686,74 @@ begin
     end
   end;
 end; // GetCopyrightYear
+
+//***************************************************************************
+//
+//  FUNCTION  : DelphiVersion
+//
+//  I/P       : None
+//
+//  O/P       : String - The (main) Delphi version
+//
+//  OPERATION : Get the Delphi Version.
+//
+//              Based on information from
+//              https://github.com/omonien/Delphi-Version-Information
+//
+//  UPDATED   : 2024-12-12
+//
+//***************************************************************************
+function DelphiVersion : String;
+begin
+  if (System.CompilerVersion >= 36.0) then
+    Result := '12'
+  else if (System.CompilerVersion >= 35.0) then
+    Result := '11'
+  else if (System.CompilerVersion >= 34.0) then
+    Result := '10.4'
+  else if (System.CompilerVersion >= 33.0) then
+    Result := '10.3'
+  else if (System.CompilerVersion >= 32.0) then
+    Result := '10.2'
+  else if (System.CompilerVersion >= 31.0) then
+    Result := '10.1'
+  else if (System.CompilerVersion >= 30.0) then
+    Result := '10'
+  else if (System.CompilerVersion >= 29.0) then
+    Result := 'XE8'
+  else if (System.CompilerVersion >= 28.0) then
+    Result := 'XE7'
+  else if (System.CompilerVersion >= 27.0) then
+    Result := 'XE6'
+  else if (System.CompilerVersion >= 26.0) then
+    Result := 'XE5'
+  else if (System.CompilerVersion >= 25.0) then
+    Result := 'XE4'
+  else if (System.CompilerVersion >= 24.0) then
+    Result := 'XE3'
+  else if (System.CompilerVersion >= 23.0) then
+    Result := 'XE2'
+  else if (System.CompilerVersion >= 22.0) then
+    Result := 'XE'
+  else if (System.CompilerVersion >= 21.0) then
+    Result := '2010'
+  else if (System.CompilerVersion >= 20.0) then
+    Result := '2009'
+  else if (System.CompilerVersion >= 18.5) then
+    Result := '2007'
+  else if (System.CompilerVersion >= 18.0) then
+    Result := '2006'
+  else if (System.CompilerVersion >= 17.0) then
+    Result := '2005'
+  else if (System.CompilerVersion >= 16.0) then
+    Result := '8'
+  else if (System.CompilerVersion >= 15.0) then
+    Result := '7/7.1'
+  else if (System.CompilerVersion >= 14.0) then
+    Result := '6'
+  else
+    Result := '?';
+end;
 
 //***************************************************************************
 //
