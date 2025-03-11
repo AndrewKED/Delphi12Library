@@ -783,6 +783,8 @@ begin
   // See ISO 14443_4 rules above
   blockNumber := 0;
   errorMsgNFC := '';
+
+  EraseDebugLog(idxLogFile);
 end;
 
 //*****************************************************************************
@@ -809,6 +811,10 @@ var
 //  newCRC : Word;
 
 begin
+{$IFDEF DEBUG_LOTS}
+  AddNFCDebug('SendCommand,Started');
+{$ENDIF}
+
   try
     lastCommandPCB := PCB;
 
@@ -895,7 +901,7 @@ end; // ResponseStatus
 //
 //  O/P       : Boolean - TRUE if the command executed correctly
 //
-//  OPERATION :
+//  OPERATION : Set the state of the GPIO port
 //
 //  UPDATED   : 2021-02-01
 //

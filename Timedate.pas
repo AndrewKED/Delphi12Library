@@ -138,6 +138,7 @@ function MonthsBetweenExact(dtFrom : TDateTime;
 function GPSTOW(dtWhen : TDateTime) : longword;
 function GPSWeekNumber(dtWhen : TDateTime) : word;
 function ClosestWeekDay(dtTargetDate : TDateTime) : TDateTime;
+function FixedDTPShortDateFormat : String;
 function FixedDTPShortTimeFormat : String;
 function RemoveMilliSeconds(dtGiven : TDateTime) : TDateTime;
 function RemoveSeconds(dtGiven : TDateTime) : TDateTime;
@@ -194,7 +195,7 @@ var
 //
 //  FUNCTION  : StartFastTimer
 //
-//  I/P       : iTimerNumber : Integer - The timer number to be started
+//  I/P       : iTimerNumber : Integer - The timer number to be started (0-9)
 //
 //  O/P       : None
 //
@@ -1134,9 +1135,10 @@ end; // ClosestWeekDay
 //
 //  I/P       :
 //
-//  O/P       :
+//  O/P       : String - A version of the PC's short time format which is
+//                applicable for use in a TDateTimePicker component.
 //
-//  OPERATION : Return a format string for a TDateTimePicker (of dtkTime),
+//  OPERATION : Return a time format string for a TDateTimePicker,
 //              based on the current Short Time Format.
 //
 //              Make conversions between Windows ShortTimeFormat specifiers
@@ -1160,20 +1162,53 @@ begin
   result := FormatSettings.ShortTimeFormat;
 
   // The abbreviation n (for minutes) must be replaced with m
-  result := SearchAndReplace(result,'n','m');
+  result := SearchAndReplace(result, 'n', 'm');
 
   if (Pos('AMPM',result) = 0) then
   begin
     // Have encountered a non-AM/PM (i.e. 24 hour clock) where ShortTimeFormat
     // has specified 'hh' instead of 'HH'
-    result := SearchAndReplace(result,'hh','HH')
+    result := SearchAndReplace(result, 'hh', 'HH')
   end // if
   else
   begin
     // Delphi TDateTimePicker uses 'tt' for the two-letter AM/PM abbreviation
-    result := SearchAndReplace(result,'AMPM','tt');
+    result := SearchAndReplace(result, 'AMPM', 'tt');
   end; // else
 end; // FixedDTPShortTimeFormat
+
+//***************************************************************************
+//
+//  FUNCTION  : FixedDTPShortTimeFormat
+//
+//  I/P       : None
+//
+//  O/P       : String - A version of the PC's short date format which is
+//                applicable for use in a TDateTimePicker component.
+//
+//  OPERATION : Return a date format string for a TDateTimePicker,
+//              based on the current Short Date Format.
+//
+//              Make conversions between Windows ShortTimeFormat specifiers
+//              and the format specifiers required for use in a TDateTimePicker.
+//
+//              TDateTimePicker (original and Jedi) do not replace the '/'
+//              character in ShortDateFormat with the current DateSeparator,
+//              which they should do. So dates shown as "yyyy/mm/dd" will always
+//              display a '/' separator.
+//
+//  UPDATED   : 2025-02-13
+//
+//***************************************************************************
+function FixedDTPShortDateFormat : String;
+begin
+  result := FormatSettings.ShortDateFormat;
+
+  // The abbreviation m (for months) must be replaced with M
+  result := SearchAndReplace(result, 'm', 'M');
+
+  result := SearchAndReplace(result, '/', FormatSettings.DateSeparator);
+end; // FixedDTPShortDateFormat
 
 //***************************************************************************
 //

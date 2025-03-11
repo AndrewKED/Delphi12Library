@@ -102,6 +102,7 @@ function IsIP4Address(sInput : string) : boolean;
 function IsAHexadecimal(sInput : String) : Boolean;
 function IsAISO8601DateTime(const sInput : String;
                             expectUTC : Boolean) : Boolean;
+function IsADateTime(sInput : String) : Boolean;
 function ForcedStrToFloat(sValue : String;
                           dInvalid : Extended) : Extended;
 function InitialUpperCase(sInput : string) : String;
@@ -1894,21 +1895,21 @@ end; // IsAnInteger
 //***************************************************************************
 function IsAFloat(sNumber : string) : boolean;
 begin
-  if ((sNumber <> '') and
-      (sNumber <> '-') and
-      (sNumber <> 'NAN')) then
+  if (StringIncludes(sNumber, FALSE, FALSE, TRUE, FALSE, [])) then
   begin
     try
   {$O-}
       StrToFloat(sNumber);
   {$O+}
-      result := TRUE;
+      Result := TRUE;
     except
-      result := FALSE;
+      Result := FALSE;
     end;
   end // if
   else
-    result := FALSE;
+  begin
+    Result := FALSE;
+  end;
 end; // IsAFloat
 
 //***************************************************************************
@@ -2051,6 +2052,41 @@ begin
     dummy := ISO8601ToDate(sInput, expectUTC);
   except
     Result := FALSE;
+  end;
+end; // IsAISO8601DateTime
+
+//***************************************************************************
+//
+//  FUNCTION  : IsADateTime
+//
+//  I/P       : sInput : String - The string to be tested
+//
+//  O/P       : Boolean - TRUE if the string appears to be a valid date time
+//
+//  OPERATION : Check that the given string contains a convertable date time.
+//
+//  UPDATED   : 2024-11-18
+//
+//***************************************************************************
+function IsADateTime(sInput : String) : Boolean;
+var
+  n : Integer;
+
+begin
+  result := TRUE;
+  n := Length(sInput);
+  if (n > 3) then
+  begin
+    // The shortest valid datetime string is probably something like "0:0"
+    try
+      StrToDateTime(sInput);
+    except
+      Result := False;
+    end;
+  end
+  else
+  begin
+    result := FALSE;
   end;
 end; // IsADateTime
 
