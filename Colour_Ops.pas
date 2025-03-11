@@ -9,6 +9,13 @@ uses
 {$ENDIF}
   ;
 
+procedure GetRGBComponents(value : TColor;
+                           var valRed : Byte;
+                           var valGreen : Byte;
+                           var valBlue : Byte);
+function MakeColour(valRed : Byte;
+                    valGreen : Byte;
+                    valBlue : Byte) : TColor;
 function ChangeColourShade(colourOriginal : TColor;
                            change : Integer) : Integer;
 function CanChangeColour(colourOriginal : TColor;
@@ -19,6 +26,7 @@ function ShadeBetween(StartColour : TColor;
 {$IFDEF WIN32}
 function LEDRedGreen(Good : boolean) : TLEDColor;
 {$ENDIF}
+function Colour2HTMLHex(value : TColor) : String;
 function Colour2Text(value : TColor) : String;
 
 const
@@ -26,10 +34,10 @@ const
 //------------------------------------------------------------------------------
 
 // ICAPE Colours
-ICAPE_GREY = $00353535;     // "Deep Anthracite Grey"
-ICAPE_BLUE = $00BF7C12;     // Also $00EFAE35 / $00C87D00 / $00C97E00
-ICAPE_GREEN1 = $006ECB94;   //
-ICAPE_GREEN2 = $009FE1BA;   //
+ICAPE_GREY = $00353535;     //  53,  53,  53  "Deep Anthracite Grey"
+ICAPE_BLUE = $00BF7C12;     // 191, 124,  18  Also $00EFAE35 / $00C87D00 / $00C97E00
+ICAPE_GREEN = $006ECB94;    // 110, 203, 148
+ICAPE_LT_GREEN = $009FE1BA; // 159, 225, 185
 
 
 
@@ -142,11 +150,85 @@ ICAPE_GREEN2 = $009FE1BA;   //
     $007FFFD4,
     $00D4FF7F);
 
+AutumnColours: array[0..19] of TColor = (
+    $4DB7FF,  // Light Orange
+    $3A7CD6,  // Burnt Orange
+    $13458B,  // Saddle Brown
+    $2A2AA5,  // Brown
+    $1E69D2,  // Chocolate
+    $3F85CD,  // Peru
+    $4763FF,  // Tomato
+    $60A4F4,  // Sandy Brown
+    $355DC6,  // Autumn Red
+    $2A2AA5,  // Rust
+    $27599C,  // Chestnut
+    $69B4D8,  // Dark Khaki
+    $8CE6F0,  // Khaki
+    $B3DEF5,  // Wheat
+    $0B86B8,  // Dark Goldenrod
+    $008B8B,  // Olive
+    $5DA6C9,  // Taupe
+    $00D7FF,  // Gold
+    $0045FF,  // Orange Red
+    $8F8FBC   // Rosy Brown
+  );
+
 implementation
 
 uses
+  System.SysUtils,
   Vcl.GraphUtil,
   Math;
+
+//***************************************************************************
+//
+//  FUNCTION  : GetRGBComponents
+//
+//  I/P       : value : TColor - The colour to be split
+//
+//  O/P       : varRed : Byte - The red portion
+//              verGreen : Byte - The green portion
+//              var  valBlue : Byte - The blue portion
+//
+//  OPERATION : Separate the given colour (including system colours) into the
+//              red, green and blue components.
+//
+//  UPDATED   : 2024-12-19
+//
+//***************************************************************************
+procedure GetRGBComponents(value : TColor;
+                           var valRed : Byte;
+                           var valGreen : Byte;
+                           var valBlue : Byte);
+begin
+  value := Graphics.ColorToRGB(value);
+
+  valBlue := Byte(value shr 16);
+  valGreen := Byte(value shr 8);
+  valRed := Byte(value);
+end; // GetRGBComponents
+
+//***************************************************************************
+//
+//  FUNCTION  :
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION :
+//
+//  UPDATED   :
+//
+//***************************************************************************
+function MakeColour(valRed : Byte;
+                    valGreen : Byte;
+                    valBlue : Byte) : TColor;
+begin
+  Result := TColor((Integer(valBlue) shl 16) +
+                   (Integer(valGreen) shl 8) +
+                   Integer(valRed));
+end;
 
 //***************************************************************************
 //
@@ -174,24 +256,22 @@ uses
 function ChangeColourShade(colourOriginal : TColor;
                            change : Integer) : Longint;
 var
-  iBlue : Integer;
-  iRed : Integer;
-  iGreen : Integer;
+  valRed : Byte;
+  valGreen : Byte;
+  valBlue : Byte;
 
 begin
   change := EnsureRange(change, -$FF, $FF);
 
-  colourOriginal := Graphics.ColorToRGB(colourOriginal);
+  GetRGBComponents(colourOriginal, valBlue, valGreen, valRed);
 
-  iBlue := (colourOriginal and $00FF0000) shr 16;
-  iGreen := (colourOriginal and $0000FF00) shr 8;
-  iRed := (colourOriginal and $000000FF);
+  valBlue := EnsureRange(Integer(valBlue) + change, $00, $FF);
+  valGreen := EnsureRange(Integer(valGreen) + change, $00, $FF);
+  valRed := EnsureRange(Integer(valRed) + change, $00, $FF);
 
-  iBlue := EnsureRange(iBlue + change, $00, $FF);
-  iGreen := EnsureRange(iGreen + change, $00, $FF);
-  iRed := EnsureRange(iRed + change, $00, $FF);
-
-  result := (iBlue shl 16) + (iGreen shl 8) + iRed;
+  result := (Integer(valBlue) shl 16) +
+            (Integer(valGreen) shl 8) +
+            Integer(valRed);
 end; // ChangeColourShade
 
 //***************************************************************************
@@ -312,6 +392,30 @@ begin
     result := lcRed;
 end;
 {$ENDIF}
+
+//***************************************************************************
+//
+//  FUNCTION  : Colour2HTMLHex
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION :
+//
+//  UPDATED   :
+//
+//***************************************************************************
+function Colour2HTMLHex(value : TColor) : String;
+var
+  red : Byte;
+  blue : Byte;
+  green : Byte;
+
+begin
+  GetRGBComponents(value, red, green, blue);
+  Result := '#' + IntToHex(red, 2) + IntToHex(green, 2) + IntToHex(blue, 2);
+end; // Colour2HTMLHex
 
 //***************************************************************************
 //
