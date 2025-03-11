@@ -100,6 +100,8 @@ function IsAFloat(sNumber : string) : boolean;
 function IsAlphaNumeric(sInput : string) : boolean;
 function IsIP4Address(sInput : string) : boolean;
 function IsAHexadecimal(sInput : String) : Boolean;
+function IsAISO8601DateTime(const sInput : String;
+                            expectUTC : Boolean) : Boolean;
 function ForcedStrToFloat(sValue : String;
                           dInvalid : Extended) : Extended;
 function InitialUpperCase(sInput : string) : String;
@@ -130,6 +132,9 @@ function StringHasCharacters(const theString : AnsiString;
 function StringHasCharacters(const theString : String;
                              const theCharacters : TArray<Char>;
                              const only : Boolean) : Boolean; overload;
+function StringHasCharacters(const theString : String;
+                             const theCharacters : String;
+                             const only : Boolean) : Boolean; overload;
 function StringIncludes(const theString : AnsiString;
                         const needs_lower : Boolean;
                         const needs_upper : Boolean;
@@ -142,6 +147,14 @@ function StringIncludes(const theString : String;
                         const needs_number : Boolean;
                         const needs_special : Boolean;
                         const special_set : TArray<Char>) : Boolean; overload;
+function StringIncludes(const theString : String;
+                        const needs_lower : Boolean;
+                        const needs_upper : Boolean;
+                        const needs_number : Boolean;
+                        const needs_special : Boolean;
+                        const setLower : String;
+                        const setUpper : String;
+                        const special_set : String) : Boolean; overload;
 function NoneSingleMultiple(items : Integer;
                             noneText : String;
                             oneText : String;
@@ -172,8 +185,8 @@ implementation
 
 uses
   System.StrUtils, System.AnsiStrings, System.Character, System.Types,
-  System.RegularExpressions,
-  Math, DateUtils, TimeDate;
+  System.DateUtils, System.RegularExpressions,
+  Math, TimeDate;
 
 //****************************************************************************
 //
@@ -2008,7 +2021,38 @@ begin
   begin
     result := FALSE;
   end;
-end;
+end; // IsAHexadecimal
+
+//***************************************************************************
+//
+//  FUNCTION  : IsAISO8601DateTime
+//
+//  I/P       : sInput : String - The string to be tested
+//
+//              expectUTC : Boolean - TRUE if the string should terminate with 'Z'
+//
+//  O/P       : Boolean - TRUE if the string is a non-null date/time expressed
+//                in a valid ISO8601 form.
+//
+//  OPERATION : Check that the given string contains valid date/time value in
+//              ISO8601 format.
+//
+//  UPDATED   : 2025-02-12
+//
+//***************************************************************************
+function IsAISO8601DateTime(const sInput : String;
+                            expectUTC : Boolean) : Boolean;
+var
+  dummy : TDateTime;
+
+begin
+  Result := TRUE;
+  try
+    dummy := ISO8601ToDate(sInput, expectUTC);
+  except
+    Result := FALSE;
+  end;
+end; // IsADateTime
 
 //***************************************************************************
 //
@@ -2734,7 +2778,9 @@ end; // JoinStrings
 //
 //  I/P       : theString : String - The string to be tested
 //
-//              theCharacters : TSysCharSet - the set of characters to check for.
+//              theCharacters : TSysCharSet - The set of characters to check for.
+//              theCharacters : TArray<Char> - An array of characters to check for.
+//              theCharacters : String - A string containing characters to check for.
 //
 //              only : Boolean - TRUE if the string may contain no other characters
 //
@@ -2743,17 +2789,17 @@ end; // JoinStrings
 //  OPERATION : Test if the given string has ONLY characters in the given set,
 //              or if the given string has at least one character in the given set.
 //
-//  UPDATED   : 2019-11-23
+//  UPDATED   : 2025-01-07
 //
 //***************************************************************************
 function StringHasCharacters(const theString : AnsiString;
                              const theCharacters : TSysCharSet;
                              const only : Boolean) : Boolean; overload;
 var
-  i: integer;
+  i : Integer;
 
 begin
-  result := only;
+  Result := only;
 
   i := 1;
   while (i <= Length(theString)) do
@@ -2762,16 +2808,16 @@ begin
     begin
       if (not CharInSet(theString[i], theCharacters)) then
       begin
-        result := false;
-        exit;
+        Result := FALSE;
+        Exit;
       end; // if
     end // if
     else
     begin
       if (CharInSet(theString[i], theCharacters)) then
       begin
-        result := TRUE;
-        exit;
+        Result := TRUE;
+        Exit;
       end; // if
     end;
     Inc(i);
@@ -2782,10 +2828,10 @@ function StringHasCharacters(const theString : String;
                              const theCharacters : TArray<Char>;
                              const only : Boolean) : Boolean; overload;
 var
-  i: integer;
+  i : Integer;
 
 begin
-  result := only;
+  Result := only;
 
   i := 1;
   while (i <= Length(theString)) do
@@ -2794,16 +2840,48 @@ begin
     begin
       if (not theString[i].IsInArray(theCharacters)) then
       begin
-        result := false;
-        exit;
+        Result := FALSE;
+        Exit;
       end; // if
     end // if
     else
     begin
       if (theString[i].IsInArray(theCharacters)) then
       begin
-        result := TRUE;
-        exit;
+        Result := TRUE;
+        Exit;
+      end; // if
+    end;
+    Inc(i);
+  end; // while
+end; // StringHasCharacters
+
+function StringHasCharacters(const theString : String;
+                             const theCharacters : String;
+                             const only : Boolean) : Boolean; overload;
+var
+  i : Integer;
+
+begin
+  Result := only;
+
+  i := 1;
+  while (i <= Length(theString)) do
+  begin
+    if (only) then
+    begin
+      if (Pos(theString[i], theCharacters) = 0) then
+      begin
+        Result := FALSE;
+        Exit;
+      end; // if
+    end // if
+    else
+    begin
+      if (Pos(theString[i], theCharacters) <> 0) then
+      begin
+        Result := TRUE;
+        Exit;
       end; // if
     end;
     Inc(i);
@@ -2835,6 +2913,11 @@ end; // StringHasCharacters
 //
 //  OPERATION : Check that the string contains at least one character from
 //              each of the indicated sets of characters.
+//
+//              Warning : The lower- and upper-cases set may not be
+//              internationally acceptable/acceptable. In that case, use the
+//              third overloaded version, with the calling function supplying the
+//              set of "lower case" and "upper case" characters.
 //
 //  UPDATED   : 2024-11-11
 //
@@ -2993,6 +3076,88 @@ begin
     for n := 1 to Length(theString) do
     begin
       if (theString[n].IsInArray(special_set)) then
+      begin
+        // A special character has been found
+        found_special := TRUE;
+        Break;
+      end;
+    end; // for
+  end; // if
+
+  Result := (found_lower) and
+            (found_upper) and
+            (found_number) and
+            (found_special);
+end;
+
+function StringIncludes(const theString : String;
+                        const needs_lower : Boolean;
+                        const needs_upper : Boolean;
+                        const needs_number : Boolean;
+                        const needs_special : Boolean;
+                        const setLower : String;
+                        const setUpper : String;
+                        const special_set : String) : Boolean; overload;
+const
+  setNumbers : TArray<Char> = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+var
+  n: Integer;
+  found_lower : Boolean;
+  found_upper : Boolean;
+  found_number : Boolean;
+  found_special : Boolean;
+
+begin
+  found_lower := not needs_lower;
+  found_upper := not needs_upper;
+  found_number := not needs_number;
+  found_special := not needs_special;
+
+  if (needs_lower) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (Pos(theString[n], setLower) <> 0) then
+      begin
+        // A lower case character has been found
+        found_lower := TRUE;
+        Break;
+      end;
+    end; // for
+  end;
+
+  if (needs_upper) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (Pos(theString[n], setUpper) <> 0) then
+      begin
+        // An upper case character has been found
+        found_upper := TRUE;
+        Break;
+      end;
+    end; // for
+  end;
+
+  if (needs_number) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (theString[n].IsInArray(setNumbers)) then
+      begin
+        // A number character has been found
+        found_number := TRUE;
+        Break;
+      end;
+    end; // for
+  end;
+
+  if (needs_special) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (Pos(theString[n], special_set) <> 0) then
       begin
         // A special character has been found
         found_special := TRUE;
