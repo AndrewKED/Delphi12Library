@@ -393,6 +393,30 @@ begin
 end;
 {$ENDIF}
 
+//***************************************************************************
+//
+//  FUNCTION  : Colour2HTMLHex
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION :
+//
+//  UPDATED   :
+//
+//***************************************************************************
+function Colour2HTMLHex(value : TColor) : String;
+var
+  red : Byte;
+  blue : Byte;
+  green : Byte;
+
+begin
+  GetRGBComponents(value, red, green, blue);
+  Result := '#' + IntToHex(red, 2) + IntToHex(green, 2) + IntToHex(blue, 2);
+end; // Colour2HTMLHex
+
 ////***************************************************************************
 ////
 ////  FUNCTION  : Colour2Text
@@ -454,28 +478,6 @@ end;
 //    else
 //      Result := 'red';
 //
-<<<<<<< HEAD
-//  FUNCTION  : Colour2HTMLHex
-//
-//  I/P       :
-//
-//  O/P       :
-//
-//  OPERATION :
-//
-//  UPDATED   :
-//
-//***************************************************************************
-function Colour2HTMLHex(value : TColor) : String;
-var
-  red : Byte;
-  blue : Byte;
-  green : Byte;
-
-begin
-  GetRGBComponents(value, red, green, blue);
-  Result := '#' + IntToHex(red, 2) + IntToHex(green, 2) + IntToHex(blue, 2);
-end; // Colour2HTMLHex
 
 //***************************************************************************
 //
