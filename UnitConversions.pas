@@ -23,6 +23,7 @@ const
   G_PER_LB = 453.5924;
   GPM3_PER_OZPFT3 = 1001.1539701121;
   GPM3_PER_OZPYD3 = 37.0797766708;
+  ABS_ZEROT = -273.15;              // Temperature of absolute zero, in degC - To
 
 function degC_From_Kelvin(t : Double) : Double;
 function Kelvin_From_degC(t : Double) : Double;
@@ -69,7 +70,6 @@ function Kelvin_From_degC(t : Double) : Double;
 begin
   Result := t - ABS_ZEROT;
 end; // Kelvin_From_degC
-
 
 //***************************************************************************
 //

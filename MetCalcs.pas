@@ -7,7 +7,6 @@ const
   RVGAS = 461.5;                            // Rv : Gas constant for water vapour in J/(kgK)
   SPECH_DA_CP = 1005.7;                     // Cpd : specific heat of dry air at constant pressure in J/(kgK)
   STANDARD_NORMAL_GRAVITY = 9.80665;        // m/s2 Gravitational Constant in m/s2 (WMO) - gn
-  ABS_ZEROT = -273.15;                      // Temperature of absolute zero, in degC - To
   STANDARD_SL_PRESSURE = 1013.25;           // International Civil Aviation Organisation ICAO hPa
   STANDARD_SL_TEMPERATURE = 15;             // ICAO (in deg C)
   STANDARD_SL_DENSITY = 1.225;              // ICAO (in kg/m3)
@@ -261,7 +260,7 @@ begin
   if (dSVPTemperature < INVALID_TEST) then
   begin
     // This equation gives pressure in hPa, given that T is in Kelvin
-    dSVPTemperature := dSVPTemperature - ABS_ZEROT;
+    dSVPTemperature := Kelvin_From_degC(dSVPTemperature);
     result := Exp(- 2836.5744 * Power(dSVPTemperature,-2)
                   - 6028.076559 * Power(dSVPTemperature,-1)
                   + 19.54263612
@@ -314,7 +313,7 @@ begin
   begin
     // Convert pressure from hPa to Pa for use in the equation below
     dGivenVP := dGivenVP * 100;
-    result := (2.0798233E2
+    Result := (2.0798233E2
                - 2.0156028E1 * Ln(dGivenVP)
                + 4.6778925E-1 * Power(Ln(dGivenVP),2)
                - 9.2288067E-6 * Power(Ln(dGivenVP),3)) /
@@ -322,10 +321,10 @@ begin
                - 1.3319669E-1 * Ln(dGivenVP)
                + 5.6577518E-3 * Power(Ln(dGivenVP),2)
                - 7.5172865E-5 * Power(Ln(dGivenVP),3));
-    result := result + ABS_ZEROT;
+    Result := degC_From_Kelvin(Result);
   end // if
   else
-    result := INVALID_TEST
+    Result := INVALID_TEST
 end; // Td_From_VP
 
 //***************************************************************************
@@ -360,17 +359,17 @@ begin
   begin
     // Convert pressure from hPa to Pa for use in the equation below
     dGivenVP := dGivenVP * 100;
-    result := (2.1257969E2
+    Result := (2.1257969E2
                - 1.0264612E1 * Ln(dGivenVP)
                + 1.4354796E-1 * Power(Ln(dGivenVP),2)) /
               (1
                - 8.2871619E-2 * Ln(dGivenVP)
                + 2.3540411E-3 * Power(Ln(dGivenVP),2)
                - 2.4363951E-5 * Power(Ln(dGivenVP),3));
-    result := result + ABS_ZEROT;
+    Result := degC_From_Kelvin(Result);
   end // if
   else
-    result := INVALID_TEST
+    Result := INVALID_TEST
 end; // Tf_From_VP
 
 //***************************************************************************
@@ -660,7 +659,7 @@ end; // T_From_PotTemp_P
 //
 //  I/P       : dVTPressure (double) - the pressure in mB.
 //
-//              dVTTemperature (double) - the temperature in �C.
+//              dVTTemperature (double) - the temperature in degC.
 //
 //              dVTHumidity (double) - the relative humidity in %.
 //
@@ -704,7 +703,7 @@ begin
       (dVTHumidity < INVALID_TEST)) then
   begin
     // Virtual Temperature
-    result := (dVTTemperature - ABS_ZEROT) /
+    result := Kelvin_From_degC(dVTTemperature) /
               (1.0 - 0.37802 * VapourPressure(dVTTemperature, dVTHumidity) / dVTPressure);
   end // if
   else
@@ -832,7 +831,7 @@ end; // U_From_Tdp_T
 function AbsoluteHumidity(vapourPressure : Double;
                           temperature : Double) : Double;
 begin
-  Result := 2.16679 * (vapourPressure * 100.0) / (temperature - ABS_ZEROT);
+  Result := 2.16679 * (vapourPressure * 100.0) / Kelvin_From_degC(temperature);
 end;
 
 //***************************************************************************
@@ -1367,7 +1366,7 @@ var
   temperatureK : Double;
 
 begin
-  temperatureK := temperature - ABS_ZEROT;
+  temperatureK := Kelvin_From_degC(temperature);
   result := (77.6 * pressure - 5.6 * vapourPressure + 374808 * vapourPressure/temperatureK) /
             temperatureK;
 end; // IndexOfRefraction
@@ -1955,7 +1954,7 @@ begin
   // and ground temperature.
 
   // Get the ground potential temperature (in K)
-  groundTp := PotTemp_From_T_P(temperature - ABS_ZEROT, pressure);
+  groundTp := PotTemp_From_T_P(Kelvin_From_degC(temperature), pressure);
   // The dry adiabt through the ground temperature will follow the curve
   //  T = groundTp / Power((1000.0/p),0.288);
 
