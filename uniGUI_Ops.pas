@@ -4,7 +4,8 @@ interface
 
 uses
   System.SysUtils,
-  uniGUIClasses, uniGUIForm, uniPanel, uniDBGrid;
+  uniGUIClasses, uniGUIApplication, uniGUIForm, uniPanel, uniDBGrid,
+  uniStringGrid;
 
 const
   PERSISTENT_COOKIE_EXPIRY = 73051; // Equivalend of EncodeDate(2100,1,1)
@@ -29,12 +30,28 @@ procedure SetDateFormat(owner : TUniContainer;
 procedure uniDBGridAutoWidth(aGrid: TUniDBGrid; aFieldName: String = '');
 procedure ResizeGridColumns(theGrid : TUniDBGrid;
                             columnRatios : array of Integer); overload;
+procedure ResizeGridColumns(theGrid : TUniStringGrid;
+                            columnRatios : array of Integer); overload;
+function GetCookieInteger(app : TUniGUIApplication;
+                          cookie : String;
+                          default : Integer) : Integer;
+function GetCookieBoolean(app : TUniGUIApplication;
+                          cookie : String;
+                          default : Boolean) : Boolean;
+function GetCookieISO8601DateTime(app : TUniGUIApplication;
+                                  cookie : String;
+                                  expectUTC : Boolean;
+                                  default : TDateTime) : TDateTime;
+procedure FocusAndSelectAll(focusControl : TUniControl);
+procedure EnabledAsParent(container : TUniContainer);
 
 implementation
 
 uses
-  System.TypInfo, System.Classes,
-  uniButton, uniBasicGrid;
+  System.TypInfo, System.Classes, System.DateUtils,
+  uniButton, uniGUITypes, uniBasicGrid, uniDBEdit, uniMemo, uniDBMemo,
+  uniDateTimePicker,
+  Str_Ops;
 //  uniCheckBox, uniEdit, uniDateTimePicker, uniMemo,
 //  uniDBCheckBox, uniDBEdit, uniDBDateTimePicker, uniDBMemo;
 
@@ -113,14 +130,19 @@ end; // CentreYAonB
 //
 //  FUNCTION  : SetReadOnly
 //
-//  I/P       :
+//  I/P       : owner : TUniContainer - The owner of the controls
 //
-//  O/P       :
+//              state : Boolean - the ReadOnly state to be set.
 //
-//  OPERATION : Force all components that have a DateFormat property to use
-//              the given format.
+//              handleButtons : Boolean - If TRUE, hide any buttons within the
+//                container when setting the ReadOnly status to TRUE.
 //
-//              Optionally also set the Enable property of TUniButtons to give
+//  O/P       : None
+//
+//  OPERATION : Set the ReadOnly status of all components which have this
+//              property, within a given container.
+//
+//              Optionally also set the Visible property of TUniButtons to give
 //              a similar effect (i.e. can/cannot be clicked)
 //
 //  UPDATED   : 2024-11-12
@@ -143,12 +165,12 @@ begin
       SetReadOnly(TUniContainer(owner.Controls[n]), state, handleButtons);
     end;
 
-    // If required, treat a button's Enabled state like not ReadOnly.
+    // If required, treat a button's Visible state like not ReadOnly.
     if (owner.Controls[n] is TUniButton) then
     begin
       if (handleButtons) then
       begin
-        TUniButton(owner.Controls[n]).Enabled := not state;
+        TUniButton(owner.Controls[n]).Visible := not state;
       end;
       Continue;
     end;
@@ -367,5 +389,263 @@ begin
   end;
 end; // ResizeGridColumns
 
+//***************************************************************************
+//
+//  FUNCTION  :
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION :
+//
+//  UPDATED   :
+//
+//***************************************************************************
+procedure ResizeGridColumns(theGrid : TUniStringGrid;
+                            columnRatios : array of Integer); overload;
+var
+  iClientWidth : Integer;
+  t : Integer;
+  iTotal : Integer;
+
+begin
+  if (Length(columnRatios) = theGrid.ColCount) then
+  begin
+    iTotal := 0;
+    for t := 0 to theGrid.ColCount-1 do
+    begin
+      iTotal := iTotal + columnRatios[t];
+    end; // for
+
+    iClientWidth := GetGridClientWidth(theGrid);
+
+    if (iTotal <> 0) then
+    begin
+      for t := 0 to theGrid.ColCount-1 do
+      begin
+        theGrid.ColWidths[t] := iClientWidth * columnRatios[t] div iTotal;
+      end; // for
+    end; // if
+  end;
+end; // ResizeGridColumns
+
+//***************************************************************************
+//
+//  FUNCTION  : GetCookieInteger
+//
+//  I/P       : app : TUniGUIApplication
+//
+//              cookie : String - The cookie name
+//
+//              default : Integer - The value to be returned if the cookie is
+//                not available, or is not an integer.
+//
+//  O/P       : Integer - The cookie value
+//
+//  OPERATION : Read an integer from the indicated cookie. Return a default
+//              value if unavailable.
+//
+//  UPDATED   : 2024-12-18
+//
+//***************************************************************************
+function GetCookieInteger(app : TUniGUIApplication;
+                          cookie : String;
+                          default : Integer) : Integer;
+begin
+  if (IsAnInteger(app.Cookies.Values[cookie])) then
+  begin
+    Result := StrToInt(app.Cookies.Values[cookie]);
+  end
+  else
+  begin
+    Result := default;
+  end;
+end; // GetCookieInteger
+
+//***************************************************************************
+//
+//  FUNCTION  : GetCookieBoolean
+//
+//  I/P       : app : TUniGUIApplication
+//
+//              cookie : String - The cookie name
+//
+//              default : Boolean - The value to be returned if the cookie is
+//                not available.
+//
+//  O/P       : Boolean - The cookie value
+//
+//  OPERATION : Read a boolean from the indicated cookie. Return a default
+//              value if unavailable.
+//
+//  UPDATED   : 2025-02-12
+//
+//***************************************************************************
+function GetCookieBoolean(app : TUniGUIApplication;
+                          cookie : String;
+                          default : Boolean) : Boolean;
+begin
+  if (IsAnInteger(app.Cookies.Values[cookie])) then
+  begin
+    Result := (app.Cookies.Values[cookie] = '1');
+  end
+  else
+  begin
+    Result := default;
+  end;
+end; // GetCookieBoolean
+
+//***************************************************************************
+//
+//  FUNCTION  : GetCookieISO8601DateTime
+//
+//  I/P       : app : TUniGUIApplication
+//
+//              cookie : String - The cookie name
+//
+//              expectUTC : Boolean - TRUE if the cookie string should terminate
+//                with a 'Z'
+//
+//              default : TDateTime - The value to be returned if the cookie
+//                is not available, or is not a valid date/time in the given
+//                format.
+//
+//  O/P       : TDateTime - The cookie value
+//
+//  OPERATION : Read a date/time from the indicated cookie. Return a default
+//              value if unavailable.
+//
+//              Note that the cookie is expected to be in ISO8601 format
+//
+//  UPDATED   : 2025-02-12
+//
+//***************************************************************************
+function GetCookieISO8601DateTime(app : TUniGUIApplication;
+                                  cookie : String;
+                                  expectUTC : Boolean;
+                                  default : TDateTime) : TDateTime;
+begin
+  if (IsAISO8601DateTime(app.Cookies.Values[cookie], expectUTC)) then
+  begin
+    Result := ISO8601ToDate(app.Cookies.Values[cookie], expectUTC);
+  end
+  else
+  begin
+    Result := default;
+  end;
+end; // GetCookieISO8601DateTime
+
+//***************************************************************************
+//
+//  FUNCTION  : FocusAndSelectAll
+//
+//  I/P       : focusControl : TUniControl
+//
+//  O/P       :
+//
+//  OPERATION :
+//
+//  UPDATED   : 2024-12-19
+//
+//***************************************************************************
+procedure FocusAndSelectAll(focusControl : TUniControl);
+begin
+  if (focusControl is TUniDBEdit) then
+  begin
+    TUniDBEdit(focusControl).SetFocus;
+    TUniDBEdit(focusControl).SelectAll;
+  end // if
+
+  else if (focusControl is TUniDBNumberEdit) then
+  begin
+    TUniDBNumberEdit(focusControl).SetFocus;
+    TUniDBNumberEdit(focusControl).SelectAll;
+  end // if
+
+  else if (focusControl is TUniDateTimePicker) then
+  begin
+    TUniDateTimePicker(focusControl).SetFocus;
+//!!    TUniDateTimePicker(focusControl).SelectAll;
+  end // if
+
+  else if (focusControl is TUniButton) then
+  begin
+    TUniButton(focusControl).SetFocus;
+  end // if
+
+  else if (focusControl is TUniMemo) then
+  begin
+    TUniMemo(focusControl).SetFocus;
+//!!    TUniMemo(failedEntry).JSInterface.JSCall('execCmd', ['selectAll']);
+  end // if
+
+  else if (focusControl is TUniDBMemo) then
+  begin
+    TUniDBMemo(focusControl).SetFocus;
+//!!    TUniDBMemo(failedEntry).JSInterface.JSCall('execCmd', ['selectAll']);
+  end // if
+end;
+
+//***************************************************************************
+//
+//  FUNCTION  : EnabledAsParent
+//
+//  I/P       : parent : TUniContainer - The control within which
+//
+//  O/P       :
+//
+//  OPERATION :
+//
+//  UPDATED   : 2025-03-06
+//
+//***************************************************************************
+procedure EnabledAsParent(container : TUniContainer);
+var
+  index: Integer;
+
+begin
+////TUniPanel, TUniCustomPanel, TUniCustomScrollablePanel, TUniCustomContainerPanel, TUniContainer
+////TUniGroupBox, TUniContainer
+////TUniContainerPanel, TUniCustomScrollablePanel, TUniCustomContainerPanel, TUniContainer
+//
+//  for index := 0 to container.ControlCount-1 do
+//  begin
+//    aControl := container.Controls[index];
+//
+//    if (IsPublishedProp(aControl, 'Enabled') then
+//    begin
+//
+//    end;
+//    aControl.Enabled := container.Enabled;
+//
+//    isContainer := (csAcceptsControls in Container.Controls[index].ControlStyle);
+//
+//    if ((isContainer) AND (aControl is TWinControl)) then
+//    begin
+//      // Recursive for child controls
+//      EnabledAsParent(TWinControl(Container.Controls[index]));
+//    end;
+//  end;
+//
+//
+//
+//  if (not (parent is TUniContainer)) then
+//  begin
+//    Exit;
+//  end;
+//
+//  for n := 0 to parent.ControlCount-1 do
+//  begin
+//    if (parent.Controls[n] is TUniButton) then
+//    begin
+//      TUniButton(parent.Controls[n]).Enabled := parent.Enabled;
+//    end;
+//    if (parent.Controls[n] is TUniMemo) then
+//    begin
+//      TUniMemo(parent.Controls[n]).Enabled := parent.Enabled;
+//    end;
+//  end; // for
+end; // EnabledAsParent
 
 end.
