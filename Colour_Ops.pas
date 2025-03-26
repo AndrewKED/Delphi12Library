@@ -3,8 +3,19 @@ unit Colour_Ops;
 interface
 
 uses
-  Graphics, LED;
+  Graphics
+{$IFDEF WIN32}
+  , LED
+{$ENDIF}
+  ;
 
+procedure GetRGBComponents(value : TColor;
+                           var valRed : Byte;
+                           var valGreen : Byte;
+                           var valBlue : Byte);
+function MakeColour(valRed : Byte;
+                    valGreen : Byte;
+                    valBlue : Byte) : TColor;
 function ChangeColourShade(colourOriginal : TColor;
                            change : Integer) : Integer;
 function CanChangeColour(colourOriginal : TColor;
@@ -12,18 +23,21 @@ function CanChangeColour(colourOriginal : TColor;
 function ShadeBetween(StartColour : TColor;
                       EndColour : TColor;
                       Percentage : double) : TColor;
+{$IFDEF WIN32}
 function LEDRedGreen(Good : boolean) : TLEDColor;
-function Colour2Text(value : TColor) : String;
+{$ENDIF}
+function Colour2HTMLHex(value : TColor) : String;
+//function Colour2Text(value : TColor) : String;
 
 const
 // Colours
 //------------------------------------------------------------------------------
 
 // ICAPE Colours
-ICAPE_GREY = $00353535;     // "Deep Anthracite Grey"
-ICAPE_BLUE = $00BF7C12;     // Also $00EFAE35 / $00C87D00 / $00C97E00
-ICAPE_GREEN1 = $006ECB94;   //
-ICAPE_GREEN2 = $009FE1BA;   //
+ICAPE_GREY = $00353535;     //  53,  53,  53  "Deep Anthracite Grey"
+ICAPE_BLUE = $00BF7C12;     // 191, 124,  18  Also $00EFAE35 / $00C87D00 / $00C97E00
+ICAPE_GREEN = $006ECB94;    // 110, 203, 148
+ICAPE_LT_GREEN = $009FE1BA; // 159, 225, 185
 
 
 
@@ -136,11 +150,85 @@ ICAPE_GREEN2 = $009FE1BA;   //
     $007FFFD4,
     $00D4FF7F);
 
+AutumnColours: array[0..19] of TColor = (
+    $4DB7FF,  // Light Orange
+    $3A7CD6,  // Burnt Orange
+    $13458B,  // Saddle Brown
+    $2A2AA5,  // Brown
+    $1E69D2,  // Chocolate
+    $3F85CD,  // Peru
+    $4763FF,  // Tomato
+    $60A4F4,  // Sandy Brown
+    $355DC6,  // Autumn Red
+    $2A2AA5,  // Rust
+    $27599C,  // Chestnut
+    $69B4D8,  // Dark Khaki
+    $8CE6F0,  // Khaki
+    $B3DEF5,  // Wheat
+    $0B86B8,  // Dark Goldenrod
+    $008B8B,  // Olive
+    $5DA6C9,  // Taupe
+    $00D7FF,  // Gold
+    $0045FF,  // Orange Red
+    $8F8FBC   // Rosy Brown
+  );
+
 implementation
 
 uses
+  System.SysUtils,
   Vcl.GraphUtil,
   Math;
+
+//***************************************************************************
+//
+//  FUNCTION  : GetRGBComponents
+//
+//  I/P       : value : TColor - The colour to be split
+//
+//  O/P       : varRed : Byte - The red portion
+//              verGreen : Byte - The green portion
+//              var  valBlue : Byte - The blue portion
+//
+//  OPERATION : Separate the given colour (including system colours) into the
+//              red, green and blue components.
+//
+//  UPDATED   : 2024-12-19
+//
+//***************************************************************************
+procedure GetRGBComponents(value : TColor;
+                           var valRed : Byte;
+                           var valGreen : Byte;
+                           var valBlue : Byte);
+begin
+  value := Graphics.ColorToRGB(value);
+
+  valBlue := Byte(value shr 16);
+  valGreen := Byte(value shr 8);
+  valRed := Byte(value);
+end; // GetRGBComponents
+
+//***************************************************************************
+//
+//  FUNCTION  :
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION :
+//
+//  UPDATED   :
+//
+//***************************************************************************
+function MakeColour(valRed : Byte;
+                    valGreen : Byte;
+                    valBlue : Byte) : TColor;
+begin
+  Result := TColor((Integer(valBlue) shl 16) +
+                   (Integer(valGreen) shl 8) +
+                   Integer(valRed));
+end;
 
 //***************************************************************************
 //
@@ -168,24 +256,22 @@ uses
 function ChangeColourShade(colourOriginal : TColor;
                            change : Integer) : Longint;
 var
-  iBlue : Integer;
-  iRed : Integer;
-  iGreen : Integer;
+  valRed : Byte;
+  valGreen : Byte;
+  valBlue : Byte;
 
 begin
   change := EnsureRange(change, -$FF, $FF);
 
-  colourOriginal := Graphics.ColorToRGB(colourOriginal);
+  GetRGBComponents(colourOriginal, valBlue, valGreen, valRed);
 
-  iBlue := (colourOriginal and $00FF0000) shr 16;
-  iGreen := (colourOriginal and $0000FF00) shr 8;
-  iRed := (colourOriginal and $000000FF);
+  valBlue := EnsureRange(Integer(valBlue) + change, $00, $FF);
+  valGreen := EnsureRange(Integer(valGreen) + change, $00, $FF);
+  valRed := EnsureRange(Integer(valRed) + change, $00, $FF);
 
-  iBlue := EnsureRange(iBlue + change, $00, $FF);
-  iGreen := EnsureRange(iGreen + change, $00, $FF);
-  iRed := EnsureRange(iRed + change, $00, $FF);
-
-  result := (iBlue shl 16) + (iGreen shl 8) + iRed;
+  result := (Integer(valBlue) shl 16) +
+            (Integer(valGreen) shl 8) +
+            Integer(valRed);
 end; // ChangeColourShade
 
 //***************************************************************************
@@ -283,6 +369,7 @@ begin
   result := (iBlue shl 16) + (iGreen shl 8) + iRed;
 end; // ShadeBetween
 
+{$IFDEF WIN32}
 //***************************************************************************
 //
 //  FUNCTION  : LEDRedGreen
@@ -304,137 +391,169 @@ begin
   else
     result := lcRed;
 end;
+{$ENDIF}
+
+//***************************************************************************
+//
+//  FUNCTION  : Colour2HTMLHex
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION :
+//
+//  UPDATED   :
+//
+//***************************************************************************
+function Colour2HTMLHex(value : TColor) : String;
+var
+  red : Byte;
+  blue : Byte;
+  green : Byte;
+
+begin
+  GetRGBComponents(value, red, green, blue);
+  Result := '#' + IntToHex(red, 2) + IntToHex(green, 2) + IntToHex(blue, 2);
+end; // Colour2HTMLHex
+
+////***************************************************************************
+////
+////  FUNCTION  : Colour2Text
+////
+////  I/P       : value : TColor - The colour to be named
+////
+////  O/P       : String - the name
+////
+////  OPERATION : Attempt to get a reasonable English name for the given colour.
+////
+////              This did not seem to work as expected!
+////
+////  UPDATED   : 2024-09-27
+////
+////***************************************************************************
+//function Colour2Text(value : TColor) : String;
+//var
+//  h : Word;
+//  l : Word;
+//  s : word;
+//
+//begin
+//  value := Graphics.ColorToRGB(value);
+//
+//  Result := ColorToWebColorName(value);
+////  if (Pos('clWeb', Result) <> 1) then
+//  begin
+//    // This did not "hit" one of the standard Web Colours,
+//    // so make an attempt
+//    ColorRGBToHLS(value, h, l, s);
+//
+//    // Get the basic description of the colour hue
+//    // https://www.beachpainting.com/blog/color-hue-tint-tone-and-shade/
+//
+//    if (h <= 11) then
+//      Result := 'red'
+//    else if (h <= 31) then
+//      Result := 'red-yellow'
+//    else if (h <= 53) then
+//      Result := 'yellow'
+//    else if (h <= 74) then
+//      Result := 'green-yellow'
+//    else if (h <= 96) then
+//      Result := 'green'
+//    else if (h <= 117) then
+//      Result := 'green-cyan'
+//    else if (h <=138) then
+//      Result := 'cyan'
+//    else if (h <= 159) then
+//      Result := 'blue-cyan'
+//    else if (h <= 181) then
+//      Result := 'blue'
+//    else if (h <= 202) then
+//      Result := 'blue-magenta'
+//    else if (h <= 223) then
+//      Result := 'magenta'
+//    else if (h <= 245) then
+//      Result := 'red-magenta'
+//    else
+//      Result := 'red';
+//
 
 //***************************************************************************
 //
 //  FUNCTION  : Colour2Text
 //
-//  I/P       : value : TColor - The colour to be named
+//    // Imagine a square of a particular hue with
+//    //    min(s) on left, max(s) on right
+//    //    min(l) at bottom, max(l) at top
+//    // Top side will go l-to-r white to pale colour to bright colour
+//    // Bottom side will go l-to-r black to black
+//    // Right side will go t-to-b bright colour to dark colour to black.
+//    // Left side will go t-to-b white to grey to black.
 //
-//  O/P       : String - the name
+//    // AArgh! GIMP also uses a triangle, which is why the bottom of the above
+//    // square is all black.
 //
-//  OPERATION : Attempt to get a reasonable English name for the given colour.
+//    // changing S if V (L?) is 0 does nothing (stays black).
 //
-//  UPDATED   : 2024-09-27
+//    // Try this out on GIMP colour dialog.
 //
-//***************************************************************************
-function Colour2Text(value : TColor) : String;
-var
-  h : Word;
-  l : Word;
-  s : word;
-
-begin
-  value := Graphics.ColorToRGB(value);
-
-  Result := ColorToWebColorName(value);
-//  if (Pos('clWeb', Result) <> 1) then
-  begin
-    // This did not "hit" one of the standard Web Colours,
-    // so make an attempt
-    ColorRGBToHLS(value, h, l, s);
-
-    // Get the basic description of the colour hue
-    // https://www.beachpainting.com/blog/color-hue-tint-tone-and-shade/
-
-    if (h <= 11) then
-      Result := 'red'
-    else if (h <= 31) then
-      Result := 'red-yellow'
-    else if (h <= 53) then
-      Result := 'yellow'
-    else if (h <= 74) then
-      Result := 'green-yellow'
-    else if (h <= 96) then
-      Result := 'green'
-    else if (h <= 117) then
-      Result := 'green-cyan'
-    else if (h <=138) then
-      Result := 'cyan'
-    else if (h <= 159) then
-      Result := 'blue-cyan'
-    else if (h <= 181) then
-      Result := 'blue'
-    else if (h <= 202) then
-      Result := 'blue-magenta'
-    else if (h <= 223) then
-      Result := 'magenta'
-    else if (h <= 245) then
-      Result := 'red-magenta'
-    else
-      Result := 'red';
-
-    // Imagine a square of a particular hue with
-    //    min(s) on left, max(s) on right
-    //    min(l) at bottom, max(l) at top
-    // Top side will go l-to-r white to pale colour to bright colour
-    // Bottom side will go l-to-r black to black
-    // Right side will go t-to-b bright colour to dark colour to black.
-    // Left side will go t-to-b white to grey to black.
-
-    // AArgh! GIMP also uses a triangle, which is why the bottom of the above
-    // square is all black.
-
-    // changing S if V (L?) is 0 does nothing (stays black).
-
-    // Try this out on GIMP colour dialog.
-
-
-    // White / Soft / Bright
-    // Grey / Pale / Mid
-    // Black / Dark / Deep
-
-    // Ths L and S terms from ColorRGBToHLS do not match to the V and S terms in Gimp,
-    // so the descriptions below/here are wrong.
-
-    // Luminosity
-    if (l < 83) then
-    begin
-      if (s < 83) then
-        Result := 'Black ' + Result
-      else if (s < 166) then
-        Result := 'Grey ' + Result
-      else
-        Result := 'White ' + Result
-    end
-    else if (l < 166) then
-    begin
-      if (s < 83) then
-        Result := 'Dark ' + Result
-      else if (s < 166) then
-        Result := 'Pale ' + Result
-      else
-        Result := 'Soft ' + Result
-    end
-    else
-    begin
-      if (s < 83) then
-        Result := 'Deep ' + Result
-      else if (s < 166) then
-        Result := 'Mid ' + Result
-      else
-        Result := 'Bright ' + Result
-    end;
-
 //
-
+//    // White / Soft / Bright
+//    // Grey / Pale / Mid
+//    // Black / Dark / Deep
+//
+//    // Ths L and S terms from ColorRGBToHLS do not match to the V and S terms in Gimp,
+//    // so the descriptions below/here are wrong.
+//
 //    // Luminosity
 //    if (l < 83) then
-//      Result := Result + ' (dark, '
+//    begin
+//      if (s < 83) then
+//        Result := 'Black ' + Result
+//      else if (s < 166) then
+//        Result := 'Grey ' + Result
+//      else
+//        Result := 'White ' + Result
+//    end
 //    else if (l < 166) then
-//      Result := Result + ' (mid, '
+//    begin
+//      if (s < 83) then
+//        Result := 'Dark ' + Result
+//      else if (s < 166) then
+//        Result := 'Pale ' + Result
+//      else
+//        Result := 'Soft ' + Result
+//    end
 //    else
-//      Result := Result + ' (light, ';
+//    begin
+//      if (s < 83) then
+//        Result := 'Deep ' + Result
+//      else if (s < 166) then
+//        Result := 'Mid ' + Result
+//      else
+//        Result := 'Bright ' + Result
+//    end;
 //
-//    // Saturation
-//    if (s < 128) then
-//      Result := Result + ' unsaturated)'
-//    else
-//      Result := Result + ' saturated)';
-
-
-    // Add descriptions of saturation and lightness
-  end; // else
-end;
+////
+//
+////    // Luminosity
+////    if (l < 83) then
+////      Result := Result + ' (dark, '
+////    else if (l < 166) then
+////      Result := Result + ' (mid, '
+////    else
+////      Result := Result + ' (light, ';
+////
+////    // Saturation
+////    if (s < 128) then
+////      Result := Result + ' unsaturated)'
+////    else
+////      Result := Result + ' saturated)';
+//
+//
+//    // Add descriptions of saturation and lightness
+//  end; // else
+//end;
 
 end.

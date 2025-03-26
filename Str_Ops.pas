@@ -73,6 +73,9 @@ procedure StuffString(sNew : String;
                       var sOriginal : String;
                       iOffset : integer);
 procedure RemoveDuplicates(var sMain : String; cChar : Char);
+procedure RemoveMarkedSections(var original : String;
+                               markStart : String;
+                               markEnd : String);
 function SuppressMiddle(sMain :string;
                         iAvailableSpace :integer): string;
 function SuppressEnd(sMain : String;
@@ -97,6 +100,9 @@ function IsAFloat(sNumber : string) : boolean;
 function IsAlphaNumeric(sInput : string) : boolean;
 function IsIP4Address(sInput : string) : boolean;
 function IsAHexadecimal(sInput : String) : Boolean;
+function IsAISO8601DateTime(const sInput : String;
+                            expectUTC : Boolean) : Boolean;
+function IsADateTime(sInput : String) : Boolean;
 function ForcedStrToFloat(sValue : String;
                           dInvalid : Extended) : Extended;
 function InitialUpperCase(sInput : string) : String;
@@ -121,9 +127,35 @@ function BreakText(theText : String;
                    linesRequired : Integer) : String;
 function JoinStrings(theStrings : array of String;
                      inBetween : String) : String;
-function StringHasCharacters(theString : String;
-                             theCharacters : TSysCharSet;
-                             only : Boolean) : Boolean;
+function StringHasCharacters(const theString : AnsiString;
+                             const theCharacters : TSysCharSet;
+                             const only : Boolean) : Boolean; overload;
+function StringHasCharacters(const theString : String;
+                             const theCharacters : TArray<Char>;
+                             const only : Boolean) : Boolean; overload;
+function StringHasCharacters(const theString : String;
+                             const theCharacters : String;
+                             const only : Boolean) : Boolean; overload;
+function StringIncludes(const theString : AnsiString;
+                        const needs_lower : Boolean;
+                        const needs_upper : Boolean;
+                        const needs_number : Boolean;
+                        const needs_special : Boolean;
+                        const special_set : TSysCharSet) : Boolean; overload;
+function StringIncludes(const theString : String;
+                        const needs_lower : Boolean;
+                        const needs_upper : Boolean;
+                        const needs_number : Boolean;
+                        const needs_special : Boolean;
+                        const special_set : TArray<Char>) : Boolean; overload;
+function StringIncludes(const theString : String;
+                        const needs_lower : Boolean;
+                        const needs_upper : Boolean;
+                        const needs_number : Boolean;
+                        const needs_special : Boolean;
+                        const setLower : String;
+                        const setUpper : String;
+                        const special_set : String) : Boolean; overload;
 function NoneSingleMultiple(items : Integer;
                             noneText : String;
                             oneText : String;
@@ -154,8 +186,8 @@ implementation
 
 uses
   System.StrUtils, System.AnsiStrings, System.Character, System.Types,
-  System.RegularExpressions,
-  Math, DateUtils, TimeDate;
+  System.DateUtils, System.RegularExpressions,
+  Math, TimeDate;
 
 //****************************************************************************
 //
@@ -1491,6 +1523,39 @@ end; // RemoveDuplicates
 
 //***************************************************************************
 //
+//  FUNCTION  : RemoveMarkedSections
+//
+//  I/P       : var original : String - The string to be modified
+//
+//              markStart : String - The indicator of the start of the text
+//                to be removed.
+//
+//              markEnd : String - The indicator of the end of the text to be
+//                removed.
+//
+//  O/P       : None
+//
+//  OPERATION : Remove all text found between the indicated markers. Remove
+//              the markers as well. Do this for all occurrances of the markers
+//
+//  UPDATED   : 2024-11-21
+//
+//***************************************************************************
+procedure RemoveMarkedSections(var original : String;
+                               markStart : String;
+                               markEnd : String);
+begin
+  while ((Pos(markStart, original) > 0) and
+         (Pos(markEnd, original) > 0) and
+         (Pos(markEnd, original) > Pos(markStart, original))) do
+  begin
+    original := Copy(original, 1, Pos(markStart, original)-1) +
+                Copy(original, Pos(markEnd, original) + Length(markEnd), Length(original));
+  end;
+end; // RemoveMarkedSections
+
+//***************************************************************************
+//
 //  FUNCTION  : SuppressMiddle
 //
 //  I/P       : sMain (string) - The long string, that is to be fitted in a
@@ -1790,13 +1855,13 @@ end; // MatchingChars
 //              I would really like to get rid of the Compiler Hint:
 //                'H2077 Value assigned to 'iTarget' never used'
 //
-//  UPDATED   : 2012-09-18
+//  UPDATED   : 2024-11-07
 //
 //***************************************************************************
 function IsAnInteger(sNumber : string) : boolean;
 var
   iCode : Integer;
-  iTarget : Integer;
+  iTarget : Int64; // To handle really big numbers!
 
 begin
   Val(sNumber, iTarget, iCode);
@@ -1830,21 +1895,21 @@ end; // IsAnInteger
 //***************************************************************************
 function IsAFloat(sNumber : string) : boolean;
 begin
-  if ((sNumber <> '') and
-      (sNumber <> '-') and
-      (sNumber <> 'NAN')) then
+  if (StringIncludes(sNumber, FALSE, FALSE, TRUE, FALSE, [])) then
   begin
     try
   {$O-}
       StrToFloat(sNumber);
   {$O+}
-      result := TRUE;
+      Result := TRUE;
     except
-      result := FALSE;
+      Result := FALSE;
     end;
   end // if
   else
-    result := FALSE;
+  begin
+    Result := FALSE;
+  end;
 end; // IsAFloat
 
 //***************************************************************************
@@ -1957,7 +2022,73 @@ begin
   begin
     result := FALSE;
   end;
-end;
+end; // IsAHexadecimal
+
+//***************************************************************************
+//
+//  FUNCTION  : IsAISO8601DateTime
+//
+//  I/P       : sInput : String - The string to be tested
+//
+//              expectUTC : Boolean - TRUE if the string should terminate with 'Z'
+//
+//  O/P       : Boolean - TRUE if the string is a non-null date/time expressed
+//                in a valid ISO8601 form.
+//
+//  OPERATION : Check that the given string contains valid date/time value in
+//              ISO8601 format.
+//
+//  UPDATED   : 2025-02-12
+//
+//***************************************************************************
+function IsAISO8601DateTime(const sInput : String;
+                            expectUTC : Boolean) : Boolean;
+var
+  dummy : TDateTime;
+
+begin
+  Result := TRUE;
+  try
+    dummy := ISO8601ToDate(sInput, expectUTC);
+  except
+    Result := FALSE;
+  end;
+end; // IsAISO8601DateTime
+
+//***************************************************************************
+//
+//  FUNCTION  : IsADateTime
+//
+//  I/P       : sInput : String - The string to be tested
+//
+//  O/P       : Boolean - TRUE if the string appears to be a valid date time
+//
+//  OPERATION : Check that the given string contains a convertable date time.
+//
+//  UPDATED   : 2024-11-18
+//
+//***************************************************************************
+function IsADateTime(sInput : String) : Boolean;
+var
+  n : Integer;
+
+begin
+  result := TRUE;
+  n := Length(sInput);
+  if (n > 3) then
+  begin
+    // The shortest valid datetime string is probably something like "0:0"
+    try
+      StrToDateTime(sInput);
+    except
+      Result := False;
+    end;
+  end
+  else
+  begin
+    result := FALSE;
+  end;
+end; // IsADateTime
 
 //***************************************************************************
 //
@@ -2683,27 +2814,29 @@ end; // JoinStrings
 //
 //  I/P       : theString : String - The string to be tested
 //
-//              theCharacters : TSysCharSet - the set of characters to check for.
+//              theCharacters : TSysCharSet - The set of characters to check for.
+//              theCharacters : TArray<Char> - An array of characters to check for.
+//              theCharacters : String - A string containing characters to check for.
 //
 //              only : Boolean - TRUE if the string may contain no other characters
 //
 //  O/P       : Boolean
 //
 //  OPERATION : Test if the given string has ONLY characters in the given set,
-//              or if the given string contains one or more characters from the
-//              given set.
+//              or if the given string has at least one character in the given set.
 //
-//  UPDATED   : 2019-11-23
+//  UPDATED   : 2025-01-07
 //
 //***************************************************************************
-function StringHasCharacters(theString : String;
-                             theCharacters : TSysCharSet;
-                             only : Boolean) : Boolean;
+function StringHasCharacters(const theString : AnsiString;
+                             const theCharacters : TSysCharSet;
+                             const only : Boolean) : Boolean; overload;
 var
-  i: integer;
+  i : Integer;
 
 begin
-  result := only;
+  Result := only;
+
   i := 1;
   while (i <= Length(theString)) do
   begin
@@ -2711,21 +2844,369 @@ begin
     begin
       if (not CharInSet(theString[i], theCharacters)) then
       begin
-        result := false;
-        exit;
+        Result := FALSE;
+        Exit;
       end; // if
     end // if
     else
     begin
       if (CharInSet(theString[i], theCharacters)) then
       begin
-        result := TRUE;
-        exit;
+        Result := TRUE;
+        Exit;
       end; // if
     end;
     Inc(i);
   end; // while
 end; // StringHasCharacters
+
+function StringHasCharacters(const theString : String;
+                             const theCharacters : TArray<Char>;
+                             const only : Boolean) : Boolean; overload;
+var
+  i : Integer;
+
+begin
+  Result := only;
+
+  i := 1;
+  while (i <= Length(theString)) do
+  begin
+    if (only) then
+    begin
+      if (not theString[i].IsInArray(theCharacters)) then
+      begin
+        Result := FALSE;
+        Exit;
+      end; // if
+    end // if
+    else
+    begin
+      if (theString[i].IsInArray(theCharacters)) then
+      begin
+        Result := TRUE;
+        Exit;
+      end; // if
+    end;
+    Inc(i);
+  end; // while
+end; // StringHasCharacters
+
+function StringHasCharacters(const theString : String;
+                             const theCharacters : String;
+                             const only : Boolean) : Boolean; overload;
+var
+  i : Integer;
+
+begin
+  Result := only;
+
+  i := 1;
+  while (i <= Length(theString)) do
+  begin
+    if (only) then
+    begin
+      if (Pos(theString[i], theCharacters) = 0) then
+      begin
+        Result := FALSE;
+        Exit;
+      end; // if
+    end // if
+    else
+    begin
+      if (Pos(theString[i], theCharacters) <> 0) then
+      begin
+        Result := TRUE;
+        Exit;
+      end; // if
+    end;
+    Inc(i);
+  end; // while
+end; // StringHasCharacters
+
+//***************************************************************************
+//
+//  FUNCTION  : StringIncludes
+//
+//  I/P       : theString : AnsiString / String - the string to test
+//
+//              lower_case : Boolean - TRUE if string must contain at least one
+//                lower case letter
+//
+//              upper_case : Boolean- TRUE if string must contain at least one
+//                upper case letter
+//
+//              numbers : Boolean- TRUE if string must contain at least one
+//                number
+//
+//              special : Boolean- TRUE if string must contain at least one
+//                special character from the following set
+//
+//              special_set : TSysCharSet / TArray<Char> - Set of required specail
+//                characters.
+//
+//  O/P       : Boolean;
+//
+//  OPERATION : Check that the string contains at least one character from
+//              each of the indicated sets of characters.
+//
+//              Warning : The lower- and upper-cases set may not be
+//              internationally acceptable/acceptable. In that case, use the
+//              third overloaded version, with the calling function supplying the
+//              set of "lower case" and "upper case" characters.
+//
+//  UPDATED   : 2024-11-11
+//
+//***************************************************************************
+function StringIncludes(const theString : AnsiString;
+                        const needs_lower : Boolean;
+                        const needs_upper : Boolean;
+                        const needs_number : Boolean;
+                        const needs_special : Boolean;
+                        const special_set : TSysCharSet) : Boolean; overload;
+const
+  setLower : TSysCharSet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+                                 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
+  setUpper : TSysCharSet = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
+                                 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+  setNumbers : TSysCharSet = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+var
+  n: Integer;
+  found_lower : Boolean;
+  found_upper : Boolean;
+  found_number : Boolean;
+  found_special : Boolean;
+
+begin
+  found_lower := not needs_lower;
+  found_upper := not needs_upper;
+  found_number := not needs_number;
+  found_special := not needs_special;
+
+  if (needs_lower) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (CharInSet(theString[n], setLower)) then
+      begin
+        // A lower case character has been found
+        found_lower := TRUE;
+        Break;
+      end;
+    end; // for
+  end;
+
+  if (needs_upper) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (CharInSet(theString[n], setUpper)) then
+      begin
+        // An upper case character has been found
+        found_upper := TRUE;
+        Break;
+      end;
+    end; // for
+  end;
+
+  if (needs_number) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (CharInSet(theString[n], setNumbers)) then
+      begin
+        // A number character has been found
+        found_number := TRUE;
+        Break;
+      end;
+    end; // for
+  end;
+
+  if (needs_special) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (CharInSet(theString[n], special_set)) then
+      begin
+        // A special character has been found
+        found_special := TRUE;
+        Break;
+      end;
+    end; // for
+  end; // if
+
+  Result := (found_lower) and
+            (found_upper) and
+            (found_number) and
+            (found_special);
+end;
+
+function StringIncludes(const theString : String;
+                        const needs_lower : Boolean;
+                        const needs_upper : Boolean;
+                        const needs_number : Boolean;
+                        const needs_special : Boolean;
+                        const special_set : TArray<Char>) : Boolean; overload;
+const
+  setLower : TArray<Char> = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+                             'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
+  setUpper : TArray<Char> = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
+                             'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+  setNumbers : TArray<Char> = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+var
+  n: Integer;
+  found_lower : Boolean;
+  found_upper : Boolean;
+  found_number : Boolean;
+  found_special : Boolean;
+
+begin
+  found_lower := not needs_lower;
+  found_upper := not needs_upper;
+  found_number := not needs_number;
+  found_special := not needs_special;
+
+  if (needs_lower) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (theString[n].IsInArray(setLower)) then
+      begin
+        // A lower case character has been found
+        found_lower := TRUE;
+        Break;
+      end;
+    end; // for
+  end;
+
+  if (needs_upper) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (theString[n].IsInArray(setUpper)) then
+      begin
+        // An upper case character has been found
+        found_upper := TRUE;
+        Break;
+      end;
+    end; // for
+  end;
+
+  if (needs_number) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (theString[n].IsInArray(setNumbers)) then
+      begin
+        // A number character has been found
+        found_number := TRUE;
+        Break;
+      end;
+    end; // for
+  end;
+
+  if (needs_special) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (theString[n].IsInArray(special_set)) then
+      begin
+        // A special character has been found
+        found_special := TRUE;
+        Break;
+      end;
+    end; // for
+  end; // if
+
+  Result := (found_lower) and
+            (found_upper) and
+            (found_number) and
+            (found_special);
+end;
+
+function StringIncludes(const theString : String;
+                        const needs_lower : Boolean;
+                        const needs_upper : Boolean;
+                        const needs_number : Boolean;
+                        const needs_special : Boolean;
+                        const setLower : String;
+                        const setUpper : String;
+                        const special_set : String) : Boolean; overload;
+const
+  setNumbers : TArray<Char> = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+var
+  n: Integer;
+  found_lower : Boolean;
+  found_upper : Boolean;
+  found_number : Boolean;
+  found_special : Boolean;
+
+begin
+  found_lower := not needs_lower;
+  found_upper := not needs_upper;
+  found_number := not needs_number;
+  found_special := not needs_special;
+
+  if (needs_lower) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (Pos(theString[n], setLower) <> 0) then
+      begin
+        // A lower case character has been found
+        found_lower := TRUE;
+        Break;
+      end;
+    end; // for
+  end;
+
+  if (needs_upper) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (Pos(theString[n], setUpper) <> 0) then
+      begin
+        // An upper case character has been found
+        found_upper := TRUE;
+        Break;
+      end;
+    end; // for
+  end;
+
+  if (needs_number) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (theString[n].IsInArray(setNumbers)) then
+      begin
+        // A number character has been found
+        found_number := TRUE;
+        Break;
+      end;
+    end; // for
+  end;
+
+  if (needs_special) then
+  begin
+    for n := 1 to Length(theString) do
+    begin
+      if (Pos(theString[n], special_set) <> 0) then
+      begin
+        // A special character has been found
+        found_special := TRUE;
+        Break;
+      end;
+    end; // for
+  end; // if
+
+  Result := (found_lower) and
+            (found_upper) and
+            (found_number) and
+            (found_special);
+end;
 
 //***************************************************************************
 //

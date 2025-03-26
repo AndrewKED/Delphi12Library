@@ -60,6 +60,8 @@ function Base2Dec(theValue : String;
 function SwapEndianHex(hex : String) : String;
 function SwapEndian(theValue : Word) : Word;
 procedure SetDecimalSeparatorAsPoint;
+function GetDisplayFormat(decimals : Integer;
+                          thousandsSeparator : boolean = TRUE) : String;
 procedure RestoreDecimalSeparator;
 function IsNumberInArray(const ANumber: Integer;
                          const AArray: array of Integer): Boolean;
@@ -831,6 +833,51 @@ begin
   currentDecimalSeaprator := FormatSettings.DecimalSeparator;
   FormatSettings.DecimalSeparator := '.';
 end; // SetDecimalSeparatorAsPoint
+
+//***************************************************************************
+//
+//  FUNCTION  : GetDisplayFormat
+//
+//  I/P       : decimals : Integer - the number of decimals in the display
+//
+//              thousandsSeparator : boolean = TRUE - To use the thousands
+//                separator.
+//
+//  O/P       : String
+//
+//  OPERATION : Create the string to be used in the .DisplayFormat property
+//
+//              Example usage
+//              TNumericField(qReading.FieldByName('Value')).DisplayFormat :=
+//                GetDisplayFormat(decimals);
+//
+//  UPDATED   : 2025-03-11
+//
+//***************************************************************************
+function GetDisplayFormat(decimals : Integer;
+                          thousandsSeparator : boolean = TRUE) : String;
+var
+  d: Integer;
+
+begin
+  if (thousandsSeparator) then
+  begin
+    Result := ',0';
+  end // if
+  else
+  begin
+    Result := '0';
+  end;
+
+  if (decimals > 0) then
+  begin
+    Result := Result + '.';
+    for d := 1 to decimals do
+    begin
+      Result := Result + '0';
+    end; // for
+  end // if
+end; // GetDisplayFormat
 
 //***************************************************************************
 //

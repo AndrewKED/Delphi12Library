@@ -61,7 +61,7 @@ unit TimeDate;
 interface
 
 uses
-  Windows, Vcl.Controls, Vcl.ComCtrls, Vcl.WinXCalendars,
+  Windows,
 {$IFNDEF NO_DKLANG}
   DKLang,
 {$ENDIF}
@@ -129,17 +129,6 @@ function Hr_Min_Str(mins : longint; pad_char : char = #0) : String;
 function Short_Hr_Min_Str(mins : longint; pad_char : char = #0) : String;
 function VerboseTimeVariable(period : Double;
                              reportSeconds : Boolean = TRUE) : String;
-function GetTEditsDate(sType : String;
-                       cOwner : TWinControl;
-                       bErrorMessage : boolean;
-                       bPermitNull : boolean;
-                       var bError : boolean) : TDateTime;
-function GetTEditsTime(sType : String;
-                       cOwner : TWinControl;
-                       bSeconds : boolean;
-                       bErrorMessage : boolean;
-                       bPermitNull : boolean;
-                       var bError : boolean) : TDateTime;
 function YYYYMMDD2DateTime(sYYYYMMDD : string) : TDateTime;
 function HHNNSS2DateTime(sHHNNSS : string) : TDateTime;
 function YYYYMMDD_HHNNSS2DateTime(sDateTime : string) : TDateTime;
@@ -149,6 +138,7 @@ function MonthsBetweenExact(dtFrom : TDateTime;
 function GPSTOW(dtWhen : TDateTime) : longword;
 function GPSWeekNumber(dtWhen : TDateTime) : word;
 function ClosestWeekDay(dtTargetDate : TDateTime) : TDateTime;
+function FixedDTPShortDateFormat : String;
 function FixedDTPShortTimeFormat : String;
 function RemoveMilliSeconds(dtGiven : TDateTime) : TDateTime;
 function RemoveSeconds(dtGiven : TDateTime) : TDateTime;
@@ -165,21 +155,6 @@ function AddDateToTime(TimeOnly : TDateTime;
                        DateAndTime : TDateTime) : TDateTime;
 function RoundDateTimeDown(Given : TDateTime;
                            RoundDownID : integer) : TDateTime;
-procedure SetDateControlsToWeek(ctrlFrom, ctrlTo : TMonthCalendar;
-                                dtFrom : TDateTime); overload;
-procedure SetDateControlsToWeek(ctrlFrom, ctrlTo : TDateTimePicker;
-                                dtFrom : TDateTime); overload;
-procedure SetDateControlsToWeek(ctrlFrom, ctrlTo : TCalendarView;
-                                dtFrom : TDateTime); overload;
-procedure SetDateControlsToMonth(ctrlFrom, ctrlTo : TMonthCalendar;
-                                 dtFrom : TDateTime;
-                                 firstDay : Integer); overload;
-procedure SetDateControlsToMonth(ctrlFrom, ctrlTo : TDateTimePicker;
-                                 dtFrom : TDateTime;
-                                 firstDay : Integer); overload;
-procedure SetDateControlsToMonth(ctrlFrom, ctrlTo : TCalendarView;
-                                 dtFrom : TDateTime;
-                                 firstDay : Integer); overload;
 function GetStartOfTheWeek : Integer;
 {$IFNDEF NO_DKLANG}
 procedure SetLanguage(lcMain : TDKLanguageController);
@@ -220,7 +195,7 @@ var
 //
 //  FUNCTION  : StartFastTimer
 //
-//  I/P       : iTimerNumber : Integer - The timer number to be started
+//  I/P       : iTimerNumber : Integer - The timer number to be started (0-9)
 //
 //  O/P       : None
 //
@@ -836,201 +811,6 @@ end; // VerboseTimeVariable
 
 //***************************************************************************
 //
-// FUNCTION  : GetTEditsDate
-//
-// I/P       : sType - The name associated with the three TEdit
-//               controls that hold the year, month and day.
-//
-//             cOwner (TWinControl) - Owner component of the three
-//               TEdit controls
-//
-//             bErrorMessage - TRUE if an error message is to be
-//               displayed if the date is invalid.
-//
-//             bPermitNull - TRUE if a null entry may be considered
-//               to be valid.
-//
-//             bError - TRUE if there was an error in the
-//               conversion.
-//
-// O/P       : TDateTime - The date, if valid, else 0.0
-//
-// OPERATION : Converts the date given in three separate TEdit
-//             controls, neamed e'sType'Year, e'sType'Month and
-//             e'sType'Day into a TDateTime.
-//
-//             Optionally gives an error message if the date is
-//             bad.   Optionally permits the date entries to be
-//             all left blank.
-//
-// UPDATED   : 2005/04/22
-//
-//***************************************************************************
-function GetTEditsDate(sType : String;
-                       cOwner : TWinControl;
-                       bErrorMessage : boolean;
-                       bPermitNull : boolean;
-                       var bError : boolean) : TDateTime;
-var
-  eYear : TEdit;
-  eMonth : TEdit;
-  eDay : TEdit;
-begin
-  try
-    // Identify the components
-    eYear := cOwner.FindComponent('e' + sType + 'Year') as TEdit;
-    eMonth := cOwner.FindComponent('e' + sType + 'Month') as TEdit;
-    eDay := cOwner.FindComponent('e' + sType + 'Day') as TEdit;
-    // Identify all null entries
-    if ((eYear.Text = '') and
-        (eMonth.Text = '') and
-        (eDay.Text = '')) then
-    begin
-      result := 0.0;
-      if (bPermitNull) then
-        // If this is allowed, it's OK
-        bError := FALSE
-      else
-      begin
-        // Flag if it's not allowed, and display an error message, if required.
-        bError := TRUE;
-        if (bErrorMessage) then
-          MessageDlg(Format(sInvalidSDate,[sType]),mtError,[mbOK],0);
-      end; // else
-    end // if
-    else
-    begin
-      // Check whether the date is valid
-      if (Valid_Date(StrToInt(eYear.Text),StrToInt(eMonth.Text),StrToInt(eDay.Text))) then
-      begin
-        result := EncodeDate(StrToInt(eYear.Text),StrToInt(eMonth.Text),StrToInt(eDay.Text));
-        bError := FALSE;
-      end // if
-      else
-      begin
-        // The date is illegal (e.g. invalid day for a month)
-        result := 0.0;
-        // Flag an error, and display an error message, if required.
-        bError := TRUE;
-        if (bErrorMessage) then
-          MessageDlg(Format(sInvalidSDate,[sType]),mtError,[mbOK],0);
-      end; // else
-    end; // else
-  except
-    // Something went wrong - probably in the StrToInt conversions.
-    result := 0.0;
-    // Flag an error, and display an error message, if required.
-    bError := TRUE;
-    if (bErrorMessage) then
-      MessageDlg(Format(sInvalidSDate,[sType]),mtError,[mbOK],0);
-  end; // except
-end; // GetTEditsDate
-
-//***************************************************************************
-//
-// FUNCTION  : GetTEditsTime
-//
-// I/P       : sType - The name associated with the three TEdit
-//               controls that hold the hour, minute and second (optional).
-//
-//             cOwner (TWinControl) - Owner component of the three
-//               TEdit controls
-//
-//             bSeconds (boolean) - Indicates whether there is a
-//               seconds entry to be used.
-//
-//             bErrorMessage - TRUE if an error message is to be
-//               displayed if the time is invalid.
-//
-//             bPermitNull - TRUE if a null entry may be considered
-//               to be valid.
-//
-//             bError - TRUE if there was an error in the
-//               conversion.
-//
-// O/P       : TDateTime - The time, if valid, else 0.0
-//
-// OPERATION : Converts the time given in two or three separate TEdit
-//             controls, neamed e'sType'Hour, e'sType'Minute and
-//             (optionally) e'sType'Second into a TDateTime.
-//
-//             Optionally gives an error message if the time is
-//             bad.   Optionally permits the time entries to be
-//             all left blank.
-//
-// UPDATED   : 2005/08/05
-//
-//***************************************************************************
-function GetTEditsTime(sType : String;
-                       cOwner : TWinControl;
-                       bSeconds : boolean;
-                       bErrorMessage : boolean;
-                       bPermitNull : boolean;
-                       var bError : boolean) : TDateTime;
-var
-  eHour : TEdit;
-  eMinute : TEdit;
-  eSecond : TEdit;
-begin
-  try
-    // Identify the components
-    eHour := cOwner.FindComponent('e' + sType + 'Hour') as TEdit;
-    eMinute := cOwner.FindComponent('e' + sType + 'Minute') as TEdit;
-    if (bSeconds) then
-      eSecond := cOwner.FindComponent('e' + sType + 'Second') as TEdit
-    else
-      eSecond := nil;
-    // Identify all null entries
-    if ((eHour.Text = '') and
-        (eMinute.Text = '') and
-        ((not bSeconds) or ((bSeconds) and (eSecond.Text = '')))) then
-    begin
-      result := 0.0;
-      if (bPermitNull) then
-        // If this is allowed, it's OK
-        bError := FALSE
-      else
-      begin
-        // Flag if it's not allowed, and display an error message, if required.
-        bError := TRUE;
-        if (bErrorMessage) then
-          MessageDlg(Format(sInvalidSTime,[sType]),mtError,[mbOK],0);
-      end; // else
-    end // if
-    else
-    begin
-      // Check whether the time is valid
-      if (((bSeconds) and (Valid_Time(StrToInt(eHour.Text),StrToInt(eMinute.Text),StrToInt(eSecond.Text),0))) or
-          ((not bSeconds) and (Valid_Time(StrToInt(eHour.Text),StrToInt(eMinute.Text),0,0)))) then
-      begin
-        if (bSeconds) then
-          result := EncodeTime(StrToInt(eHour.Text),StrToInt(eMinute.Text),StrToInt(eSecond.Text),0)
-        else
-          result := EncodeTime(StrToInt(eHour.Text),StrToInt(eMinute.Text),0,0);
-        bError := FALSE;
-      end // if
-      else
-      begin
-        // The date is invalid (e.g. minutes >= 60)
-        result := 0.0;
-        // Flag an error, and display an error message, if required.
-        bError := TRUE;
-        if (bErrorMessage) then
-          MessageDlg(Format(sInvalidSTime,[sType]),mtError,[mbOK],0);
-      end; // else
-    end; // else
-  except
-    // Something went wrong - probably in the StrToInt conversions.
-    result := 0.0;
-    // Flag an error, and display an error message, if required.
-    bError := TRUE;
-    if (bErrorMessage) then
-      MessageDlg(Format(sInvalidSTime,[sType]),mtError,[mbOK],0);
-  end; // except
-end; // GetTEditstime
-
-//***************************************************************************
-//
 //  FUNCTION    :   YYYYMMDD2DateTime
 //
 //  I/P         :   sYYYYMMDD (string) - The date in the string form of
@@ -1355,9 +1135,10 @@ end; // ClosestWeekDay
 //
 //  I/P       :
 //
-//  O/P       :
+//  O/P       : String - A version of the PC's short time format which is
+//                applicable for use in a TDateTimePicker component.
 //
-//  OPERATION : Return a format string for a TDateTimePicker (of dtkTime),
+//  OPERATION : Return a time format string for a TDateTimePicker,
 //              based on the current Short Time Format.
 //
 //              Make conversions between Windows ShortTimeFormat specifiers
@@ -1381,20 +1162,53 @@ begin
   result := FormatSettings.ShortTimeFormat;
 
   // The abbreviation n (for minutes) must be replaced with m
-  result := SearchAndReplace(result,'n','m');
+  result := SearchAndReplace(result, 'n', 'm');
 
   if (Pos('AMPM',result) = 0) then
   begin
     // Have encountered a non-AM/PM (i.e. 24 hour clock) where ShortTimeFormat
     // has specified 'hh' instead of 'HH'
-    result := SearchAndReplace(result,'hh','HH')
+    result := SearchAndReplace(result, 'hh', 'HH')
   end // if
   else
   begin
     // Delphi TDateTimePicker uses 'tt' for the two-letter AM/PM abbreviation
-    result := SearchAndReplace(result,'AMPM','tt');
+    result := SearchAndReplace(result, 'AMPM', 'tt');
   end; // else
 end; // FixedDTPShortTimeFormat
+
+//***************************************************************************
+//
+//  FUNCTION  : FixedDTPShortTimeFormat
+//
+//  I/P       : None
+//
+//  O/P       : String - A version of the PC's short date format which is
+//                applicable for use in a TDateTimePicker component.
+//
+//  OPERATION : Return a date format string for a TDateTimePicker,
+//              based on the current Short Date Format.
+//
+//              Make conversions between Windows ShortTimeFormat specifiers
+//              and the format specifiers required for use in a TDateTimePicker.
+//
+//              TDateTimePicker (original and Jedi) do not replace the '/'
+//              character in ShortDateFormat with the current DateSeparator,
+//              which they should do. So dates shown as "yyyy/mm/dd" will always
+//              display a '/' separator.
+//
+//  UPDATED   : 2025-02-13
+//
+//***************************************************************************
+function FixedDTPShortDateFormat : String;
+begin
+  result := FormatSettings.ShortDateFormat;
+
+  // The abbreviation m (for months) must be replaced with M
+  result := SearchAndReplace(result, 'm', 'M');
+
+  result := SearchAndReplace(result, '/', FormatSettings.DateSeparator);
+end; // FixedDTPShortDateFormat
 
 //***************************************************************************
 //
@@ -1712,121 +1526,6 @@ begin
   GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_IFIRSTDAYOFWEEK, A, SizeOf(A));
   result := Ord(A[0]) - Ord('0') + 1;
 end; // GetStartOfTheWeek
-
-//***************************************************************************
-//
-//  FUNCTION  :
-//
-//  I/P       :
-//
-//  O/P       :
-//
-//  OPERATION :
-//
-//  UPDATED   :
-//
-//***************************************************************************
-procedure SetDateControlsToWeek(ctrlFrom, ctrlTo : TMonthCalendar;
-                                dtFrom : TDateTime); overload;
-var
-  fromDOW : Integer;
-  firstDOW : Integer;
-
-begin
-  fromDOW := DayOfTheWeek(DateOf(dtFrom));
-  firstDOW := GetStartOfTheWeek;
-  if (fromDOW >= firstDOW) then
-    ctrlFrom.Date := DateOf(dtFrom) - (fromDOW - firstDOW)
-  else
-    ctrlFrom.Date := DateOf(dtFrom) - 7 + (firstDOW - fromDOW);
-  ctrlTo.Date := ctrlFrom.Date + 6;
-end; // SetDateControlsToWeek
-
-procedure SetDateControlsToWeek(ctrlFrom, ctrlTo : TDateTimePicker;
-                                dtFrom : TDateTime); overload;
-var
-  fromDOW : Integer;
-  firstDOW : Integer;
-
-begin
-  fromDOW := DayOfTheWeek(DateOf(dtFrom));
-  firstDOW := GetStartOfTheWeek;
-  if (fromDOW >= firstDOW) then
-    ctrlFrom.Date := DateOf(dtFrom) - (fromDOW - firstDOW)
-  else
-    ctrlFrom.Date := DateOf(dtFrom) - 7 + (firstDOW - fromDOW);
-  ctrlTo.Date := ctrlFrom.Date + 6;
-end; // SetDateControlsToWeek
-
-procedure SetDateControlsToWeek(ctrlFrom, ctrlTo : TCalendarView;
-                                dtFrom : TDateTime); overload;
-var
-  fromDOW : Integer;
-  firstDOW : Integer;
-
-begin
-  fromDOW := DayOfTheWeek(DateOf(dtFrom));
-  firstDOW := GetStartOfTheWeek;
-  if (fromDOW >= firstDOW) then
-    ctrlFrom.Date := DateOf(dtFrom) - (fromDOW - firstDOW)
-  else
-    ctrlFrom.Date := DateOf(dtFrom) - 7 + (firstDOW - fromDOW);
-  ctrlTo.Date := ctrlFrom.Date + 6;
-end; // SetDateControlsToWeek
-
-//***************************************************************************
-//
-//  FUNCTION  : SetDateControlsToMonth
-//
-//  I/P       : mcFrom,mcTo : TMonthCalendar or TDateTimePicker
-//                The two date controls
-//
-//              dtFrom : TDateTime - A date that falls within the month that
-//                must be shown in the FROM month calendar
-//
-//              firstDay : Integer - The day number to be selected in the
-//                FROM calendar (and consequently the day number-1 to be
-//                specified in the TO calendar)
-//
-//  O/P       :
-//
-//  OPERATION :
-//
-//  UPDATED   : 2019-08-27
-//
-//***************************************************************************
-procedure SetDateControlsToMonth(ctrlFrom, ctrlTo : TMonthCalendar;
-                                 dtFrom : TDateTime;
-                                 firstDay : Integer); overload;
-begin
-  if (DayOf(dtFrom) >= firstDay) then
-    ctrlFrom.Date := EncodeDate(YearOf(dtFrom), MonthOf(dtFrom), firstDay)
-  else
-    ctrlFrom.Date := EncodeDate(YearOf(IncMonth(dtFrom,-1)), MonthOf(IncMonth(dtFrom,-1)), firstDay);
-  ctrlTo.Date := EncodeDate(YearOf(ctrlFrom.Date), MonthOf(ctrlFrom.Date), DaysInMonth(ctrlFrom.Date));
-end; // SetDateControlsToMonth
-
-procedure SetDateControlsToMonth(ctrlFrom, ctrlTo : TDateTimePicker;
-                                 dtFrom : TDateTime;
-                                 firstDay : Integer); overload;
-begin
-  if (DayOf(dtFrom) >= firstDay) then
-    ctrlFrom.Date := EncodeDate(YearOf(dtFrom), MonthOf(dtFrom), firstDay)
-  else
-    ctrlFrom.Date := EncodeDate(YearOf(IncMonth(dtFrom,-1)), MonthOf(IncMonth(dtFrom,-1)), firstDay);
-  ctrlTo.Date := EncodeDate(YearOf(ctrlFrom.Date), MonthOf(ctrlFrom.Date), DaysInMonth(ctrlFrom.Date));
-end; // SetDateControlsToMonth
-
-procedure SetDateControlsToMonth(ctrlFrom, ctrlTo : TCalendarView;
-                                 dtFrom : TDateTime;
-                                 firstDay : Integer); overload;
-begin
-  if (DayOf(dtFrom) >= firstDay) then
-    ctrlFrom.Date := EncodeDate(YearOf(dtFrom), MonthOf(dtFrom), firstDay)
-  else
-    ctrlFrom.Date := EncodeDate(YearOf(IncMonth(dtFrom,-1)), MonthOf(IncMonth(dtFrom,-1)),firstDay);
-  ctrlTo.Date := EncodeDate(YearOf(ctrlFrom.Date), MonthOf(ctrlFrom.Date), DaysInMonth(ctrlFrom.Date));
-end; // SetDateControlsToMonth
 
 {$IFNDEF NO_DKLANG}
 //***************************************************************************

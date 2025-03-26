@@ -154,6 +154,9 @@ function LongitudeToText(degrees : Double;
                          idFormat : Integer = ID_DEG_DECIMAL;
                          decimalPlaces : Integer = 6) : String;
 function CompassDirections8(id : Integer) : String;
+function GroundDistance(elevAngle : Double;
+                        altitude : Double;
+                        latitude : Double = 45.0) : Double;
 
 implementation
 
@@ -282,7 +285,7 @@ end; // RoughDeltaLL2NE
 //  FUNCTION  : radiusEarth
 //
 //  I/P       : latitude : Double - the latitude at which the radius is
-//              required
+//              required, in degrees
 //
 //  O/P       : Double - the radius at the given latitude, in metres
 //
@@ -1965,6 +1968,42 @@ begin
     Result := '';
   end;
 end; // CompassDirections8
+
+//***************************************************************************
+//
+//  FUNCTION  : GroundDistance
+//
+//  I/P       : elevAngle : Double - Angle from observer to balloon, i.e.
+//                from a plane tangential to the earth's surface, at the point of
+//                observation, in degrees.
+//
+//              altitude : Double - Altitude of the balloon above the earth's
+//                surface, in metres.
+//
+//  O/P       : Double - Distance over the surface, in metres
+//
+//  OPERATION : Calculate the distance over the (curved) earth's surface, given
+//              angle above the tangential plane and altitude.
+//
+//              The NOAA Federal Meteorological Handbook No 3 page D-5
+//
+//  UPDATED   : 2025-02-07
+//
+//***************************************************************************
+function GroundDistance(elevAngle : Double;
+                        altitude : Double;
+                        latitude : Double = 45.0) : Double;
+var
+  radiusEatLat : Double;  // Radius of the earth, in m, at given latiude
+
+begin
+  radiusEatLat := radiusEarth(latitude);
+  elevAngle := DegToRad(elevAngle);
+  Result := radiusEatLat *
+            (PI / 2 - elevAngle - arcsin(radiusEatLat / (radiusEatLat + altitude) * cos(elevAngle)));
+end;
+
+
 
 //***************************************************************************
 
