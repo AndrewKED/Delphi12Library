@@ -108,6 +108,9 @@ const
   // Note - use System.DateUtils.DateToISO8601 and ISO8601ToDate for best results
   ISO8601_DT_FULL = 'yyyymmdd"T"hhnnss.zzz';    // All the way to milliseconds
 
+  VERY_LATE = 73051;    // The equivalent of EncodeDate(2100, 1, 1)
+  VERY_EARLY = 1.0;
+
 
 procedure StartFastTimer(iTimerNumber : integer);
 procedure PauseFastTimer(iTimerNumber : integer);
@@ -630,11 +633,11 @@ end; // Fix_ShortDate
 
 //***************************************************************************
 //
-//  FUNCTION    :   Fix_ShortDate
+//  FUNCTION    :   ShorterTimeFormat
 //
-//  I/P         :   FormatSettings.ShortDateFormat
+//  I/P         :   dtTime : TDateTime
 //
-//  O/P         :   minute (word)
+//  O/P         :   String -
 //
 //  OPERATION   :   Convert the given time into a string, and strip
 //                      off "long" 'AM' or 'PM' strings, and replace them with
