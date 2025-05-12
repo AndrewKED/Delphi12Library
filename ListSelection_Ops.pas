@@ -18,6 +18,7 @@ procedure SetupSelection(available : TListBox;
                          selectedLabel : TLabel;
                          availableFormat : String;
                          selectedFormat : String);
+procedure DisableSelection;
 procedure RestoreAvailableSelection;
 procedure AddAvailable(item : String);
 procedure FilterAvailable(filter : String;
@@ -110,9 +111,10 @@ end;
 //
 //  O/P       :
 //
-//  OPERATION :
+//  OPERATION : This should be called when finished with the selection
+//              operations.
 //
-//  UPDATED   :
+//  UPDATED   : 2025-04-10
 //
 //***************************************************************************
 procedure DisableSelection;
@@ -245,7 +247,8 @@ begin
     end; // if
     if (FAddAllButton <> nil) then
     begin
-      FAddAllButton.Enabled := (FAvailable.Items.Count > 0);
+      FAddAllButton.Enabled := (FAvailable.Items.Count > 0) and
+                               (FAvailable.SelCount <= 1);
     end; // if
 
     // Update the label above the available itens
@@ -270,7 +273,8 @@ begin
     end; // if
     if (FClearAllButton <> nil) then
     begin
-      FClearAllButton.Enabled := (FSelected.Items.Count > 0);
+      FClearAllButton.Enabled := (FSelected.Items.Count > 0) and
+                                 (FSelected.SelCount <= 1);;
     end; // if
 
     if (FMoveUpButton <> nil) then
@@ -287,7 +291,7 @@ begin
     begin
       if (Pos('%d', FSelectedFormat) > 0) then
       begin
-        fSelectedLabel.Caption := Format(FSelectedFormat, [fAvailable.Count]);
+        fSelectedLabel.Caption := Format(FSelectedFormat, [fSelected.Count]);
       end // if
       else
       begin
