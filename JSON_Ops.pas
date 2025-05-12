@@ -5,6 +5,9 @@ interface
 uses
   System.JSON;
 
+procedure AddUpdateJSONPair(pObj: TJSONObject;
+                            pName: String;
+                            pJSONValue: TJSONValue);
 function GotJSONValue(aJSONObject : TJSONObject;
                       name : String;
                       var theValue : TJSONValue) : boolean; overload;
@@ -64,6 +67,38 @@ implementation
 uses
   System.Classes, System.Variants, System.SysUtils, System.Rtti,
   System.JSON.Readers, System.JSON.Types;
+
+//***************************************************************************
+//
+//  FUNCTION  : AddUpdateAddUpdateJSONPairJSONValue
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION :
+//
+//  UPDATED   : 2025-04-16
+//
+//***************************************************************************\
+procedure AddUpdateJSONPair(pObj: TJSONObject;
+                            pName: String;
+                            pJSONValue: TJSONValue);
+var
+  vJsonPair: TJsonPair;
+
+begin
+  vJsonPair:= pObj.Get(pName);
+
+  if Assigned(vJsonPair) then
+  begin
+    vJsonPair.JsonValue := pJSONValue;
+  end // if
+  else
+  begin
+    pObj.AddPair(pName, pJSONValue);
+  end;
+end; // AddUpdateJSONPair
 
 //***************************************************************************
 //
