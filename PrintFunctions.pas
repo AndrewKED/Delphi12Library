@@ -3751,8 +3751,12 @@ begin
                                gPicture,FALSE,FALSE,FALSE);
     end; // if
 
-    Result := iY + (gPicture.Height * iWidth) div  gPicture.Width;
-  end; // if
+    Result := iY + (gPicture.Height * iWidth) div gPicture.Width;
+  end // if
+  else
+  begin
+    Result := iY;
+  end;
 end; // PrintGraphic
 
 //***************************************************************************
