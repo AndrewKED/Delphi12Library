@@ -21,8 +21,17 @@ unit ComPorts;
 
 interface
 
-uses Classes, DKLang;
+uses
+  Classes,
+  Vcl.StdCtrls,
+  DKLang, VaComm, AdPort;
 
+procedure SetCOMSelection(iPort : integer;
+                          var cbSelection : TComboBox);
+procedure SetCOMPortUsage(vaPort : TVaComm;
+                          var cbSelection : TComboBox); overload;
+procedure SetCOMPortUsage(acpPort : TApdComPort;
+                          var cbSelection : TComboBox); overload;
 function ValidCOMText(theText : String;
                       otherInvalid : String = '') : Boolean;
 procedure GetAvailableComPorts(bIncludeNone : boolean;
@@ -38,7 +47,166 @@ uses Registry, Windows, SysUtils, System.StrUtils,
 
 var
   lcComPorts : TDKLanguageController;
-  sNone : String;
+  textNone : String;
+  textUnavailable : String;
+
+//***************************************************************************
+//
+//  FUNCTION  : SetCOMSelection
+//
+//  I/P       : iPort : integer - The COM port number to be selected
+//
+//  O/P       : var cbSelection : TComboBox - The TComboBox which holds the
+//                list of available ports.
+//
+//  OPERATION : Given a COM port number and a TComboBox holding available COM
+//              port names, select the entry that holds the indicated COM port.
+//
+//              Add the entry if it is not in the list.
+//
+//  UPDATED   : 2025-05-05
+//
+//***************************************************************************
+procedure SetCOMSelection(iPort : integer;
+                          var cbSelection : TComboBox);
+var
+  bFound : boolean;
+  n : integer;
+
+begin
+  GetAvailableComPorts(TRUE,TRUE,TStringList(cbSelection.Items));
+
+  if (iPort<>0) then
+  begin
+    bFound := FALSE;
+    n := 1;
+    while (n < cbSelection.Items.Count) do
+    begin
+      if ((IsAnInteger(Copy(cbSelection.Items[n],4,255))) and
+          (iPort = StrToInt(Copy(cbSelection.Items[n],4,255)))) then
+      begin
+        cbSelection.ItemIndex := n;
+        bFound := TRUE;
+      end; // while
+      Inc(n);
+    end; // while
+
+    // Handle the case where the assigned COM port was not found in the PC hardware
+    if (not bFound) then
+    begin
+      cbSelection.Items.Add('COM' + IntToStr(iPort) +
+                            ' (' + textUnavailable + ')');
+      cbSelection.ItemIndex := cbSelection.Items.Count-1;
+    end; // if
+  end // if
+  else
+    cbSelection.ItemIndex := 0;
+end; // SetCOMSelection
+
+//***************************************************************************
+//
+//  FUNCTION  : SetCOMPortUsage
+//
+//  I/P       : acpPort : TVaComm - The COM port to be configured
+//
+//  O/P       : var cbSelection : TComboBox - The TComboBox which holds the
+//                list of available ports.
+//
+//  OPERATION : Given a TVaComm and a TComboBox holding available COM port
+//              names, select the entry that holds the indicated COM port.
+//
+//              Add the entry if it is not in the list.
+//
+//  UPDATED   : 2025-05-05
+//
+//***************************************************************************
+procedure SetCOMPortUsage(vaPort : TVaComm;
+                          var cbSelection : TComboBox); overload;
+var
+  found : Boolean;
+  n : Integer;
+
+begin
+  if (vaPort.PortNum <> 0) then
+  begin
+    found := FALSE;
+    n := 1;
+    while (n < cbSelection.Items.Count) do
+    begin
+      if ((IsAnInteger(Copy(cbSelection.Items[n],4,255))) and
+          (vaPort.PortNum = StrToInt(Copy(cbSelection.Items[n],4,255)))) then
+      begin
+        cbSelection.ItemIndex := n;
+        found := TRUE;
+      end; // while
+      Inc(n);
+    end; // while
+    // Handle the case where the assigned COM port was not found in the PC hardware
+    if (not found) then
+    begin
+      cbSelection.Items.Add('COM' + IntToStr(vaPort.PortNum) +
+                            ' (' + textUnavailable + ')');
+      cbSelection.ItemIndex := cbSelection.Items.Count-1;
+    end; // if
+  end // if
+  else
+  begin
+    cbSelection.ItemIndex := 0;
+  end;
+end; // SetCOMPortUsage
+
+//***************************************************************************
+//
+//  FUNCTION  : SetCOMPortUsage
+//
+//  I/P       : acpPort : TApdComPort - The COM port to be configured
+//
+//  O/P       : var cbSelection : TComboBox - The TComboBox which holds the
+//                list of available ports.
+//
+//  OPERATION : Given a TApdComPort and a TComboBox holding available COM port
+//              names, select the entry that holds the indicated COM port.
+//
+//              Add the entry if it is not in the list.
+//
+//  UPDATED   : 2025-05-05
+//
+//***************************************************************************
+procedure SetCOMPortUsage(acpPort : TApdComPort;
+                          var cbSelection : TComboBox); overload;
+var
+  found : Boolean;
+  n : Integer;
+
+begin
+  if (acpPort.ComNumber <> 0) then
+  begin
+    found := FALSE;
+    n := 1;
+    while (n < cbSelection.Items.Count) do
+    begin
+      if ((IsAnInteger(Copy(cbSelection.Items[n],4,255))) and
+          (acpPort.ComNumber = StrToInt(Copy(cbSelection.Items[n],4,255)))) then
+      begin
+        cbSelection.ItemIndex := n;
+        found := TRUE;
+      end; // while
+      Inc(n);
+    end; // while
+    // Handle the case where the assigned COM port was not found in the PC hardware
+    if (not found) then
+    begin
+      cbSelection.Items.Add('COM' + IntToStr(acpPort.ComNumber) +
+                            ' (' + textUnavailable + ')');
+      cbSelection.ItemIndex := cbSelection.Items.Count-1;
+    end; // if
+  end // if
+  else
+  begin
+    cbSelection.ItemIndex := 0;
+  end;
+end; // SetCOMPortUsage
+
 
 //***************************************************************************
 //
@@ -61,7 +229,7 @@ function ValidCOMText(theText : String;
                       otherInvalid : String = '') : Boolean;
 begin
   result := (theText <> '') and
-            (theText <> sNone) and
+            (theText <> textNone) and
             ((otherInvalid = '') or
              (Pos(otherInvalid, theText) = 0));
 end; // ValidCOMText
@@ -121,12 +289,12 @@ begin
         SortTStrings(COMPorts);
         // Add an entry for 'None', if requested
         if (bIncludeNone) then
-          COMPorts.Insert(0,sNone);
+          COMPorts.Insert(0, textNone);
       end // if
       else
         // Add an entry for 'None', if requested
         if (bIncludeNone) then
-          COMPorts.Insert(0,sNone);
+          COMPorts.Insert(0, textNone);
       Reg.CloseKey;
     finally
       slValueNames.Free;
@@ -192,7 +360,8 @@ begin
   lcComPorts := lcMain;
   if (lcMain <> nil) then
     try
-      sNone := LangManager.ConstantValue['sNone'];
+      textNone := LangManager.ConstantValue['sNone'];
+      textUnavailable := LangManager.ConstantValue['sUnavailable'];
     except
     end; // except
 end;
@@ -215,7 +384,8 @@ begin
   lcComPorts := nil;
 
   // Defaults, in case SetLanguage does not get called
-  sNone := 'None';
+  textNone := 'None';
+  textUnavailable := 'Unavailable';
 end; // initialization
 
 end.
