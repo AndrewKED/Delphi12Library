@@ -139,6 +139,11 @@ uses
 function AnsiString2TBytes(theAnsiString : AnsiString;
                            nullTerminate : Boolean = FALSE) : TBytes;
 begin
+// Copilot suggested replacing this with the followng:
+//  Result := TEncoding.ANSI.GetBytes(theAnsiString);
+//  if nullTerminate then
+//    Result := Result + [0];
+
   if (nullTerminate) then
   begin
     SetLength(Result, Length(theAnsiString) + 1);
