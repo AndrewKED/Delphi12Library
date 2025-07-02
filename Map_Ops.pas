@@ -157,6 +157,8 @@ function CompassDirections8(id : Integer) : String;
 function GroundDistance(elevAngle : Double;
                         altitude : Double;
                         latitude : Double = 45.0) : Double;
+function MidLongitude(longitudeA : Double;
+                      longitudeB : Double) : Double;
 
 implementation
 
@@ -2001,9 +2003,65 @@ begin
   elevAngle := DegToRad(elevAngle);
   Result := radiusEatLat *
             (PI / 2 - elevAngle - arcsin(radiusEatLat / (radiusEatLat + altitude) * cos(elevAngle)));
-end;
+end; // GroundDistance
 
+//***************************************************************************
+//
+//  FUNCTION  : MidLongitude
+//
+//  I/P       : longitudeA : Double
+//
+//              longitudeB : Double
+//
+//  O/P       : Double - The longitude result
+//
+//  OPERATION : Find the longitude mid-way (by shortest route) between the two
+//              given longitudes.
+//
+//  UPDATED   : 2025-06-02
+//
+//***************************************************************************
+function MidLongitude(longitudeA : Double;
+                      longitudeB : Double) : Double;
+begin
+  if (longitudeA <= longitudeB) then
+  begin
+    // Longitude A is west of longitude B
+    if (longitudeA - longitudeB <= 180.0) then
+    begin
+      // Shortest distance between the two does not cross the -180/+180 line
+      Result := (longitudeA + longitudeB) / 2.0;
+    end // if
+    else
+    begin
+      // Shortest distance between the two crosses the -180/+180 line
+      Result := (longitudeA + (360.0 - longitudeB)) / 2.0;
+    end;
+  end
+  else
+  begin
+    // Longitude A is east of longitude B
+    if (longitudeB - longitudeA <= 180.0) then
+    begin
+      // Shortest distance between the two does not cross the -180/+180 line
+      Result := (longitudeA + longitudeB) / 2.0;
+    end // if
+    else
+    begin
+      // Shortest distance between the two crosses the -180/+180 line
+      Result := (longitudeB + (360.0 - longitudeA)) / 2.0;
+    end;
+  end;
 
+  if (Result < -180.0) then
+  begin
+    Result := Result + 360.0;
+  end
+  else if (Result > 180.0) then
+  begin
+    Result := Result - 360.0;
+  end;
+end; // MidLongitude
 
 //***************************************************************************
 
