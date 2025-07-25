@@ -2017,7 +2017,9 @@ end; // SetSpeedButtonFonts
 //  FUNCTION  : SetFormAccessRights
 //
 //  I/P       : ThisForm : TForm - The form being limited
-//              readOnly : Boolean;
+//
+//              readOnly : Boolean - TRUE to make the form read-only
+//
 //              bAbort : TButton / TBitBtn - Target abort button
 //              bAccept : TButton / TBitBtn - Target OK/Accpet button
 //              okReadOnlyCaption : String
@@ -2055,6 +2057,7 @@ begin
     end; // if
     if (bOK <> nil) then
     begin
+      bOK.Cancel := TRUE;
       bOK.Hint := okReadOnlyHint;
       bOK.Caption := okReadOnlyCaption;
     end; // if
@@ -2083,6 +2086,7 @@ begin
     end; // if
     if (bOK <> nil) then
     begin
+      bOK.Cancel := TRUE;
       bOK.Hint := okReadOnlyHint;
       bOK.Caption := okReadOnlyCaption;
     end; // if

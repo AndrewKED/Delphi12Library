@@ -1165,16 +1165,16 @@ end; // HeatIndex
 //  OPERATION : Calculate the Wind Chill in Celcius.
 //
 //              https://www.weather.gov/media/epz/wxcalc/windChill.pdf
-//              Wind Chill[�F] = 35.74 +
-//                               (0.6215 * T[�F]) -
+//              Wind Chill[degF] = 35.74 +
+//                               (0.6215 * T[degF]) -
 //                               (35.75 * WS[mph]^0.16) +
-//                               (0.4275 * T[�F] * WS[mph]^0.16)
+//                               (0.4275 * T[degF] * WS[mph]^0.16)
 //
 //              https://www.calcunation.com/calculator/wind-chill-celsius.php
-//              Wind Chill[�C] = 13.12 +
-//                               (0.6215 * T[�C]) -
+//              Wind Chill[degC] = 13.12 +
+//                               (0.6215 * T[degC]) -
 //                               (11.37 * WS[kph]^0.16) +
-//                               (0.3965 * T[�C] * WS[kph]^0.16)
+//                               (0.3965 * T[degC] * WS[kph]^0.16)
 //
 //  UPDATED   :
 //
@@ -1201,8 +1201,8 @@ end; // WindChill
 //  OPERATION : Calculate the Wind Chill in watts per square metre
 //
 //              https://www.weather.gov/media/epz/wxcalc/windChill.pdf
-//              Wind Chill [W/m�] = (12.1452 + 11.6222 * SQRT(WS[m/s]) - 1.16222 * WS[m/s]) *
-//                                  (33 - T[�C])
+//              Wind Chill [W/m2] = (12.1452 + 11.6222 * SQRT(WS[m/s]) - 1.16222 * WS[m/s]) *
+//                                  (33 - T[degC])
 //
 //  UPDATED   :
 //
@@ -1265,7 +1265,7 @@ end; // WetDryTemp2Humidity
 //
 //  FUNCTION  : GetWetBulbTemp
 //
-//  I/P       : dTDyBulb (double) - the dry bulb temperature in �C.
+//  I/P       : dTDyBulb (double) - the dry bulb temperature in degC.
 //
 //              dHumidity (double) - the relative humidity in %
 //
