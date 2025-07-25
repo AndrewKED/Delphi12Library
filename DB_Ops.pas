@@ -3,6 +3,7 @@ unit DB_Ops;
 interface
 
 uses
+  System.Classes,
   Data.DB;
 
 function DataSetContainsRecords(ds : TDataSet) : Boolean;
