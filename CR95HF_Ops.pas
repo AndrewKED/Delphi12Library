@@ -8,13 +8,18 @@ uses
 const
   CR95HF_SERIAL_DLL = 'CR95HFs.dll';
   CR95HF_USB_DLL = 'CR95HF.dll';
+  CR95HF_BUFF_SIZE = 256;
 
 type
+  TCR95HFBuffer = packed array[0..CR95HF_BUFF_SIZE-1] of Byte;
   TCR95HFDLLReply = function(stringReply : array of Byte) : Integer; stdcall;
   TCR95HFDLLNoParameters = function : Integer; stdcall;
   TCR95HFDLLCmd = function(stringCmd : TBytes; stringReply : array of Byte) : Integer; stdcall;
 
 procedure SetCR95HFSerialInterface(port : Integer);
+function ValidCR95HFReply(replycode : Integer;
+                          replyHexBytes : TCR95HFBuffer;
+                          expectedLength : Integer) : TBytes;
 
 // USB DLL Functions
 //------------------------------------------------------------------------------
@@ -95,6 +100,9 @@ var
 
 implementation
 
+uses
+  Block_Ops, Str_Ops;
+
 //***************************************************************************
 //
 //  FUNCTION  : SetCR95HFSerialInterface
@@ -155,6 +163,52 @@ begin
     CR95HF_GetGps := CR95HFDll_GetGps;
     CR95HF_Close := CR95HFDLL_USBfinal;
   end;
+end;
+
+//***************************************************************************
+//
+//  FUNCTION  : ValidCR95HFReply
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION :
+//
+//  UPDATED   : 2025-06-05
+//
+//***************************************************************************
+function ValidCR95HFReply(replycode : Integer;
+                          replyHexBytes : TCR95HFBuffer;
+                          expectedLength : Integer) : TBytes;
+var
+  replyAS : AnsiString;
+  replyTB : TBytes;
+
+begin
+  SetLength(Result, 0);
+
+  if (replycode <> 0) then
+  begin
+    Exit;
+  end;
+
+  replyAS := AByte0ToAnsiString(replyHexBytes);
+  if (not IsAHexadecimal(replyAS)) then
+  begin
+    Exit;
+  end;
+
+  replyTB := HexString2TBytes(replyAS);
+
+  if ((Length(replyTB) <> expectedLength + 2) and
+      (replyTB[1] <> expectedLength)) then
+  begin
+    Exit;
+  end;
+
+  SetLength(Result, Length(replyTB));
+  Move(Pointer(replyTB)^, Pointer(Result)^, Length(replyTB));
 end;
 
 initialization
