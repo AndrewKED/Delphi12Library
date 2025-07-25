@@ -29,9 +29,9 @@ procedure SetDateFormat(owner : TUniContainer;
                         newFormat : String);
 procedure uniDBGridAutoWidth(aGrid: TUniDBGrid; aFieldName: String = '');
 procedure ResizeGridColumns(theGrid : TUniDBGrid;
-                            columnRatios : array of Integer); overload;
+                            columnRatios : TArray<Integer>); overload;
 procedure ResizeGridColumns(theGrid : TUniStringGrid;
-                            columnRatios : array of Integer); overload;
+                            columnRatios : TArray<Integer>); overload;
 function GetCookieInteger(app : TUniGUIApplication;
                           cookie : String;
                           default : Integer) : Integer;
@@ -44,14 +44,18 @@ function GetCookieISO8601DateTime(app : TUniGUIApplication;
                                   default : TDateTime) : TDateTime;
 procedure FocusAndSelectAll(focusControl : TUniControl);
 procedure EnabledAsParent(container : TUniContainer);
+procedure SetSpeedButtonFonts(Sender : TObject;
+                              cParent : TUniContainer);
+procedure DisableColumnTitleMenus(targetDBGrid : TUniDBGrid);
 
 implementation
 
 uses
-  System.TypInfo, System.Classes, System.DateUtils,
+  System.TypInfo, System.Classes, System.DateUtils, Graphics,
   uniButton, uniGUITypes, uniBasicGrid, uniDBEdit, uniMemo, uniDBMemo,
+  uniSpeedButton,
   uniDateTimePicker,
-  Str_Ops;
+  Str_Ops, HTML_Ops;
 //  uniCheckBox, uniEdit, uniDateTimePicker, uniMemo,
 //  uniDBCheckBox, uniDBEdit, uniDBDateTimePicker, uniDBMemo;
 
@@ -356,7 +360,7 @@ end; // GetGridClientWidth
 //
 //***************************************************************************
 procedure ResizeGridColumns(theGrid : TUniDBGrid;
-                            columnRatios : array of Integer); overload;
+                            columnRatios : TArray<Integer>); overload;
 var
   iClientWidth : Integer;
   t : Integer;
@@ -403,7 +407,7 @@ end; // ResizeGridColumns
 //
 //***************************************************************************
 procedure ResizeGridColumns(theGrid : TUniStringGrid;
-                            columnRatios : array of Integer); overload;
+                            columnRatios : TArray<Integer>); overload;
 var
   iClientWidth : Integer;
   t : Integer;
@@ -601,8 +605,8 @@ end;
 //
 //***************************************************************************
 procedure EnabledAsParent(container : TUniContainer);
-var
-  index: Integer;
+//var
+//  index: Integer;
 
 begin
 ////TUniPanel, TUniCustomPanel, TUniCustomScrollablePanel, TUniCustomContainerPanel, TUniContainer
@@ -647,5 +651,98 @@ begin
 //    end;
 //  end; // for
 end; // EnabledAsParent
+
+//***************************************************************************
+//
+//  FUNCTION  : SetSpeedButtonFonts
+//
+//  I/P       : Sender : TSpeedButton - The TObject that we would like to
+//                highlight.
+//
+//              cParent : TWinControl - The container of the TSpeedButton
+//                and other associated TSpeedButtons
+//
+//  O/P       : None.
+//
+//  OPERATION : In a set of TUniSpeedButtons that share the same GroupIndex property,
+//              highlight the given one by setting its font to Bold and Underlined.
+//
+//  UPDATED   : 2025-05-21
+//
+//***************************************************************************
+procedure SetSpeedButtonFonts(Sender : TObject;
+                              cParent : TUniContainer);
+var
+  n : Integer;
+
+begin
+  if ((Sender is TUniSpeedButton) and
+      (cParent <> nil)) then
+  begin
+    for n := 0 to cParent.ControlCount-1 do
+      if (cParent.Controls[n] is TUniSpeedButton) then
+        if (((cParent.Controls[n] as TUniSpeedButton).GroupIndex <> 0) and
+            ((cParent.Controls[n] as TUniSpeedButton).GroupIndex = (Sender as TUniSpeedButton).GroupIndex)) then
+//          (cParent.Controls[n] as TUniSpeedButton).Font.Style :=
+//            (cParent.Controls[n] as TUniSpeedButton).Font.Style - [fsBold] - [fsUnderline];
+          (cParent.Controls[n] as TUniSpeedButton).Caption :=
+            RemoveHTML((cParent.Controls[n] as TUniSpeedButton).Caption);
+    // Now set the button's own font to bold and underlined
+    (Sender as TUniSpeedButton).Caption := '<u><b>' + (Sender as TUniSpeedButton).Caption + '</b></u>';
+//    (Sender as TUniSpeedButton).Font.Style := (Sender as TUniSpeedButton).Font.Style + [fsBold] + [fsUnderline];
+  end; // if
+
+//  if ((Sender is TJvSpeedButton) and
+//      (cParent <> nil)) then
+//  begin
+//    for n := 0 to cParent.ComponentCount-1 do
+//      if (cParent.Components[n] is TJvSpeedButton) then
+//        if (((cParent.Components[n] as TJvSpeedButton).GroupIndex <> 0) and
+//            ((cParent.Components[n] as TJvSpeedButton).GroupIndex = (Sender as TJvSpeedButton).GroupIndex)) then
+//          (cParent.Components[n] as TJvSpeedButton).Font.Style :=
+//            (cParent.Components[n] as TJvSpeedButton).Font.Style - [fsBold] - [fsUnderline];
+//    // Now set the button's own font to bold and underlined
+//    (Sender as TJvSpeedButton).Font.Style := (Sender as TJvSpeedButton).Font.Style + [fsBold] + [fsUnderline];
+//  end; // if
+//
+//  if ((Sender is TJvArrowButton) and
+//      (cParent <> nil)) then
+//  begin
+//    for n := 0 to cParent.ComponentCount-1 do
+//      if (cParent.Components[n] is TJvArrowButton) then
+//        if (((cParent.Components[n] as TJvArrowButton).GroupIndex <> 0) and
+//            ((cParent.Components[n] as TJvArrowButton).GroupIndex = (Sender as TJvArrowButton).GroupIndex)) then
+//          (cParent.Components[n] as TJvArrowButton).Font.Style :=
+//            (cParent.Components[n] as TJvArrowButton).Font.Style - [fsBold] - [fsUnderline];
+//    // Now set the button's own font to bold and underlined
+//    (Sender as TJvArrowButton).Font.Style := (Sender as TJvArrowButton).Font.Style + [fsBold] + [fsUnderline];
+//  end; // if
+end; // SetSpeedButtonFonts
+
+//***************************************************************************
+//
+//  FUNCTION  : DisableColumnTitleMenus
+//
+//  I/P       : targetDBGrid : TUniDBGrid - The TUniDBGrid for which column
+//                title menus are to be disabled.
+//
+//  O/P       : None
+//
+//  OPERATION : Turn off all column title select/sort menus in a TUniDBGrid
+//
+//  UPDATED   : 2025-07-16
+//
+//***************************************************************************
+procedure DisableColumnTitleMenus(targetDBGrid : TUniDBGrid);
+var
+  n: Integer;
+
+begin
+  for n := 0 to targetDBGrid.Columns.Count-1 do
+  begin
+    targetDBGrid.Columns.ColumnFromId(n).Menu.MenuEnabled := FALSE;
+  end;
+end; // DisableColumnTitleMenus
+
 
 end.

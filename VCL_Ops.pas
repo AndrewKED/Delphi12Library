@@ -59,7 +59,7 @@ procedure SetDateControlsToMonth(ctrlFrom, ctrlTo : TCalendarView;
 implementation
 
 uses
-  System.SysUtils, System.DateUtils,
+  System.SysUtils, System.DateUtils, System.UITypes,
   Vcl.Dialogs,
   WinAPI.Messages, WinAPI.Windows,
   TimeDate;
