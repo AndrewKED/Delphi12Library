@@ -17,6 +17,8 @@ sQKNoToAll=N&o to All
 sQKYesToAll=Yes to &All
 sQKClose=&Close
 
+Used with "Timedate.pas"
+========================
 sAbbreviationHour=hr
 sAbbreviationMinute=min
 sInvalidSDate=Invalid %s date

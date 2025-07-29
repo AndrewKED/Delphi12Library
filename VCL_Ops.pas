@@ -48,18 +48,18 @@ procedure SetDateControlsToWeek(ctrlFrom, ctrlTo : TCalendarView;
                                 dtFrom : TDateTime); overload;
 procedure SetDateControlsToMonth(ctrlFrom, ctrlTo : TMonthCalendar;
                                  dtFrom : TDateTime;
-                                 firstDay : Integer); overload;
+                                 firstDay : Integer = 1); overload;
 procedure SetDateControlsToMonth(ctrlFrom, ctrlTo : TDateTimePicker;
                                  dtFrom : TDateTime;
-                                 firstDay : Integer); overload;
+                                 firstDay : Integer = 1); overload;
 procedure SetDateControlsToMonth(ctrlFrom, ctrlTo : TCalendarView;
                                  dtFrom : TDateTime;
-                                 firstDay : Integer); overload;
+                                 firstDay : Integer = 1); overload;
 
 implementation
 
 uses
-  System.SysUtils, System.DateUtils,
+  System.SysUtils, System.DateUtils, System.UITypes,
   Vcl.Dialogs,
   WinAPI.Messages, WinAPI.Windows,
   TimeDate;
@@ -604,20 +604,22 @@ end; // SetDateControlsToWeek
 //              dtFrom : TDateTime - A date that falls within the month that
 //                must be shown in the FROM month calendar
 //
-//              firstDay : Integer - The day number to be selected in the
+//              firstDay : Integer = 1 - The day number to be selected in the
 //                FROM calendar (and consequently the day number-1 to be
 //                specified in the TO calendar)
 //
-//  O/P       :
+//  O/P       : Nonw
 //
-//  OPERATION :
+//  OPERATION : Given two date control, set them to span a month, so that a
+//              given date falls within the range and the selected month starts
+//              on a given day date.
 //
 //  UPDATED   : 2019-08-27
 //
 //***************************************************************************
 procedure SetDateControlsToMonth(ctrlFrom, ctrlTo : TMonthCalendar;
                                  dtFrom : TDateTime;
-                                 firstDay : Integer); overload;
+                                 firstDay : Integer = 1); overload;
 begin
   if (DayOf(dtFrom) >= firstDay) then
     ctrlFrom.Date := EncodeDate(YearOf(dtFrom), MonthOf(dtFrom), firstDay)
@@ -628,7 +630,7 @@ end; // SetDateControlsToMonth
 
 procedure SetDateControlsToMonth(ctrlFrom, ctrlTo : TDateTimePicker;
                                  dtFrom : TDateTime;
-                                 firstDay : Integer); overload;
+                                 firstDay : Integer = 1); overload;
 begin
   if (DayOf(dtFrom) >= firstDay) then
     ctrlFrom.Date := EncodeDate(YearOf(dtFrom), MonthOf(dtFrom), firstDay)
@@ -639,7 +641,7 @@ end; // SetDateControlsToMonth
 
 procedure SetDateControlsToMonth(ctrlFrom, ctrlTo : TCalendarView;
                                  dtFrom : TDateTime;
-                                 firstDay : Integer); overload;
+                                 firstDay : Integer = 1); overload;
 begin
   if (DayOf(dtFrom) >= firstDay) then
     ctrlFrom.Date := EncodeDate(YearOf(dtFrom), MonthOf(dtFrom), firstDay)

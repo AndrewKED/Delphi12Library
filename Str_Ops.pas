@@ -37,6 +37,7 @@ function BytesToAnsiStr (ip_array : array of Byte;
                          offset : Integer;
                          count : integer) : AnsiString;
 function Count_Chars(main : String; ch : Char) : Integer;
+function CountStrings(main : String; subStr : String) : Integer;
 function TrimToFirst (sMain : String; sFind : string) : String;
 function TrimFromFirst (sMain : String; sFind : string) : String;
 function RemoveBeforeLast(sMain : String; cGiven : Char) : String;
@@ -568,18 +569,20 @@ end; // BytesToAnsiStr
 //
 //  FUNCTION    :   Count_Chars
 //
-//  I/P         :
+//  I/P         :   main : String - The string to be tested
 //
-//  O/P         :   (integer) - The number of occurrances of the given
-//                          character in the given string.
+//                  ch : Char - The character to be found
+//
+//  O/P         :   Integer - The number of occurrances of the given
+//                    character in the given string.
 //
 //  OPERATION   :   Counts the number of occurrances of a given character
-//                      in a given string.
+//                  in a given string.
 //
 //  UPDATED     :   15/07/1999
 //
 //***************************************************************************
-function Count_Chars (main : String; ch : CHAR) : Integer;
+function Count_Chars (main : String; ch : Char) : Integer;
 var
   n : Integer;
   ls : Integer;
@@ -589,6 +592,33 @@ begin
   for n := 1 to ls do
     if (main[n] = ch) then
       Inc(result);
+end; // Count_Chars
+
+//***************************************************************************
+//
+//  FUNCTION    :   Count_Chars
+//
+//  I/P         :   main : String - The string to be tested
+//
+//                  subStr : String - The sub-string to be found
+//
+//  O/P         :   Integer - The number of occurrances of the given
+//                    substring in the given string.
+//
+//  OPERATION   :   Counts the number of occurrances of a given substring
+//                  in a given string.
+//
+//  UPDATED     :   2025-05-27
+//
+//***************************************************************************
+function CountStrings(main : String; subStr : String) : Integer;
+begin
+  Result := 0;
+  while (Pos(subStr, main) > 0) do
+  begin
+    main := Copy(main, Pos(subStr,main) + Length(subStr), Length(main));
+    Inc(Result);
+  end;
 end; // Count_Chars
 
 //***************************************************************************
