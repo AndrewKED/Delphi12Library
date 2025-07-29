@@ -7,7 +7,7 @@ unit Chart_Ops;
 interface
 
 uses
-  VclTee.TeEngine;
+  VclTee.Chart, VclTee.TeEngine, Vcl.Imaging.jpeg, Vcl.Graphics;
 
 procedure SetChartAxisLnLin(aChartAxis : TChartAxis;
                             invertLnAxis : Boolean = FALSE;
@@ -19,6 +19,8 @@ procedure SetAxisMinMaxIncrement(theAxis : TChartAxis;
                                  minimum : Double;
                                  maximum : Double;
                                  incrementStep : Double);
+procedure SaveTChartToJPG(theChart : TChart;
+                          destinationFileName : String);
 
 implementation
 
@@ -172,6 +174,67 @@ begin
   newMax := Ceil(maximum / incrementStep) * incrementStep;
 
   SetAxisMinMax(theAxis, newMin, newMax);
+end;
+
+//***************************************************************************
+//
+//  FUNCTION  :
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION :
+//
+//  UPDATED   :
+//
+//***************************************************************************
+procedure SaveTChartToJPG(theChart : TChart;
+                          destinationFileName : String);
+
+  function GetChartJPEG(AChart:TCustomChart) : TJPEGImage;
+  var
+    tmpBitmap:TBitmap;
+
+  begin
+    result := TJPEGImage.Create;   { <-- create a TJPEGImage }
+
+    tmpBitmap := TBitmap.Create;   { <-- create a temporary TBitmap }
+    try
+
+      tmpBitmap.Width := AChart.Width;   { <-- set the bitmap dimensions }
+      tmpBitmap.Height := AChart.Height;
+
+      { draw the Chart on the temporary Bitmap... }
+      AChart.Draw(tmpBitmap.Canvas,Rect(0,0,tmpBitmap.Width,tmpBitmap.Height));
+
+      { set the desired JPEG options... }
+      With result do
+      begin
+        GrayScale :=False;
+        ProgressiveEncoding :=True;
+        CompressionQuality :=50;  // % 0 - 100
+        PixelFormat :=jf24bit;  // or jf8bit
+        ProgressiveDisplay :=True;
+        Performance :=jpBestQuality;  // or jpBestSpeed
+        Scale :=jsFullSize;  // or jsHalf, jsQuarter, jsEighth
+        Smoothing :=True;
+
+        { Copy the temporary Bitmap onto the JPEG image... }
+        Assign(tmpBitmap);
+      end;
+    finally
+      tmpBitmap.Free;  { <-- free the temporary Bitmap }
+    end;
+  end; // GetChartJPEG
+
+begin
+  with GetChartJPEG(theChart) do
+  try
+    SaveToFile(destinationFileName);    { <-- save the JPEG to disk }
+  finally
+    Free;  { <-- free the temporary JPEG object }
+  end;
 end;
 
 end.
