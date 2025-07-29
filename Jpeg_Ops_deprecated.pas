@@ -7,6 +7,9 @@
 {                                                       }
 {*******************************************************}
 
+// It is preferable to NOT use this unit.
+// Delphi now has built-in JPEG handling
+
 unit Jpeg_Ops;
 
 interface
