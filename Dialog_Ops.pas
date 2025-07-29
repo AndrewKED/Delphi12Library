@@ -21,13 +21,17 @@ function MyMessageDlg(const Msg: String;
                       button: TMsgDlgButtons;
                       Caption: array of String;
                       dlgCaption: String): Integer;
+procedure SODialogTypeChange(sod : TOpenDialog);
+function GetSOFileTypeExt(sod : TOpenDialog) : String;
 
 implementation
 
 uses
   Windows,
-  System.Classes, System.UITypes, System.Math, System.SysUtils,
-  Vcl.StdCtrls;
+  System.Classes, System.UITypes, System.Math, System.SysUtils, System.StrUtils,
+  System.Types,
+  Vcl.StdCtrls,
+  Str_Ops;
 
 //***************************************************************************
 //
@@ -177,5 +181,72 @@ begin
 
   result := aMsgdlg.ShowModal;
 end;
+
+//***************************************************************************
+//
+//  FUNCTION  : GetSOFileTypeExt
+//
+//  I/P       : sod : TSaveDialog or TOpenDialog
+//
+//  O/P       : String - The currently selected filter extension (or the first
+//                if the filter has multiple extensions.
+//
+//  OPERATION : Get the extension that is currently selected in a TSaveDialog/
+//              TOpenDialog fil
+//
+//  UPDATED   : 2025-07-29
+//
+//***************************************************************************
+function GetSOFileTypeExt(sod : TOpenDialog) : String;
+var
+  filterElements : TStringDynArray;
+  filters : TStringDynArray;
+
+begin
+  Result := sod.DefaultExt;
+
+  if (sod.Filter = '') then
+  begin
+    Exit;
+  end; // if
+
+  filterElements := SplitString(sod.Filter, '|');
+  if ((sod.FilterIndex * 2 - 1 <= High(filterElements)) and
+      (filterElements[sod.FilterIndex * 2 - 1] <> '.*')) then
+  begin
+    // Extract the currently specified filter, and handle multiple extensions
+    filters := SplitString(filterElements[sod.FilterIndex * 2 - 1], ';');
+    if (Length(filters) > 0) then
+    begin
+      // Filters exist
+      // Remove the '.'
+      Result := Front_Trimmed(filters[0], '*.');
+    end; // if
+  end; // if
+end; // GetSOFileTypeExt
+
+//***************************************************************************
+//
+//  FUNCTION  : SODialogTypeChange
+//
+//  I/P       : sod : TSaveDialog or TOpenDialog
+//
+//  O/P       : None
+//
+//  OPERATION : Change the .DefaultExt of a TOpenDialog/TSaveDialog to match the
+//              extension that is currently indicated by .FilterIndex
+//
+//              Note that any extension on an existing entered file name
+//              may/will(?)will then be altered.
+//
+//              https://docwiki.embarcadero.com/Libraries/Sydney/en/Vcl.Dialogs.TOpenDialog.Filter
+//
+//  UPDATED   : 2025-07-29
+//
+//***************************************************************************
+procedure SODialogTypeChange(sod : TOpenDialog);
+begin
+  sod.DefaultExt := GetSOFileTypeExt(sod);
+end; // SODialogTypeChange
 
 end.
