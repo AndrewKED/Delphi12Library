@@ -1,16 +1,12 @@
 ﻿unit NFC_Ops;
 
+//{$DEFINE USE_STCMD_ONLY}
+
 interface
 
 uses
   System.SysUtils,
   Vcl.Graphics, Vcl.StdCtrls;
-
-const
-  NFC_BUFF_SIZE = 256;
-
-type
-  TNFCBuffer = packed array[0..NFC_BUFF_SIZE-1] of Byte;
 
 procedure SetNFCDebug(debugToUse : TCustomMemo);
 procedure ClearNFCDebug;
@@ -121,7 +117,7 @@ var
 
   debugMonitor : TCustomMemo;
 
-	cmdResponse : TNFCBuffer;
+	cmdResponse : TCR95HFBuffer;
 
 {$DEFINE DEBUG_LOTS}
 
@@ -220,7 +216,7 @@ end;
 //***************************************************************************
 function SendToTag(command : TBytes) : Boolean;
 var
-  response : TNFCBuffer;
+  response : TCR95HFBuffer;
   iresult : Integer;
   lenAnswer : Integer;
   i : Integer;
@@ -237,7 +233,12 @@ begin
       ')'
     );
 {$ENDIF}
+{$IFDEF USE_STCMD_ONLY}
+    Check this
+    iresult := CR95HF_STCMD(command, response);
+{$ELSE}
     iresult := CR95HF_SendReceive(command, response);
+{$ENDIF}
 {$IFDEF DEBUG_LOTS}
     AddNFCDebug('Send to tag,Response,' + IntToStr(iresult));
 {$ENDIF}
@@ -302,7 +303,7 @@ end; // SendToTag
 //***************************************************************************
 function ISO14443A_Initiate : Boolean;
 var
-  reply : TNFCBuffer;
+  reply : TCR95HFBuffer;
   iresult : Integer;
 
 begin
@@ -379,7 +380,7 @@ end; // InitiateISO14443A_Initiate
 //***************************************************************************
 function ISO14443A_AntiCollision : Boolean;
 var
-  reply : TNFCBuffer;
+  reply : TCR95HFBuffer;
   iresult : Integer;
   bcc : AnsiString;
 
@@ -588,7 +589,7 @@ end;
 //***************************************************************************
 function ISO14443A_RATS : Boolean;
 var
-  reply : TNFCBuffer;
+  reply : TCR95HFBuffer;
   iresult : Integer;
 
 begin
@@ -633,7 +634,7 @@ end; // ISO14443A_RATS
 //***************************************************************************
 function ISO15693_Initiate : Boolean;
 var
-  reply : TNFCBuffer;
+  reply : TCR95HFBuffer;
   iresult : Integer;
 
 begin
@@ -661,6 +662,7 @@ begin
     if (iresult = 0) then
     begin
       // Optimise ISO14443A
+      // CR95HF datasheet 5.8.2, Set TimerW (recommended value 0x58)
 {$IFDEF DEBUG_LOTS}
       AddNFCDebug('ISO14443A Init,Tx,0109043A005804');
 {$ENDIF}
@@ -675,7 +677,9 @@ begin
 
     if (iresult = 0) then
     begin
-      // Modify Index And Rx Gain
+      // Modify Modulation Index And Receiver Gain
+      // CR95HF datasheet 5.8.1 (recommended value 0xD3)
+      // for Modulation index (MS nibble) and Rx Gain (LS nibble)
 {$IFDEF DEBUG_LOTS}
       AddNFCDebug('ISO14443A Init,Tx,010904680101D3');
 {$ENDIF}
@@ -713,7 +717,7 @@ end; // InitiateISO15693_Initiate
 //***************************************************************************
 function NFCFieldOff : Boolean;
 var
-  reply : TNFCBuffer;
+  reply : TCR95HFBuffer;
   iresult : Integer;
 
 begin
@@ -1127,7 +1131,7 @@ begin
 //        (kStatus_Success == ReceiveResponse(response, Le + 5)) &&
               (ResponseStatus(cmdResponse, Le + 1) = RX_STAT_OK);
 
-    SetLength(ndefFileContents, NFC_BUFF_SIZE);
+    SetLength(ndefFileContents, CR95HF_BUFF_SIZE);
     Move(Pointer(@cmdResponse[1])^, Pointer(@ndefFileContents[0])^, Le);
     SetLength(ndefFileContents, Le);
 //'�'#1#$E'T$$$$Z�'#5#0'IDT='#1'`'

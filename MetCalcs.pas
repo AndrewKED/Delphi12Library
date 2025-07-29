@@ -1470,8 +1470,8 @@ end; // SAT_From_T_P
 //
 //  FUNCTION  : RoughAltitude
 //
-//  I/P       : dStartAltitude (double) - The altitude above mean sea
-//                level, in m, at the bottom of the layer
+//  I/P       : dStartAltitude (double) - The altitude [metres] at the bottom
+//                of the layer
 //
 //              dStartPressure (double) - The pressure, in hPa, at the
 //                bottom of the layer
@@ -1491,16 +1491,18 @@ end; // SAT_From_T_P
 //              dEndHumidity (double) - The relative humidity, in %, at
 //                the top of the layer
 //
-//  O/P       : (double) - The altitude above mean sea level, in m, at
-//                the top of the layer.
+//  O/P       : (double) - The geopotential altitude [metres] at the top of the layer.
 //
-//  OPERATION : The PTU hypsometric equation is used to determine the
-//              geopotential altitude at the top of a layer, given the PTU
-//              values at the top and bottom, and the altitude of the bottom
-//              of the layer.
+//  OPERATION : Give starting altitude and starting and ending PTU, determine
+//              the ending (geoppotential) altitude.
+//
+//              The hypsometric equation (derived from the hydrostatic equation
+//              and the ideal gas law) is used.
 //
 //              Various references, including:
+// https://en.wikipedia.org/wiki/Hypsometric_equation
 // https://maths.ucd.ie/met/msc/fezzik/Phys-Met/Ch03-Slides-2.pdf
+// https://www.aoml.noaa.gov/ftp/hrd/annane/prelim_notes/hypsometric_equation.pdf
 //
 //  UPDATED   : 2005/06/20
 //
@@ -1527,7 +1529,7 @@ begin
     // Average virtual temperature from starting to ending point, in Kelvin
     dAveVTemp := (VirtualTemperatureK(dStartPressure,dStartTemperature,dStartHumidity) +
                   VirtualTemperatureK(dEndPressure,dEndTemperature,dEndHumidity)) / 2.0;
-    // Single-layer moist hystrostatic height
+    // Single-layer moist hydrostatic height
     result := dStartAlt + (RDGAS / STANDARD_NORMAL_GRAVITY * dAveVTemp * ln(dStartPressure / dEndPressure));
   end // if
   else
