@@ -22,6 +22,8 @@ procedure CentreYAonB(controlA : TUniPanel;
                       controlB : TUniForm) overload;
 procedure CentreYAonB(controlA : TUniControl;
                       controlB : TUniControl) overload;
+procedure CentreX(controlA : TUniPanel) overload;
+procedure CentreX(controlA : TUniControl) overload;
 procedure SetReadOnly(owner : TUniContainer;
                       state : Boolean;
                       handleButtons : Boolean);
@@ -129,6 +131,28 @@ begin
   controlA.Top := controlB.Top +
     (controlB.Height - controlA.Height) div 2;
 end; // CentreYAonB
+
+//***************************************************************************
+//
+//  FUNCTION  : CentreX
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION :
+//
+//  UPDATED   : 2025-07-30
+//
+//***************************************************************************
+procedure CentreX(controlA : TUniPanel) overload;
+begin
+  controlA.Left := (controlA.Parent.Width  - controlA.Width) div 2;
+end; // CentreX
+procedure CentreX(controlA : TUniControl) overload;
+begin
+  controlA.Left := (controlA.Parent.Width  - controlA.Width) div 2;
+end; // CentreX
 
 //***************************************************************************
 //
@@ -260,7 +284,7 @@ var
   i: Integer;
 
 begin
-  if aFieldName = '' then
+  if (aFieldName = '') then
   begin
     s := 'sender.headerCt.forceFit=true;'
   end
@@ -283,7 +307,7 @@ begin
     end;
   end; // else
 
-  if s <> '' then
+  if (s <> '') then
   begin
     aGrid.ClientEvents.ExtEvents.Add(Format(
       'beforereconfigure=function beforereconfigure(sender, store, columns, oldStore, the, eOpts)' +
