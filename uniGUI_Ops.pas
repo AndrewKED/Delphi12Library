@@ -55,7 +55,7 @@ implementation
 uses
   System.TypInfo, System.Classes, System.DateUtils, Graphics,
   uniButton, uniGUITypes, uniBasicGrid, uniDBEdit, uniMemo, uniDBMemo,
-  uniSpeedButton,
+  uniSpeedButton, uniEdit,
   uniDateTimePicker,
   Str_Ops, HTML_Ops;
 //  uniCheckBox, uniEdit, uniDateTimePicker, uniMemo,
@@ -579,7 +579,18 @@ end; // GetCookieISO8601DateTime
 //***************************************************************************
 procedure FocusAndSelectAll(focusControl : TUniControl);
 begin
-  if (focusControl is TUniDBEdit) then
+  if (focusControl is TUniButton) then
+  begin
+    TUniButton(focusControl).SetFocus;
+  end // if
+
+  else if (focusControl is TUniEdit) then
+  begin
+    TUniEdit(focusControl).SetFocus;
+    TUniEdit(focusControl).SelectAll;
+  end // if
+
+  else if (focusControl is TUniDBEdit) then
   begin
     TUniDBEdit(focusControl).SetFocus;
     TUniDBEdit(focusControl).SelectAll;
