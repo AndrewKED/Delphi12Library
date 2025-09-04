@@ -145,11 +145,12 @@ implementation
 uses
   System.UITypes, ActiveX, ExtCtrls, Math, DBCtrls, Mask, Spin,
   WinAPI.Messages, WinAPI.Windows,
+  Vcl.Imaging.jpeg,
   hhCheckBox, JvDBDateTimePicker, JvDBSpinEdit, JvCheckBox, JvArrowButton,
 {$IFNDEF NO_DKLANG}
-  DKLang,
+  DKLang
 {$ENDIF}
-  Jpeg_Ops;
+  ;
 
 const
   INVALID_FORM_DIMENSION = $7FFFFFF;
