@@ -61,6 +61,7 @@ function ExtractJSONFloat(theJSON : TJSONValue;
 function ExtractJSONBoolean(theJSON : TJSONValue;
                           objectName : String;
                           var objectValue : Boolean) : Boolean;
+function JSONArrayString(ab : TArray<Byte>) : String;
 
 implementation
 
@@ -650,5 +651,20 @@ begin
     result := FALSE;
   end;
 end; // ExtractJSONBoolean
+
+function JSONArrayString(ab : TArray<Byte>) : String;
+var
+  n : Integer;
+
+begin
+  Result := '[';
+  for n := 0 to Length(ab) do
+  begin
+    Result := Result + ab[n].ToString + ',';
+  end;
+
+  Result := Copy(Result, 1, Length(Result)-1) + ']';
+end;
+
 
 end.
