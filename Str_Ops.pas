@@ -13,7 +13,8 @@ unit Str_Ops;
 
 interface
 
-uses Classes, Sysutils;
+uses
+  System.Classes, System.SysUtils;
 
 const
   CRLF = #$D#$A;
@@ -188,7 +189,8 @@ implementation
 uses
   System.StrUtils, System.AnsiStrings, System.Character, System.Types,
   System.DateUtils, System.RegularExpressions,
-  Math, TimeDate;
+  System.Math,
+  TimeDate;
 
 //****************************************************************************
 //
