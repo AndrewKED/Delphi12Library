@@ -194,12 +194,12 @@ begin
   end;
 
   replyAS := AByte0ToAnsiString(replyHexBytes);
-  if (not IsAHexadecimal(replyAS)) then
+  if (not IsAHexadecimal(String(replyAS))) then
   begin
     Exit;
   end;
 
-  replyTB := HexString2TBytes(replyAS);
+  replyTB := HexString2TBytes(String(replyAS));
 
   if ((Length(replyTB) <> expectedLength + 2) and
       (replyTB[1] <> expectedLength)) then
