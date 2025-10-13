@@ -22,7 +22,11 @@ function CanChangeColour(colourOriginal : TColor;
                          proposedChange : Integer) : Boolean;
 function ShadeBetween(StartColour : TColor;
                       EndColour : TColor;
-                      Percentage : double) : TColor;
+                      Percentage : double) : TColor; overload;
+function ShadeBetween(StartColour : TColor;
+                      MidColour : TColor;
+                      EndColour : TColor;
+                      Percentage : double) : TColor; overload;
 {$IFDEF WIN32}
 function LEDRedGreen(Good : boolean) : TLEDColor;
 {$ENDIF}
@@ -342,7 +346,7 @@ end; // CanChangeColour
 //***************************************************************************
 function ShadeBetween(StartColour : TColor;
                       EndColour : TColor;
-                      Percentage : double) : TColor;
+                      Percentage : double) : TColor; overload;
 var
   iBlueRange : Integer;
   iRedRange : Integer;
@@ -366,7 +370,45 @@ begin
   iRed := (StartColour and $000000FF) +
           Trunc(iRedRange * Percentage);
 
-  result := (iBlue shl 16) + (iGreen shl 8) + iRed;
+  Result := (iBlue shl 16) + (iGreen shl 8) + iRed;
+end; // ShadeBetween
+
+//***************************************************************************
+//
+//  FUNCTION  : ShadeBetween
+//
+//  I/P       : StartColour : TColor - the colour for 0%
+//
+//              MidColour : TColor - the colour for 50%
+//
+//              EndColour : TColor - the colour for 100%
+//
+//              Percentage : double - Decimal fraction, representing the shade
+//                between the colours
+//
+//  O/P       : TColour
+//
+//  OPERATION : Creates a colour that is a given value between three given
+//              colours.
+//
+//  UPDATED   : 2025-08-21
+//
+//***************************************************************************
+function ShadeBetween(StartColour : TColor;
+                      MidColour : TColor;
+                      EndColour : TColor;
+                      Percentage : double) : TColor; overload;
+begin
+  if (Percentage < 0.5) then
+  begin
+    Percentage := Percentage * 2.0;
+    Result := ShadeBetween(StartColour, MidColour, Percentage);
+  end
+  else
+  begin
+    Percentage := (Percentage - 0.5) * 2.0;
+    Result := ShadeBetween(MidColour, EndColour, Percentage);
+  end;
 end; // ShadeBetween
 
 {$IFDEF WIN32}

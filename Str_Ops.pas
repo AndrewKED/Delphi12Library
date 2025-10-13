@@ -16,9 +16,6 @@ interface
 uses
   System.Classes, System.SysUtils;
 
-const
-  CRLF = #$D#$A;
-
 function Centre_Line (main : String; ch : Char; field : integer) : String;
 procedure RemoveLagging(var main : String; sRemove : string);
 function RemoveLaggingCRLF(main : string) : String;
@@ -164,6 +161,12 @@ function NoneSingleMultiple(items : Integer;
                             multipleText : String) : String;
 function IsASCIIOnly(test : AnsiString;
                      printable : Boolean = FALSE) : Boolean;
+function RemoveHiddenLeadingTrailing(original : String;
+                                     removeSpace : Boolean;
+                                     removeCRandLF : Boolean;
+                                     removeTab : Boolean;
+                                     leadingOnly : Boolean = FALSE;
+                                     trailingOnly : Boolean = FALSE) : String;
 
 // TStrings-associated functions
 //------------------------------------------------------------------------------
@@ -188,9 +191,9 @@ implementation
 
 uses
   System.StrUtils, System.AnsiStrings, System.Character, System.Types,
-  System.DateUtils, System.RegularExpressions,
-  System.Math,
-  TimeDate;
+  System.DateUtils, System.RegularExpressions, System.Math,
+  TimeDate,
+  Character_Ops;
 
 //****************************************************************************
 //
@@ -3572,5 +3575,87 @@ begin
     Result := Copy(Result, 1, Length(Result) - Length(separator));
   end;
 end; // ConcatenateStrings
+
+//***************************************************************************
+//
+//  FUNCTION  : RemoveHiddenLeadingTrailing
+//
+//  I/P       : original : String - The string to be modified
+//
+//              removeSpace : Boolean - TRUE to remove leading and/or trailing
+//                spaces.
+//
+//              removeCRandLF : Boolean - TRUE to remove leading and/or trailing
+//                CR and LF characters
+//
+//              removeTab : Boolean - TRUE to remove leading and/or trailing
+//                tab characters.
+//
+//              leadingOnly : Boolean = FALSE - TRUE to only remove characters
+//                from the front of the string.
+//
+//              trailingOnly : Boolean = FALSE - TRUE to only remove characters
+//                from the end of the string.
+//
+//  O/P       : String - The original string, with the required items removed.
+//
+//  OPERATION : Remove the indicated characters (iteratively) from the front
+//              and/or back of a given string.
+//
+//  UPDATED   : 2025-08-06
+//
+//***************************************************************************
+function RemoveHiddenLeadingTrailing(original : String;
+                                     removeSpace : Boolean;
+                                     removeCRandLF : Boolean;
+                                     removeTab : Boolean;
+                                     leadingOnly : Boolean = FALSE;
+                                     trailingOnly : Boolean = FALSE) : String;
+var
+  idxFirst : Integer;     // Index of the first character to keep, from the original
+  idxLast : Integer;      // Index of the last character to keep, from the original
+
+begin
+  Result := original;
+
+  idxFirst := 1;
+  idxLast := Length(original);
+
+  if (idxLast = 0) then
+  begin
+    // Empty string
+    Exit;
+  end;
+
+  // Check the leading side of the string, if required
+  while ((not trailingOnly) and
+         (idxFirst <= idxLast) and
+         (((removeSpace) and (original[idxFirst] = ' ')) or
+          ((removeCRandLF) and (original[idxFirst] = CHAR_CR)) or
+          ((removeCRandLF) and (original[idxFirst] = CHAR_LF)) or
+          ((removeTab) and (original[idxFirst] = CHAR_TAB)))) do
+  begin
+    Inc(idxFirst);
+  end; // while
+
+  // Check the trailing side of the string, if required
+  while ((not leadingOnly) and
+         (idxFirst <= idxLast) and
+         (((removeSpace) and (original[idxLast] = ' ')) or
+          ((removeCRandLF) and (original[idxLast] = CHAR_CR)) or
+          ((removeCRandLF) and (original[idxLast] = CHAR_LF)) or
+          ((removeTab) and (original[idxLast] = CHAR_TAB)))) do
+  begin
+    Dec(idxLast);
+  end; // while
+
+//  L=10 idxF=1, idxL=10   Copy (x, 1, 10)
+//  L=10 idxF=2, idxL=10   Copy (x, 2, 9)
+//  L=10 idxF=2, idxL=9   Copy (x, 2, 8)
+//  L=10 idxF=1, idxL=9   Copy (x, 1, 9)
+//  Copy (x, idxF, Length(x) - idxF + 1 - (Length(x) - idxL))
+//  Copy (x, idxF, idxL - idxF + 1)
+  Result := Copy(original, idxFirst, idxLast - idxFirst + 1);
+end; // RemoveHiddenLeadingTrailing
 
 end.

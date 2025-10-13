@@ -3,8 +3,9 @@ unit Character_Ops;
 interface
 
 const
-  CHAR_CR = #$0D;
+  CHAR_TAB = #$09;
   CHAR_LF = #$0A;
+  CHAR_CR = #$0D;
 
   CRLF = CHAR_CR + CHAR_LF;
   LFCR = CHAR_LF + CHAR_CR;

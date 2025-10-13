@@ -55,6 +55,8 @@ procedure SetDateControlsToMonth(ctrlFrom, ctrlTo : TDateTimePicker;
 procedure SetDateControlsToMonth(ctrlFrom, ctrlTo : TCalendarView;
                                  dtFrom : TDateTime;
                                  firstDay : Integer = 1); overload;
+procedure FixDateTimeEntry(dtpDate : TDateTimePicker;
+                           dtpTime : TDateTimePicker);
 
 implementation
 
@@ -62,7 +64,7 @@ uses
   System.SysUtils, System.DateUtils, System.UITypes,
   Vcl.Dialogs,
   WinAPI.Messages, WinAPI.Windows,
-  TimeDate;
+  TimeDate, Str_Ops;
 
 //***************************************************************************
 //
@@ -649,5 +651,75 @@ begin
     ctrlFrom.Date := EncodeDate(YearOf(IncMonth(dtFrom,-1)), MonthOf(IncMonth(dtFrom,-1)),firstDay);
   ctrlTo.Date := EncodeDate(YearOf(ctrlFrom.Date), MonthOf(ctrlFrom.Date), DaysInMonth(ctrlFrom.Date));
 end; // SetDateControlsToMonth
+
+//***************************************************************************
+//
+//  FUNCTION  : FixDateTimeEntry
+//
+//  I/P       : dtpDate : TDateTimePicker - The date-setting control
+//
+//              dtpTime : TDateTimePicker - The time-setting control
+//
+//  O/P       : None
+//
+//  OPERATION : Corrects the format usage of the given controls.
+//
+//              Forcing a return to the first "field" in the control is done by
+//              altering the format. See
+//              https://stackoverflow.com/questions/23628192/returning-focus-to-first-part-of-delphi-tdatetimepicker-control
+//
+//  UPDATED   : 2023-01-11
+//
+//***************************************************************************
+procedure FixDateTimeEntry(dtpDate : TDateTimePicker;
+                           dtpTime : TDateTimePicker);
+begin
+  if ((dtpDate <> nil) and
+      (dtpDate is TDateTimePicker)) then
+  begin
+    // By consecutively selecting two differeing date formats,
+    // entry is forced to return to the first "field" of this control.
+    dtpDate.Format := FormatSettings.ShortDateFormat;
+    dtpDate.Update;
+
+    // This does not appear to work (2024-01-03).
+{TODO -oAndrew Spencer -cFixThis : Force TDateTimePicker back to first field}
+    // I would like it back at the left-most field of the control, whatever that is.
+    // It defaults to the last-entered field.
+
+    // FormatSettings.ShortTimeFormat uses 'M' or 'MM' for months with/without leading '0', while
+    // TDateTimePicker uses 'm' or 'mm'
+    // TDateTimePicker (original and Jedi) do not replace the '/' character in
+    // ShortDateFormat with the DateSeparator, which they should do.
+    // So dates shown as "yyyy/mm/dd" will always display a '/' separator
+    dtpDate.Format := SearchAndReplace(dtpDate.Format, '/', FormatSettings.DateSeparator);
+    dtpDate.Format := SearchAndReplace(dtpDate.Format, 'm', 'M');
+  end; // if
+
+  if ((dtpTime <> nil) and
+      (dtpTime is TDateTimePicker)) then
+  begin
+    // By consecutively selecting two differeing time formats,
+    // entry is forced to return to the first "field" of this control.
+    dtpTime.Format := FormatSettings.LongTimeFormat;
+    dtpTime.Update;
+
+    // This does not appear to work (2024-01-03).
+{TODO -oAndrew Spencer -cFixThis : Force TDateTimePicker back to first field}
+    // I would like it back at the left-most field of the control, whatever that is.
+    // It defaults to the last-entered field.
+
+    // FormatSettings.ShortTimeFormat uses 'hh' for 24-hour hours, while
+    // TDateTimePicker uses 'HH'
+    // FormatSettings.ShortTimeFormat uses 'AMPM' for the inclusion of "AM" and "PM", while
+    // TDateTimePicker uses 'tt'
+    // Tested with Windows short time formats 'HH:mm', 'h:mm tt', 'hh:mm tt', 'HH:mm tt'
+    // FormatSettings.ShortTimeFormat uses 'n' or 'nn' for minutes with/without leading '0', while
+    // TDateTimePicker uses 'm' or 'mm'
+    dtpTime.Format := SearchAndReplace(dtpTime.Format, 'h', 'H');
+    dtpTime.Format := SearchAndReplace(dtpTime.Format, 'n', 'm');
+    dtpTime.Format := SearchAndReplace(dtpTime.Format, 'AMPM', 'tt');
+  end; // if
+end; // FixDateTimeEntry
 
 end.

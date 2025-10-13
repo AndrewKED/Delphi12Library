@@ -19,18 +19,16 @@ uses
 //
 //  OPERATION : Provide a globally unique identifier, in string form.
 //
-//  UPDATED   : 2022-07-20
+//  UPDATED   : 2025-08-27
 //
 //***************************************************************************
 function GetGUIDString : String;
 var
-  guidSonde : TGUID;
+  aGUID : TGUID;
 
 begin
-  // The long main board serial number has not yet been obtained.
-  // To get a unique record, create a unique ID
-  CreateGUID(guidSonde);
-  Result := GUIDToString(guidSonde);
+  CreateGUID(aGUID);
+  Result := GUIDToString(aGUID);
 end;
 
 end.

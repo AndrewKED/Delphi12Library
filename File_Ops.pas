@@ -151,6 +151,7 @@ function FileExistsA(const path : String;
                      attr : Integer) : Boolean;
 function FileErrorText(idError : Integer) : String;
 function IsFileInUse(FileName: TFileName): Boolean;
+function TrimLastPathFolder(path : String) : String;
 
 {=============================================================================}
 
@@ -5370,6 +5371,46 @@ begin
   begin
     CloseHandle(HFileRes);
   end;
+end;
+
+//***************************************************************************
+//
+//  FUNCTION  : TrimLastPathFolder
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION : Trim the last folder from a given path.
+//
+//              Note that the path may or may not end with a '\'
+//
+//  UPDATED   : 2025-08-03
+//
+//***************************************************************************
+function TrimLastPathFolder(path : String) : String;
+begin
+  // Initially, no trimming
+  Result := path;
+
+  if (Length(path) > 3) then
+  begin
+    // The path sounds valid i.e. more than 3 characters, which might be
+    // something like 'D:\'
+    if (IsPathDelimiter(path, Length(path))) then
+    begin
+      Result := RemoveFromLast(path, PathDelim);
+      if (Length(path) > 3) then
+      begin
+        Result := RemoveFromLast(Result, PathDelim);
+      end;
+    end // if
+    else
+    begin
+      Result := RemoveFromLast(path, PathDelim);
+    end;
+  end;
+  Result := IncludeTrailingPathDelimiter(Result);
 end;
 
 //***************************************************************************
