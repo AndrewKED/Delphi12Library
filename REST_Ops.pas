@@ -2,6 +2,12 @@ unit REST_Ops;
 
 interface
 
+uses
+  REST.Client;
+
+type
+  TAfterExecuteProc = procedure(Sender: TCustomRESTRequest) of object;
+
 procedure AddQuery(var queries : String;
                    keyName : String;
                    keyValue : String);

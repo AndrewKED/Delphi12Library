@@ -37,8 +37,9 @@ function DelphiVersion : String;
 implementation
 
 uses
-  System.SysUtils, System.DateUtils, Registry,
-  Windows,
+  System.SysUtils, System.DateUtils,
+  System.Win.Registry,
+  Winapi.Windows,
   VCL.Forms,
   WinAPI.Messages,
   ImageHlp,
@@ -523,46 +524,6 @@ begin
     PostMessage(H, WM_CLOSE, 0, 0);
 end; // CloseApplication
 
-(*
-//***************************************************************************
-//
-//  FUNCTION  : ProcessExists
-//
-//  I/P       :
-//
-//  O/P       :
-//
-//  OPERATION : Check if a process from the task list is active.
-//              from
-//              http://www.delphitricks.com/source-code/windows/check_if_a_process_is_running.html
-//
-//  UPDATED   : 2015-11-11
-//
-//***************************************************************************
-function ProcessExists(exeFileName: string): boolean;
-var
-  ContinueLoop: BOOL;
-  FSnapshotHandle: THandle;
-  FProcessEntry32: TProcessEntry32;
-
-begin
-  FSnapshotHandle := CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-  FProcessEntry32.dwSize := SizeOf(FProcessEntry32);
-  ContinueLoop := Process32First(FSnapshotHandle, FProcessEntry32);
-  Result := False;
-  while (Integer(ContinueLoop) <> 0) do
-  begin
-    if ((UpperCase(ExtractFileName(FProcessEntry32.szExeFile)) =
-      UpperCase(ExeFileName)) or (UpperCase(FProcessEntry32.szExeFile) =
-      UpperCase(ExeFileName))) then
-    begin
-      Result := True;
-    end;
-    ContinueLoop := Process32Next(FSnapshotHandle, FProcessEntry32);
-  end;
-  CloseHandle(FSnapshotHandle);
-end; // ProcessExists
-*)
 //***************************************************************************
 //
 //  FUNCTION  : HookResourceString

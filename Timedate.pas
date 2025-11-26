@@ -61,9 +61,11 @@ unit TimeDate;
 interface
 
 uses
-  Windows,
+{$IFDEF MSWINDOWS}
+  Winapi.Windows,
 {$IFNDEF NO_DKLANG}
   DKLang,
+{$ENDIF}
 {$ENDIF}
   Classes;
 
@@ -111,13 +113,14 @@ const
   VERY_LATE = 73051;    // The equivalent of EncodeDate(2100, 1, 1)
   VERY_EARLY = 1.0;
 
-
+{$IFDEF MSWINDOWS}
 procedure StartFastTimer(iTimerNumber : integer);
 procedure PauseFastTimer(iTimerNumber : integer);
 procedure ResetFastTimer(iTimerNumber : integer);
 function FastTimerRunning(iTimerNumber : integer) : Boolean;
 function GetFastTimer(iTimerNumber : integer) : cardinal;
 function GetFastTimerIncrement(iTimerNumber : integer) : cardinal;
+{$ENDIF}
 function Valid_Date (year,month,day : integer) : boolean;
 function Valid_Time (iHour,iMinute,iSecond,iMsecond : integer) : boolean;
 function Prev_Month (datetime : TDateTime) : TDateTime;
@@ -135,7 +138,9 @@ function VerboseTimeVariable(period : Double;
 function YYYYMMDD2DateTime(sYYYYMMDD : string) : TDateTime;
 function HHNNSS2DateTime(sHHNNSS : string) : TDateTime;
 function YYYYMMDD_HHNNSS2DateTime(sDateTime : string) : TDateTime;
+{$IFDEF MSWINDOWS}
 procedure ForceSystemDateTime(dtNew : TDateTime);
+{$ENDIF}
 function MonthsBetweenExact(dtFrom : TDateTime;
                             dtTo : TDateTime) : Integer;
 function GPSTOW(dtWhen : TDateTime) : longword;
@@ -158,9 +163,11 @@ function AddDateToTime(TimeOnly : TDateTime;
                        DateAndTime : TDateTime) : TDateTime;
 function RoundDateTimeDown(Given : TDateTime;
                            RoundDownID : integer) : TDateTime;
+{$IFDEF MSWINDOWS}
 function GetStartOfTheWeek : Integer;
 {$IFNDEF NO_DKLANG}
 procedure SetLanguage(lcMain : TDKLanguageController);
+{$ENDIF}
 {$ENDIF}
 
 var
@@ -180,12 +187,18 @@ var
 IMPLEMENTATION
 
 uses
-  System.StrUtils, DateUtils, Vcl.Dialogs, Vcl.StdCtrls, SysUtils, Math, System.UITypes,
+  System.StrUtils, System.DateUtils, System.SysUtils, System.Math, System.UITypes,
+  System.Types,
+{$IFDEF MSWINDOWS}
+  Vcl.Dialogs, Vcl.StdCtrls,
+{$ENDIF}
   Str_Ops, Maths;
 
 var
+{$IFDEF MSWINDOWS}
 {$IFNDEF NO_DKLANG}
   lcTimeDate : TDKLanguageController;
+{$ENDIF}
 {$ENDIF}
 
   timerFast : array[0..9] of Cardinal;
@@ -194,6 +207,7 @@ var
   timerLast : array[0..9] of Cardinal;
   n : Integer;
 
+{$IFDEF MSWINDOWS}
 //***************************************************************************
 //
 //  FUNCTION  : StartFastTimer
@@ -376,7 +390,7 @@ begin
   end;
   timerLast[iTimerNumber] := c;
 end;
-
+{$ENDIF}
 //***************************************************************************
 //
 //  FUNCTION  : Valid_Date
@@ -1015,6 +1029,7 @@ begin
   end; // else
 end; // YYYYMMDD_HHNNSS2DateTime
 
+{$IFDEF MSWINDOWS}
 //***************************************************************************
 //
 //  FUNCTION  : ForceSystemDateTime
@@ -1036,6 +1051,7 @@ begin
   DateTimeToSystemTime(dtNew, sTd);
   SetSystemTime(sTd);
 end; // ForceSystemDateTime
+{$ENDIF}
 
 //***************************************************************************
 //
@@ -1505,6 +1521,7 @@ begin
   end;
 end;
 
+{$IFDEF MSWINDOWS}
 //***************************************************************************
 //
 //  FUNCTION  : GetStartOfTheWeek
@@ -1566,6 +1583,7 @@ begin
     end; // except
 end;
 {$ENDIF}
+{$ENDIF}
 
 //***************************************************************************
 //
@@ -1581,6 +1599,7 @@ end;
 //
 //***************************************************************************
 initialization
+{$IFDEF MSWINDOWS}
   // By default, all fast timers are running from the start of the application.
   for n := Low(timerFast) to High(timerFast) do
   begin
@@ -1589,6 +1608,7 @@ initialization
     timerPauseValue[n] := 0;
     timerLast[n] := 0;
   end; // else
+{$ENDIF}
 
   sAbbrHour := 'hr';
   sAbbrMinute := 'min';
@@ -1604,9 +1624,5 @@ initialization
   sDays := 'days';
 
 end. // TimeDate
-
-
-
-
 
 
