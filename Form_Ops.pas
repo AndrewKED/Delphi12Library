@@ -146,7 +146,6 @@ uses
   System.UITypes, ActiveX, ExtCtrls, Math, DBCtrls, Mask, Spin,
   Vcl.Imaging.jpeg,
   WinAPI.Messages, WinAPI.Windows,
-  Vcl.Imaging.jpeg,
   hhCheckBox, JvDBDateTimePicker, JvDBSpinEdit, JvCheckBox, JvArrowButton,
 {$IFNDEF NO_DKLANG}
   DKLang
