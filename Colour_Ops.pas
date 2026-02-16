@@ -22,11 +22,11 @@ function CanChangeColour(colourOriginal : TColor;
                          proposedChange : Integer) : Boolean;
 function ShadeBetween(StartColour : TColor;
                       EndColour : TColor;
-                      Percentage : double) : TColor; overload;
+                      fraction : double) : TColor; overload;
 function ShadeBetween(StartColour : TColor;
                       MidColour : TColor;
                       EndColour : TColor;
-                      Percentage : double) : TColor; overload;
+                      fraction : double) : TColor; overload;
 {$IFDEF WIN32}
 function LEDRedGreen(Good : boolean) : TLEDColor;
 {$ENDIF}
@@ -327,26 +327,22 @@ end; // CanChangeColour
 
 //***************************************************************************
 //
-//  FUNCTION  : ShadeBetween
+//  OPERATION : Creates a colour that is a given position between two other
+//              colours
 //
 //  I/P       : StartColour : TColor - the colour for 0%
 //
 //              EndColour : TColor - the colour for 100%
 //
-//              Percentage : double - Decimal fraction, representing the shade
+//              fraction : double - Decimal fraction, representing the shade
 //                between StartColour (0.0) and EndColour (1.0)
 //
 //  O/P       : TColour
 //
-//  OPERATION : Creates a colour that is a given position between two other
-//              colours
-//
-//  UPDATED   : 2015-02-09
-//
 //***************************************************************************
 function ShadeBetween(StartColour : TColor;
                       EndColour : TColor;
-                      Percentage : double) : TColor; overload;
+                      fraction : double) : TColor; overload;
 var
   iBlueRange : Integer;
   iRedRange : Integer;
@@ -364,18 +360,19 @@ begin
                (StartColour and $000000FF);
 
   iBlue := ((StartColour and $00FF0000) shr 16) +
-           Trunc(iBlueRange * Percentage);
+           Trunc(iBlueRange * fraction);
   iGreen := ((StartColour and $0000FF00) shr 8) +
-            Trunc(iGreenRange * Percentage);
+            Trunc(iGreenRange * fraction);
   iRed := (StartColour and $000000FF) +
-          Trunc(iRedRange * Percentage);
+          Trunc(iRedRange * fraction);
 
   Result := (iBlue shl 16) + (iGreen shl 8) + iRed;
 end; // ShadeBetween
 
 //***************************************************************************
 //
-//  FUNCTION  : ShadeBetween
+//  OPERATION : Creates a colour that is a given value between three given
+//              colours.
 //
 //  I/P       : StartColour : TColor - the colour for 0%
 //
@@ -383,31 +380,26 @@ end; // ShadeBetween
 //
 //              EndColour : TColor - the colour for 100%
 //
-//              Percentage : double - Decimal fraction, representing the shade
+//              fraction : double - Decimal fraction, representing the shade
 //                between the colours
 //
 //  O/P       : TColour
-//
-//  OPERATION : Creates a colour that is a given value between three given
-//              colours.
-//
-//  UPDATED   : 2025-08-21
 //
 //***************************************************************************
 function ShadeBetween(StartColour : TColor;
                       MidColour : TColor;
                       EndColour : TColor;
-                      Percentage : double) : TColor; overload;
+                      fraction : double) : TColor; overload;
 begin
-  if (Percentage < 0.5) then
+  if (fraction < 0.5) then
   begin
-    Percentage := Percentage * 2.0;
-    Result := ShadeBetween(StartColour, MidColour, Percentage);
+    fraction := fraction * 2.0;
+    Result := ShadeBetween(StartColour, MidColour, fraction);
   end
   else
   begin
-    Percentage := (Percentage - 0.5) * 2.0;
-    Result := ShadeBetween(MidColour, EndColour, Percentage);
+    fraction := (fraction - 0.5) * 2.0;
+    Result := ShadeBetween(MidColour, EndColour, fraction);
   end;
 end; // ShadeBetween
 
