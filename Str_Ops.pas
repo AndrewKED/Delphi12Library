@@ -1714,6 +1714,8 @@ end; // YesNo
 //
 //  OPERATION : String equivalent of the Maths ifthen i.e. in-line string selection
 //
+//              Duh! This already exists in System.StrUtils
+//
 //  UPDATED   : 2018-08-04
 //
 //***************************************************************************
