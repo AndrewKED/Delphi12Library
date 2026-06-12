@@ -2,6 +2,9 @@ unit App_Ops;
 
 interface
 
+uses
+  System.Types;
+
 const
   VER_CMP_A_SAME_AS_B = 0;
   VER_CMP_A_OLDER_THAN_B = -1;
@@ -33,6 +36,7 @@ function LinkerTimeStamp(const FileName: string): TDateTime; overload;
 function LinkerTimestamp: TDateTime; overload;
 function GetCopyrightYear : Integer;
 function DelphiVersion : String;
+function MillisecondsSinceKbdMouse: DWORD;
 
 implementation
 
@@ -715,6 +719,27 @@ begin
   else
     Result := '?';
 end;
+
+
+//***************************************************************************
+//
+//  OPERATION :
+//
+//  I/P       :
+//
+//  O/P       : DWord - Number of milliseconds since last mouse/keyboard
+//              activity
+//
+//***************************************************************************
+function MillisecondsSinceKbdMouse: DWORD;
+var
+  LastInput: TLastInputInfo;
+
+begin
+  LastInput.cbSize := SizeOf(TLastInputInfo);
+  GetLastInputInfo(LastInput);
+  Result := GetTickCount - LastInput.dwTime;
+end; // MillisecondsSinceKbdMouse
 
 //***************************************************************************
 //
