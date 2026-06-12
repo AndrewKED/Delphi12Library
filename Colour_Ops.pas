@@ -65,6 +65,7 @@ ICAPE_LT_GREEN = $009FE1BA; // 159, 225, 185
   clPaleYellow      = $00E0FFFF;
   clGold            = $007AC2CD;    // Dry Adiabats in D-Met SkewT-LogP (as used in RAOB)
 
+  clLt3Blue         = $00FFFFEE;
   clLtLtBlue        = $00FFFFCC;
   clLtBlue          = $00FFFF88;
   clLtAqua          = $00FFFFC0;    // Buttons in Syntell MX Display
