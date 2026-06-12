@@ -119,6 +119,15 @@ begin
   end; // for
 end; // GetColumnIndex
 
+//***************************************************************************
+//
+//  OPERATION :
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//***************************************************************************
 function GetColumnIndex(grid : TDBGrid;
                         column : TColumn) : Integer; overload;
 var
@@ -814,33 +823,33 @@ end; // StrikeoutGridLine
 
 //***************************************************************************
 //
-//  FUNCTION  : TitleClickHandler
+//  OPERATION : In a given TSMDBGrid, highlight the title of the indicated
+//              column and sort by the associated index.
+//
+//              If a reverse indexes are offered, toggle between forward and
+//              reverse on successive clicks.
 //
 //  I/P       : grid : TSMDBGrid - the grid to be controlled.
 //
 //              Column : TColumn - the column whose title has been clicked.
 //
 //              indexesFWD : array of String - Array of the forward-sorted
-//                index names, one for each column.
+//                index names that may be used. Note that this may be fewer than
+//                the number of columns.
 //                e.g. ['col0', 'col1']
 //
 //              indexesREV : array of String - Array of the reverse-sorted
-//                index names, one for each column. May be empty.
+//                index names. Should be the same size as indexesFWD or empty.
 //                e.g. ['col0r', 'col1r'], or []
 //
 //              bolden : array of Integer - Array of (0-based) indexes, one
 //                for each column, indicating the column title index to bolden,
 //                and the index name, from the above arrays, to select when the
-//                title is clicked.
+//                title is clicked. Use -1 for no change
 //                e.g. [0, 1]
 //
 //
-//  O/P       :
-//
-//  OPERATION : Typically called from within an OnTitleClick event of a grid.
-//
-//
-//  UPDATED   : 2019-11-01
+//  O/P       : None
 //
 //***************************************************************************
 procedure TitleClickHandler(grid : TSMDBGrid;
