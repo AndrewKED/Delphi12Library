@@ -15,9 +15,11 @@ type
 procedure UpdateTComboBoxItems(var cbEntry : TComboBox;
                                const maxEntries : Integer = 20);
 procedure CentreXAonB(controlA : TControl;
-                      controlB : TControl);
+                      controlB : TControl = nil);
 procedure CentreYAonB(controlA : TControl;
-                      controlB : TControl);
+                      controlB : TControl = nil);
+procedure CentreControl(controlA : TControl;
+                        controlB : TControl = nil);
 procedure ToggleRichEditAttributeStyle(creTarget : TCustomRichEdit;
                                        fsChange : TFontStyle);
 procedure RichEditAttributeSize(creTarget : TCustomRichEdit;
@@ -69,17 +71,16 @@ uses
 
 //***************************************************************************
 //
-//  FUNCTION  : UpdateTComboBoxItems
-//
-//  I/P       :
-//
-//  O/P       :
-//
 //  OPERATION : Update TComboBox.Items to include TComboBox.Text.
 //
 //              If .Text is already in .Items, move it up to the top.
 //
-//  UPDATED   : 2010-11-11
+//  I/P       : var cbEntry : TComboBox - the TComboBox to be managed
+//
+//              const maxEntries : Integer = 20 - the maximum number of entries
+//                to be kept in the list.
+//
+//  O/P       : var cbEntry : TComboBox
 //
 //***************************************************************************
 procedure UpdateTComboBoxItems(var cbEntry : TComboBox;
@@ -92,10 +93,10 @@ var
 begin
   if (cbEntry.Items.Count>0) then
   begin
-    // Try to find the address in the stored list
+    // Try to find the current text in the stored list
     bFound := FALSE;
     n := 0;
-    while ((n<=cbEntry.Items.Count-1) and
+    while ((n <= cbEntry.Items.Count-1) and
            (n < maxEntries-1) and
            (not bFound)) do
     begin
@@ -109,21 +110,24 @@ begin
     // If found, delete it from the location where it was
     if (bFound) then
       cbEntry.Items.Delete(n-1);
-    // Chop off the oldest address if there are too many in the list
+    // Chop off the oldest stored text if there are too many in the list
     if (cbEntry.Items.Count >= maxEntries) then
       cbEntry.Items.Delete(maxEntries-1);
-    // Add the address to the top of the list
+    // Add the new text to the top of the list
     cbEntry.Items.Insert(0,sLatestEntry);
   end // if
   else
+  begin
     // Add the first entry
     cbEntry.Items.Add(cbEntry.Text);
+  end; // else
   cbEntry.ItemIndex := 0;
 end; // UpdateTComboBoxItems
 
 //***************************************************************************
 //
-//  FUNCTION  : CentreXAonB
+//  OPERATION : Adjust controlA's left position, so it is centred on control B,
+//              in the X-axis.
 //
 //  I/P       : controlA : TControl - The target control, to be centred
 //
@@ -131,41 +135,92 @@ end; // UpdateTComboBoxItems
 //
 //  O/P       : controlA.Left is updated
 //
-//  OPERATION : Adjust controlA's left position, so it is centred on control B,
-//              in the X-axis.
-//
-//  UPDATED   : 2023-09-20
-//
 //***************************************************************************
 procedure CentreXAonB(controlA : TControl;
-                      controlB : TControl);
+                      controlB : TControl = nil);
 begin
-  controlA.Left := controlB.Left +
-    (controlB.Width - controlA.Width) div 2;
+  if (controlB = nil) then
+  begin
+    controlB := controlA.Parent;
+  end;
+
+  if (controlB <> nil) then
+  begin
+    if (controlA.Parent = controlB) then
+    begin
+      // The target is an immediate child of the reference.
+      // Its left position is therefore relative.
+      controlA.Left := (controlB.ClientWidth - controlA.Width) div 2;
+    end // if
+    else
+    begin
+      // The target is not a child of the reference
+      // Its left position is therefor offset in the same way as the reference.
+      controlA.Left := controlB.Left + (controlB.ClientWidth - controlA.Width) div 2;
+    end;
+  end;
+// This should surely be removed (2026-04-14)
+//  controlA.Left := controlB.Left +
+//    (controlB.Width - controlA.Width) div 2;
 end; // CentreXAonB
 
 //***************************************************************************
 //
-//  FUNCTION  : CentreYAonB
-//
-//  I/P       : controlA : TControl - The target control, to be centred
-//
-//              controlB : TControl - The reference control
-//
-//  O/P       : controlA.Top is updated
-//
 //  OPERATION : Adjust controlA's top position, so it is centred on control B,
 //              in the Y-axis.
 //
-//  UPDATED   : 2023-09-20
+//  I/P       : controlA : TControl - The target control, to be centred
+//
+//              controlB : TControl - The reference control. If nil,
+//                this is treated as the parent of Target
+//
+//  O/P       : controlA.Top is updated
 //
 //***************************************************************************
 procedure CentreYAonB(controlA : TControl;
-                     controlB : TControl);
+                      controlB : TControl = nil);
 begin
-  controlA.Top := controlB.Top +
-    (controlB.Height - controlA.Height) div 2;
+  if (controlB = nil) then
+  begin
+    controlB := controlA.Parent;
+  end;
+
+  if (controlB <> nil) then
+  begin
+    if (controlA.Parent = controlB) then
+    begin
+      // The target is an immediate child of the reference.
+      // Its top position is therefore relative.
+      controlA.Top := (controlB.ClientHeight - controlA.Height) div 2;
+    end // if
+    else
+    begin
+      // The target is not a child of the reference
+      // Its left position is therefor offset in the same way as the reference.
+      controlA.Top := controlB.Top + (controlB.ClientHeight - controlA.Height) div 2;
+    end; // else
+  end;
 end; // CentreYAonB
+
+//***************************************************************************
+//
+//  OPERATION : Used to position one control (Target) to horizontally and
+//              vertically centre on another (Reference);
+//
+//  I/P       : controlA : TControl - the control to be positioned
+//
+//              controlB : TControl = nil - The reference control. If nil,
+//                this is treated as the parent of Target
+//
+//  O/P       : controlA.Top and controlA.Left is updated
+//
+//***************************************************************************
+procedure CentreControl(controlA : TControl;
+                        controlB : TControl = nil);
+begin
+  CentreXAonB(controlA, controlB);
+  CentreYAonB(controlA, controlB);
+end;
 
 //***************************************************************************
 //

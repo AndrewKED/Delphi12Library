@@ -570,13 +570,14 @@ end; // IntToBinStr
 //
 //  OPERATION : Convert a binary string into its binary value
 //
-//  UPDATED   : 2008-08-08
+//  UPDATED   : 2025-08-11
 //
 //***************************************************************************
 function BinStrToInt(sBinary : string): cardinal;
 var
   iPlace : cardinal;
   n : Integer;
+
 begin
   iPlace := 1;
   result := 0;
@@ -585,7 +586,7 @@ begin
   begin
     if (sBinary[n] = '1') then
       result := result + iPlace;
-    iPlace := iPlace * 2;
+    iPlace := iPlace shl 1;
     Dec(n);
   end; // while
 end; // BinStrToInt

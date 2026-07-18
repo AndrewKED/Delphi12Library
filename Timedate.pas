@@ -61,9 +61,11 @@ unit TimeDate;
 interface
 
 uses
-  Windows,
+{$IFDEF MSWINDOWS}
+  Winapi.Windows,
 {$IFNDEF NO_DKLANG}
   DKLang,
+{$ENDIF}
 {$ENDIF}
   Classes;
 
@@ -111,13 +113,14 @@ const
   VERY_LATE = 73051;    // The equivalent of EncodeDate(2100, 1, 1)
   VERY_EARLY = 1.0;
 
-
+{$IFDEF MSWINDOWS}
 procedure StartFastTimer(iTimerNumber : integer);
 procedure PauseFastTimer(iTimerNumber : integer);
 procedure ResetFastTimer(iTimerNumber : integer);
 function FastTimerRunning(iTimerNumber : integer) : Boolean;
 function GetFastTimer(iTimerNumber : integer) : cardinal;
 function GetFastTimerIncrement(iTimerNumber : integer) : cardinal;
+{$ENDIF}
 function Valid_Date (year,month,day : integer) : boolean;
 function Valid_Time (iHour,iMinute,iSecond,iMsecond : integer) : boolean;
 function Prev_Month (datetime : TDateTime) : TDateTime;
@@ -135,7 +138,12 @@ function VerboseTimeVariable(period : Double;
 function YYYYMMDD2DateTime(sYYYYMMDD : string) : TDateTime;
 function HHNNSS2DateTime(sHHNNSS : string) : TDateTime;
 function YYYYMMDD_HHNNSS2DateTime(sDateTime : string) : TDateTime;
+function HHNNSSZZZ2DateTime(timestamp : uint32) : TDateTime;
+function Time2HHNNSSZZZ(timestamp : TDateTime) : uint32;
+function DateTimeToUnixMillis(dt: TDateTime): Int64;
+{$IFDEF MSWINDOWS}
 procedure ForceSystemDateTime(dtNew : TDateTime);
+{$ENDIF}
 function MonthsBetweenExact(dtFrom : TDateTime;
                             dtTo : TDateTime) : Integer;
 function GPSTOW(dtWhen : TDateTime) : longword;
@@ -158,9 +166,11 @@ function AddDateToTime(TimeOnly : TDateTime;
                        DateAndTime : TDateTime) : TDateTime;
 function RoundDateTimeDown(Given : TDateTime;
                            RoundDownID : integer) : TDateTime;
+{$IFDEF MSWINDOWS}
 function GetStartOfTheWeek : Integer;
 {$IFNDEF NO_DKLANG}
 procedure SetLanguage(lcMain : TDKLanguageController);
+{$ENDIF}
 {$ENDIF}
 
 var
@@ -180,12 +190,18 @@ var
 IMPLEMENTATION
 
 uses
-  System.StrUtils, DateUtils, Vcl.Dialogs, Vcl.StdCtrls, SysUtils, Math, System.UITypes,
+  System.StrUtils, System.DateUtils, System.SysUtils, System.Math, System.UITypes,
+  System.Types,
+{$IFDEF MSWINDOWS}
+  Vcl.Dialogs, Vcl.StdCtrls,
+{$ENDIF}
   Str_Ops, Maths;
 
 var
+{$IFDEF MSWINDOWS}
 {$IFNDEF NO_DKLANG}
   lcTimeDate : TDKLanguageController;
+{$ENDIF}
 {$ENDIF}
 
   timerFast : array[0..9] of Cardinal;
@@ -194,6 +210,7 @@ var
   timerLast : array[0..9] of Cardinal;
   n : Integer;
 
+{$IFDEF MSWINDOWS}
 //***************************************************************************
 //
 //  FUNCTION  : StartFastTimer
@@ -376,7 +393,7 @@ begin
   end;
   timerLast[iTimerNumber] := c;
 end;
-
+{$ENDIF}
 //***************************************************************************
 //
 //  FUNCTION  : Valid_Date
@@ -1017,6 +1034,67 @@ end; // YYYYMMDD_HHNNSS2DateTime
 
 //***************************************************************************
 //
+//  OPERATION : Convert a value give as HHHNNSSZZZ into a TDateTime value.
+//
+//              This is a form that may be derived from interpretation of the
+//              time filed in a GNSS GGA NMEA message, where the decimal point is
+//              ignored.
+//
+//  I/P       : timestamp : uint32 - Time stamp in the form HHNNSSZZZ
+//
+//  O/P       : TDateTime - The value converted
+//
+//***************************************************************************
+function HHNNSSZZZ2DateTime(timestamp : uint32) : TDateTime;
+begin
+  Result := (timestamp div 10000000) / 24.0;
+  timestamp := timestamp mod 10000000;
+  Result := Result + (timestamp div 100000) / (24.0 * 60.0);
+  timestamp := timestamp mod 100000;
+  Result := Result + (timestamp / 1000.0) / (24.0 * 60.0 * 60.0);
+end; // HHNNSSZZZ2DateTime
+
+//***************************************************************************
+//
+//  OPERATION : Convert the time portion of a TDateTime value to an integer in
+//              the form HHHNNSSZZZ.
+//
+//              This is the opposite of HHNNSSZZZ2DateTime(), above.
+//
+//  I/P       : TDateTime - The value to be converted
+//
+//  O/P       : uint32 - Time stamp in the form HHNNSSZZZ
+//
+//***************************************************************************
+function Time2HHNNSSZZZ(timestamp : TDateTime) : uint32;
+begin
+  Result := HourOf(timestamp) * 10000000 +
+            MinuteOf(timestamp) * 100000 +
+            SecondOf(timestamp) * 1000 +
+            MillisecondOf(timestamp);
+end; // Time2HHNNSSZZZ
+
+//***************************************************************************
+//
+//  OPERATION : Create a millisecond resolution 64-bit Unix/Linux datetime stamp
+//
+//  I/P       : dt : TDateTime - The datetime stamp to be converted
+//
+//  O/P       : Int64 - the number of ms since 1970-01-01
+//
+//***************************************************************************
+function DateTimeToUnixMillis(dt: TDateTime): Int64;
+const
+  UnixEpochStart: TDateTime = 25569.0; // 1970-01-01
+  MillisPerDay = 86400000; // 24 * 60 * 60 * 1000
+
+begin
+  Result := Round((dt - UnixEpochStart) * MillisPerDay);
+end; // DateTimeToUnixMillis
+
+{$IFDEF MSWINDOWS}
+//***************************************************************************
+//
 //  FUNCTION  : ForceSystemDateTime
 //
 //  I/P       : dtNew (TDateTime) - The date and time, in UTC, to
@@ -1036,6 +1114,7 @@ begin
   DateTimeToSystemTime(dtNew, sTd);
   SetSystemTime(sTd);
 end; // ForceSystemDateTime
+{$ENDIF}
 
 //***************************************************************************
 //
@@ -1134,13 +1213,6 @@ end; // ClosestWeekDay
 
 //***************************************************************************
 //
-//  FUNCTION  : FixedDTPShortTimeFormat
-//
-//  I/P       :
-//
-//  O/P       : String - A version of the PC's short time format which is
-//                applicable for use in a TDateTimePicker component.
-//
 //  OPERATION : Return a time format string for a TDateTimePicker,
 //              based on the current Short Time Format.
 //
@@ -1155,9 +1227,14 @@ end; // ClosestWeekDay
 //              Secondly, a TDateTimePicker wants the use of an AM/PM indicator
 //              to be specified by 'tt' and not the 'AMPM' that
 //              FromatSettings.ShortTimeFormat may report.
-
 //
-//  UPDATED   : 2013-08-21
+//              Note that Short time format specifieds hour and minutes (and no
+//              seconds or milliseconds)
+//
+//  I/P       : None
+//
+//  O/P       : String - A version of the PC's short time format which is
+//                applicable for use in a TDateTimePicker component.
 //
 //***************************************************************************
 function FixedDTPShortTimeFormat : String;
@@ -1169,8 +1246,8 @@ begin
 
   if (Pos('AMPM',result) = 0) then
   begin
-    // Have encountered a non-AM/PM (i.e. 24 hour clock) where ShortTimeFormat
-    // has specified 'hh' instead of 'HH'
+    // I have encountered a PC where a format without "AMPM" (i.e. 24 hour clock)
+    // had been specified as 'hh' instead of 'HH', which is confusing.
     result := SearchAndReplace(result, 'hh', 'HH')
   end // if
   else
@@ -1505,6 +1582,7 @@ begin
   end;
 end;
 
+{$IFDEF MSWINDOWS}
 //***************************************************************************
 //
 //  FUNCTION  : GetStartOfTheWeek
@@ -1566,6 +1644,7 @@ begin
     end; // except
 end;
 {$ENDIF}
+{$ENDIF}
 
 //***************************************************************************
 //
@@ -1581,6 +1660,7 @@ end;
 //
 //***************************************************************************
 initialization
+{$IFDEF MSWINDOWS}
   // By default, all fast timers are running from the start of the application.
   for n := Low(timerFast) to High(timerFast) do
   begin
@@ -1589,6 +1669,7 @@ initialization
     timerPauseValue[n] := 0;
     timerLast[n] := 0;
   end; // else
+{$ENDIF}
 
   sAbbrHour := 'hr';
   sAbbrMinute := 'min';
@@ -1604,9 +1685,5 @@ initialization
   sDays := 'days';
 
 end. // TimeDate
-
-
-
-
 
 

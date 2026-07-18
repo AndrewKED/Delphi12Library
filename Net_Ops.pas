@@ -144,7 +144,7 @@ begin
   i := 0;
   while pptr^[i]<>nil do
   begin
-    result := StrPas(inet_ntoa(pptr^[i]^));
+    result := String(StrPas(inet_ntoa(pptr^[i]^)));
     Inc(i);
   end;
 // Should this be called by the calling program after complete with all

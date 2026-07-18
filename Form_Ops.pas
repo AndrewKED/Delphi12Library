@@ -113,12 +113,6 @@ procedure WebBrowserScreen2BMP(const wb: TWebBrowser;
                                bmTarget : TBitmap);
 procedure SetTabsVisible(pcGiven : TPageControl;
                          bVisible : boolean);
-procedure VerticallyCentre(Target : TControl;
-                           Reference : TControl = nil);
-procedure HorizontallyCentre(Target : TControl;
-                           Reference : TControl = nil);
-procedure CentreControl(Target : TControl;
-                        Reference : TControl = nil);
 procedure SetTEditText(Container: TWinControl;
                        TextToSet : string);
 procedure SetSpeedButtonFonts(Sender : TObject;
@@ -1709,114 +1703,6 @@ var
 begin
   for n := 0 to pcGiven.PageCount-1 do
     pcGiven.Pages[n].TabVisible := bVisible;
-end;
-
-//***************************************************************************
-//
-//  FUNCTION  : VerticallyCentre
-//
-//  I/P       : Target : TControl - the control to be positioned
-//
-//              Reference : TControl = nil - The reference control. If nil,
-//                this is treated as the parent of Target
-//
-//  O/P       : None
-//
-//  OPERATION : Used to position one control (Target) to vertically
-//              centre on another (Reference)
-//
-//  UPDATED   : 2024-09-05
-//
-//***************************************************************************
-procedure VerticallyCentre(Target : TControl;
-                           Reference : TControl = nil);
-begin
-  if (Reference = nil) then
-  begin
-    Reference := Target.Parent;
-  end;
-
-  if (Reference <> nil) then
-  begin
-    if (Target.Parent = Reference) then
-    begin
-      // The target is an immediate child of the reference.
-      // Its top position is therefore relative.
-      Target.Top := (Reference.ClientHeight - Target.Height) div 2;
-    end // if
-    else
-    begin
-      // The target is not a child of the reference
-      // Its left position is therefor offset in the same way as the reference.
-      Target.Top := Reference.Top + (Reference.ClientHeight - Target.Height) div 2;
-    end; // else
-  end;
-end; // VerticallyCentre
-
-//***************************************************************************
-//
-//  FUNCTION  : HorizontallyCentre
-//
-//  I/P       : Target : TControl - the control to be positioned
-//
-//              Reference : TControl = nil - The reference control. If nil,
-//                this is treated as the parent of Target
-//
-//  O/P       : None
-//
-//  OPERATION : Used to position one control (Target) to horizontally
-//              centre on another (Reference);
-//
-//  UPDATED   : 2024-09-05
-//
-//***************************************************************************
-procedure HorizontallyCentre(Target : TControl;
-                             Reference : TControl = nil);
-begin
-  if (Reference = nil) then
-  begin
-    Reference := Target.Parent;
-  end;
-
-  if (Reference <> nil) then
-  begin
-    if (Target.Parent = Reference) then
-    begin
-      // The target is an immediate child of the reference.
-      // Its left position is therefore relative.
-      Target.Left := (Reference.ClientWidth - Target.Width) div 2;
-    end // if
-    else
-    begin
-      // The target is not a child of the reference
-      // Its left position is therefor offset in the same way as the reference.
-      Target.Left := Reference.Left + (Reference.ClientWidth - Target.Width) div 2;
-    end;
-  end;
-end; // HorizontallyCentre
-
-//***************************************************************************
-//
-//  FUNCTION  : CentreControl
-//
-//  I/P       : Target : TControl - the control to be positioned
-//
-//              Reference : TControl = nil - The reference control. If nil,
-//                this is treated as the parent of Target
-//
-//  O/P       : None
-//
-//  OPERATION : Used to position one control (Target) to horizontally and
-//              vertically centre on another (Reference);
-//
-//  UPDATED   : 2024-09-05
-//
-//***************************************************************************
-procedure CentreControl(Target : TControl;
-                        Reference : TControl = nil);
-begin
-  HorizontallyCentre(Target, Reference);
-  VerticallyCentre(Target, Reference);
 end;
 
 //***************************************************************************

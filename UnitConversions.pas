@@ -29,11 +29,13 @@ function degC_From_Kelvin(t : Double) : Double;
 function Kelvin_From_degC(t : Double) : Double;
 function Farenheit_From_degC(t : Double) : Double;
 function degC_From_Farenheit(t : Double) : Double;
+function DecimalDegToDegMin10000(theValue : Double) : int32;
+function DegMin10000ToDeg(theValue : int32) : Double;
 
 implementation
 
 uses
-  MetCalcs;
+  MetCalcs, Math;
 
 //***************************************************************************
 //
@@ -107,5 +109,64 @@ begin
   Result := (t - 32) / DEGF_PER_DEGC;
 end;
 
+//***************************************************************************
+//
+//  OPERATION : Convert a bearing, given in form (d)ddmm.m into decimal degrees.
+//
+//              This is the typical format used for latitude/longitude in
+//              NMEA messages.
+//
+//  I/P       : theValue : Double
+//
+//  O/P       : Double
+//
+//***************************************************************************
+function dddmm2Decimal(theValue : Double) : Double;
+begin
+  Result := Int(theValue / 100.0);
+  Result := (Result - Result * 100.0) / 60.0;
+end; // dddmm2Decimal
+
+//***************************************************************************
+//
+//  FUNCTION  : DecimalDegToDegMin10000
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION : Convert a decimal degrees value into an integer which is in
+//              the form dmm.mmmm * 10000
+//
+//  UPDATED   : 2019-02-01
+//
+//***************************************************************************
+function DecimalDegToDegMin10000(theValue : Double) : int32;
+begin
+  result := Trunc(Abs(theValue)) * 1000000 +
+            Trunc(Frac(Abs(theValue)) * 60 * 10000);
+  result := ifthen(theValue >= 0.0, result, -result);
+end; // DecimalDegToDegMin10000
+
+//***************************************************************************
+//
+//  FUNCTION  : DegMin10000ToDeg
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//  OPERATION : Convert a value in the form dmm.mmmm * 10000 into a decimal
+//              degrees value.
+//
+//  UPDATED   : 2019-02-01
+//
+//***************************************************************************
+function DegMin10000ToDeg(theValue : int32) : Double;
+begin
+  result := (Abs(theValue) div 1000000) +
+            (Abs(theValue) mod 1000000) / 600000.0;
+  result := ifthen(theValue >= 0.0, result, -result);
+end; // DegMin10000ToDeg
 
 end.

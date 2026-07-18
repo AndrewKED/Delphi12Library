@@ -56,7 +56,7 @@ const
   S_PCB_DESELECT              = $00;  // Used in S-block : Deselect command
   S_PCB_WTX                   = $30;  // Used in S-block : Waiting Frame Extension command or response
 
-  FI_CC                       = 0;
+  FI_CC                       = 0;    // File ID
   FI_SYSTEM                   = 1;
   FI_NDEF                     = 2;
 
@@ -123,7 +123,7 @@ var
 
 //***************************************************************************
 //
-//  FUNCTION  : SetGCRCUDebug
+//  FUNCTION  : SetNFCDebug
 //
 //  I/P       :
 //
@@ -142,7 +142,7 @@ begin
   begin
     debugMonitor := TCustomMemo(debugToUse);
   end;
-end; // SetGCRCUDebug
+end; // SetNFCDebug
 
 //***************************************************************************
 //
@@ -175,7 +175,7 @@ end;
 //
 //  O/P       : None
 //
-//  OPERATION : Output a line of text, with timestamp, to the NFC Debug monitor.
+//  OPERATION : Log to the debug monitor and/or debug log file.
 //
 //  UPDATED   : 2024-05-13
 //
@@ -325,7 +325,7 @@ begin
 
 {$IFDEF DEBUG_LOTS}
     AddNFCDebug('ISO14443A Init,Response,' + IntToStr(iresult));
-    AddNFCDebug('ISO14443A Init,Rx,' + AByte0ToAnsiString(reply));
+    AddNFCDebug('ISO14443A Init,Rx,' + String(AByte0ToAnsiString(reply)));
 {$ENDIF}
 
     if (iresult = 0) then
@@ -339,7 +339,7 @@ begin
       // $30, $30, $30, $30
 {$IFDEF DEBUG_LOTS}
       AddNFCDebug('ISO14443A Init,Response,' + IntToStr(iresult));
-      AddNFCDebug('ISO14443A Init,Rx,' + AByte0ToAnsiString(reply));
+      AddNFCDebug('ISO14443A Init,Rx,' + String(AByte0ToAnsiString(reply)));
 {$ENDIF}
     end;
 
@@ -354,7 +354,7 @@ begin
       // $30, $30, $30, $30
 {$IFDEF DEBUG_LOTS}
       AddNFCDebug('ISO14443A Init,Response,' + IntToStr(iresult));
-      AddNFCDebug('ISO14443A Init,Rx,' + AByte0ToAnsiString(reply));
+      AddNFCDebug('ISO14443A Init,Rx,' + String(AByte0ToAnsiString(reply)));
 {$ENDIF}
     end;
 
@@ -388,6 +388,7 @@ begin
   // REQ-A
   try
 {$IFDEF DEBUG_LOTS}
+    AddNFCDebug('ISO14443A AntiCollision,NFC Forum Type 1 (Topaz) request sequence REQA');
     AddNFCDebug('ISO14443A AntiCollision,Tx,2607');
 {$ENDIF}
     // NFC Forum Type 1 (Topaz) request sequence REQA
@@ -399,7 +400,7 @@ begin
     // result = 1 if there is no tag in place.
 {$IFDEF DEBUG_LOTS}
     AddNFCDebug('ISO14443A AntiCollision,Response,' + IntToStr(iresult));
-    AddNFCDebug('ISO14443A AntiCollision,Rx,' + AByte0ToAnsiString(reply));
+    AddNFCDebug('ISO14443A AntiCollision,Rx,' + String(AByte0ToAnsiString(reply)));
 {$ENDIF}
     if ((iresult <> 4) and
         (iresult <> 5) and
@@ -410,6 +411,7 @@ begin
       // Anticollision 1
       try
 {$IFDEF DEBUG_LOTS}
+        AddNFCDebug('ISO14443A AntiCollision,Anticollision 1');
         AddNFCDebug('ISO14443A AntiCollision,Tx,932008');
 {$ENDIF}
         //
@@ -439,6 +441,7 @@ begin
             // Select 1
             try
 {$IFDEF DEBUG_LOTS}
+              AddNFCDebug('ISO14443A AntiCollision,Select 1');
               AddNFCDebug('ISO14443A AntiCollision,Tx,937088' + uid[0] + uid[1] + uid[2] + bcc + '28');
 {$ENDIF}
               iresult := CR95HF_SendReceive(StringToTBytes0('937088' +
@@ -457,6 +460,7 @@ begin
                 // Anticollision 2
                 try
 {$IFDEF DEBUG_LOTS}
+                  AddNFCDebug('ISO14443A AntiCollision,Anticollision 2');
                   AddNFCDebug('ISO14443A AntiCollision,Tx,952008');
 {$ENDIF}
                   iresult := CR95HF_SendReceive(StringToTBytes0('952008'), reply);
@@ -485,6 +489,7 @@ begin
                       // Select 2
                       try
 {$IFDEF DEBUG_LOTS}
+                        AddNFCDebug('ISO14443A AntiCollision,Select 2');
                         AddNFCDebug('ISO14443A AntiCollision,Tx,9570' + uid[3] + uid[4] + uid[5] + uid[6] + bcc + '28');
 {$ENDIF}
                         iresult := CR95HF_SendReceive(StringToTBytes0(
@@ -572,7 +577,7 @@ begin
       result := FALSE;
     end;
   end;
-end;
+end; // ISO14443A_AntiCollision
 
 //***************************************************************************
 //
@@ -789,6 +794,10 @@ begin
   errorMsgNFC := '';
 
   EraseDebugLog(idxLogFile);
+
+{$IFDEF DEBUG_LOTS}
+  AddNFCDebug('*** INITIALISTING NFC OPERATIONS ***');
+{$ENDIF}
 end;
 
 //*****************************************************************************
@@ -905,7 +914,7 @@ end; // ResponseStatus
 //
 //  O/P       : Boolean - TRUE if the command executed correctly
 //
-//  OPERATION : Set the state of the GPIO port
+//  OPERATION : Set the state of the GPIO port (HiZ or Low)
 //
 //  UPDATED   : 2021-02-01
 //
@@ -927,10 +936,20 @@ begin
     command[5] := $00;
   // not used                             // Le
 
-  result := (SendCommand(PCB_ID_I or PCB_RFU_I or blockNumber,
+{$IFDEF DEBUG_LOTS}
+  AddNFCDebug('-- Set GPIO Port, ' + ifthens(state, 'HiZ', 'Low'));
+{$ENDIF}
+
+  Result := (SendCommand(PCB_ID_I or PCB_RFU_I or blockNumber,
                          command)) and
 //            (Length(cmdResponse) = 5) and
             (ResponseStatus(cmdResponse, 1) = RX_STAT_OK);
+
+{$IFDEF DEBUG_LOTS}
+  AddNFCDebug('Set GPIO Port response length,' + IntToStr(Length(cmdResponse)));
+//!!  AddNFCDebug('NFC_SelectNDEFTagApplication response,' + TBytes2HexString(cmdResponse));
+  AddNFCDebug('Set GPIO Port completed,' + IntToStr(Integer(result)));
+{$ENDIF}
 end; // NFC_StateControl
 
 //***************************************************************************
@@ -963,7 +982,11 @@ begin
   Move(data, command[5], sizeof(data));
   command[6 + sizeof(data) - 1] := $00;   // Le
 
-  result := (SendCommand(PCB_ID_I or PCB_RFU_I or blockNumber,
+{$IFDEF DEBUG_LOTS}
+  AddNFCDebug('-- NFC_SelectNDEFTagApplication');
+{$ENDIF}
+
+  Result := (SendCommand(PCB_ID_I or PCB_RFU_I or blockNumber,
                          command)) and
 //            (Length(cmdResponse) = 5) and
             (ResponseStatus(cmdResponse, 1) = RX_STAT_OK);
@@ -1021,10 +1044,20 @@ begin
       command[6] := $01;
   end; // case
 
-  result := (SendCommand(PCB_ID_I or PCB_RFU_I or blockNumber,
+{$IFDEF DEBUG_LOTS}
+  AddNFCDebug('-- NFC_SelectFile,' + fileID.ToString);
+{$ENDIF}
+
+  Result := (SendCommand(PCB_ID_I or PCB_RFU_I or blockNumber,
                          command)) and
 //            (Length(cmdResponse) = 5) and
             (ResponseStatus(cmdResponse, 1) = RX_STAT_OK);
+
+{$IFDEF DEBUG_LOTS}
+  AddNFCDebug('NFC_SelectFile response length,' + IntToStr(Length(cmdResponse)));
+//!!  AddNFCDebug('NFC_SelectNDEFTagApplication response,' + TBytes2HexString(cmdResponse));
+  AddNFCDebug('NFC_SelectFile completed,' + IntToStr(Integer(result)));
+{$ENDIF}
 end;
 
 //***************************************************************************
@@ -1113,6 +1146,10 @@ begin
   command[3] := offset and $FF;             // P2 }
   command[4] := Le;                         // Length expected
 
+{$IFDEF DEBUG_LOTS}
+  AddNFCDebug('-- NFC_ReadFileLength');
+{$ENDIF}
+
   if ((SendCommand(PCB_ID_I or PCB_RFU_I or blockNumber,
                    command)) and
       (ResponseStatus(cmdResponse, Le + 1) = RX_STAT_OK)) then
@@ -1125,6 +1162,10 @@ begin
     command[2] := (offset shr 8) and $FF;   // P1 } Address
     command[3] := offset and $FF;           // P2 }
     command[4] := Le;                       // Length expected
+
+{$IFDEF DEBUG_LOTS}
+  AddNFCDebug('-- NFC_ReadFile');
+{$ENDIF}
 
     Result := (SendCommand(PCB_ID_I or PCB_RFU_I or blockNumber,
                            command)) and
@@ -1184,7 +1225,12 @@ begin
   command[4] := Length(hexData) div 2 + 2;          // Length to be written (1 length bytes + data)
   for i := 0 to Length(hexData) div 2 - 1 do
     command[5 + i] := StrToInt('$' + String(Copy(hexData, 2*i+1, 2)));
-  result := (SendCommand(PCB_ID_I or PCB_RFU_I or blockNumber,
+
+{$IFDEF DEBUG_LOTS}
+  AddNFCDebug('-- NFC_WriteFile');
+{$ENDIF}
+
+  Result := (SendCommand(PCB_ID_I or PCB_RFU_I or blockNumber,
                          command));
 
   // Check if there is a S(WTX) Waiting Frame eXtension time request

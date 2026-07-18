@@ -16,7 +16,12 @@ UNIT File_Ops;
 
 INTERFACE
 
-uses Classes, SysUtils, ComCtrls, Forms, Types;
+uses
+  System.Classes, System.SysUtils, System.Types
+{$IFDEF MSWINDOWS}
+  ,Vcl.ComCtrls, Vcl.Forms
+{$ENDIF}
+  ;
 
 const
 //  faANSReadOnly = $00000001;    // Delphi 5 has 2 faReadOnly constants
@@ -404,8 +409,15 @@ begin
       begin
         // This deletion operation gets rid of any existing files with a
         // read-only attribute (otherwise Rewrite fails with error 5)
-        if (SysUtils.FileExists(dest)) then
-          DeletedFiles(dest, faReadOnly+faHidden+faSysFile+faArchive,0.0);
+        var Attrs : Integer;
+        Attrs := faReadOnly;
+        {$IFDEF MSWINDOWS}
+        {$WARN SYMBOL_PLATFORM OFF}
+        Attrs := Attrs + faHidden + faSysFile + faArchive;
+        {$WARN SYMBOL_PLATFORM ON}
+        {$ENDIF}
+        if (FileExists(dest)) then
+          DeletedFiles(dest, Attrs ,0.0);
 
         AssignFile(ToF, dest);	  {Open output file}
         {$I-}
@@ -478,7 +490,7 @@ begin
       if (dest<>'') then          {Ensure that the destination file is a disc file}
       begin
         AssignFile(ToF, dest);	  {Open output file}
-        if (SysUtils.FileExists(dest)) then
+        if (FileExists(dest)) then
         begin
           {$I-}                   {If the file exists, reset it}
           Reset(ToF, 1);          {Record size = 1}
@@ -632,19 +644,25 @@ begin
   // Assume it all works
   result := FOE_NONE;
 
-  sr := FindFirst(filename,faReadOnly+faHidden+faSysFile+faArchive,SearchRec);
+  var Attrs : Integer;
+  Attrs := faReadOnly;
+  {$IFDEF MSWINDOWS}
+  {$WARN SYMBOL_PLATFORM OFF}
+  Attrs := Attrs + faHidden + faSysFile + faArchive;
+  {$WARN SYMBOL_PLATFORM ON}
+  {$ENDIF}
+  sr := FindFirst(filename, Attrs ,SearchRec);
   while ((sr=0) and
          (result = FOE_NONE)) do
   begin
-    sDeleteFile := ExtractFilePath(filename);
-    sDeleteFile := sDeleteFile + SearchRec.Name;
+    sDeleteFile := ExtractFilePath(filename) + SearchRec.Name;
     FileSetAttr(ExtractFilePath(filename) + SearchRec.Name,
                 SearchRec.Attr and (not (delete_also)));
-    if (not SysUtils.DeleteFile(sDeleteFile)) then
+    if (not System.SysUtils.DeleteFile(sDeleteFile)) then
       result := FOE_FILE_NOT_DELETED;
     sr := FindNext(SearchRec);
   end; // while
-  SysUtils.FindClose(SearchRec);
+  System.SysUtils.FindClose(SearchRec);
 end; // DeletedFiles
 
 //***************************************************************************}
@@ -953,7 +971,7 @@ var
   HFileRes : HFILE;
 begin
   Result := false;
-  if (not SysUtils.FileExists(sFileName)) then
+  if (not System.SysUtils.FileExists(sFileName)) then
     exit;
   HFileRes := CreateFile(pchar(sFileName),
                          GENERIC_READ or GENERIC_WRITE,
@@ -1095,11 +1113,11 @@ var
                ((not create_empty) and
                 (FindFirst(ctsource,faAnyFile,sr1)=0)))) then
           begin
-            if ((not SysUtils.DirectoryExists(ctdest_dir + sr.name)) and
+            if ((not System.SysUtils.DirectoryExists(ctdest_dir + sr.name)) and
                 (not CreateDir(ctdest_dir + sr.name))) then
               iErrorCode := FOE_COULD_NOT_MAKE_DEST;
           end; // if
-          SysUtils.FindClose(sr1);
+          System.SysUtils.FindClose(sr1);
 
           Copy_Tree(
             IncludeTrailingPathDelimiter(ExtractFilePath(ctsource)) +
@@ -1110,7 +1128,7 @@ var
         end; // if
       until (FindNext(sr)<>0);
     end; // if
-    SysUtils.FindClose(sr);
+    System.SysUtils.FindClose(sr);
 
     // We are now at the lowest level of the source to which we must/can go in this arm.
     // Continue only if everything has worked OK up to now.
@@ -1118,16 +1136,18 @@ var
     begin
 
       // Are there any files to be copied?
-      if (FindFirst(ctsource,faReadOnly or
-                             faHidden or
-                             faSysFile or
-                             faArchive,sr)=0) then
+      var Attrs : Integer;
+      Attrs := faReadOnly;
+      {$IFDEF MSWINDOWS}
+      {$WARN SYMBOL_PLATFORM OFF}
+      Attrs := Attrs + faHidden + faSysFile + faArchive;
+      {$WARN SYMBOL_PLATFORM ON}
+      {$ENDIF}
+      if (FindFirst(ctsource, Attrs, sr)=0) then
       begin
         repeat
           // Check whether the destination file exists
-          iSearchResult := FindFirst(ctdest_dir + sr.name,
-                                     faReadOnly or faHidden or faSysFile or faArchive,
-                                     sr_dest);
+          iSearchResult := FindFirst(ctdest_dir + sr.name, Attrs, sr_dest);
           // If the destination file does not exist, go ahead with the copying
           // If the destination file already exists, check whether we may
           // just overwrite it, or only overwrite it if the source is newer.
@@ -1150,9 +1170,9 @@ var
                                         (sr.Attr and (not clear_attr)) or set_attr);
           end; // if
         until (iErrorCode <> FOE_NONE) or (FindNext(sr)<>0);
-        SysUtils.FindClose(sr_dest);
+        System.SysUtils.FindClose(sr_dest);
       end; // if
-      SysUtils.FindClose(sr);
+      System.SysUtils.FindClose(sr);
     end; // if
 
   end; // Copy_Tree
@@ -1258,7 +1278,7 @@ function XDeleteFiles(target : String;
               result := FOE_FOLDER_NOT_DELETED;
         end; // if
       until (FindNext(sr)<>0);
-      SysUtils.FindClose(sr);
+      System.SysUtils.FindClose(sr);
     end; // if
 
 // Go ahead and delete the files if we have been successful in the operation so far.
@@ -1343,7 +1363,7 @@ begin
       slResult.Add(sTemp);
     until (FindNext(srFile) <> 0);
   end; // if
-  SysUtils.FindClose(srFile);
+  System.SysUtils.FindClose(srFile);
 
   // If we are drilling down, we should now search for sub directories
   if (bDrillDown) then
@@ -1360,7 +1380,7 @@ begin
                      iAttr,bDrillDown,bProperties,slResult);
       until (FindNext(srFile) <> 0);
     end; // if
-    SysUtils.FindClose(srFile);
+    System.SysUtils.FindClose(srFile);
   end; // if
 end; // FindAllFiles
 (*
@@ -1726,7 +1746,7 @@ begin
       Inc(result);
     until (FindNext(srResult) <> 0);
 
-  SysUtils.FindClose(srResult);
+  System.SysUtils.FindClose(srResult);
 end; // CountFiles
 
 //***************************************************************************
@@ -1771,7 +1791,7 @@ var
           );
         end; // if
       until (FindNext(sr)<>0);
-      SysUtils.FindClose(sr);
+      System.SysUtils.FindClose(sr);
     end; // if
 
     // Go ahead and count the files in this folder
@@ -1845,7 +1865,7 @@ begin
                 Int64(SearchREc.FindData.nFileSizeLow)
     else
       result := 0;
-    SysUtils.FindClose(SearchRec);
+    System.SysUtils.FindClose(SearchRec);
   end // if
   else
     result := 0;
@@ -1906,7 +1926,7 @@ begin
     until (FindNext(srResult) <> 0);
   end;
 
-  SysUtils.FindClose(srResult);
+  System.SysUtils.FindClose(srResult);
 end; // SizeOfFiles
 
 //***************************************************************************
@@ -1953,7 +1973,7 @@ var
           );
         end; // if
       until (FindNext(sr)<>0);
-      SysUtils.FindClose(sr);
+      System.SysUtils.FindClose(sr);
     end; // if
 
     // Tally the size of files in this folder
@@ -2073,7 +2093,7 @@ begin
   cnt := 1;
   fs := TFileStream.Create(OutFileName, fmCreate or fmShareExclusive) ;
   try
-    while (SysUtils.FileExists(FirstSplitFileName)) do
+    while (System.SysUtils.FileExists(FirstSplitFileName)) do
     begin
       ss := TFileStream.Create(FirstSplitFileName, fmOpenRead or fmShareDenyWrite) ;
       try
@@ -2282,7 +2302,7 @@ var
   tfInput : TextFile;
   sLine : String;
 begin
-  if (SysUtils.FileExists(sFileName)) then
+  if (System.SysUtils.FileExists(sFileName)) then
   begin
     AssignFile (tfInput,sFileName);
     {$I-}
@@ -2353,7 +2373,7 @@ var
   Buf: array[0..255] of char;
 begin
   Result := '';
-  if (SysUtils.FileExists(sFilename)) then
+  if (System.SysUtils.FileExists(sFilename)) then
   begin
     VerInfSize := GetFileVersionInfoSize(PCHAR(sFilename), Sz);
     if (VerInfSize > 0) then
@@ -2448,7 +2468,7 @@ begin
              (FindNext(searchRec) = 0) and
              (FindNext(searchRec) <> 0) ;
   finally
-    SysUtils.FindClose(searchRec);
+    System.SysUtils.FindClose(searchRec);
   end;
 end;
 
@@ -2477,7 +2497,7 @@ begin
               (FindNext(searchRec) = 0) and
               (FindNext(searchRec) <> 0);
   finally
-    SysUtils.FindClose(searchRec);
+    System.SysUtils.FindClose(searchRec);
   end;
 end; // FolderIsEmpty
 
@@ -2550,7 +2570,7 @@ begin
         sList.Add(IncludeTrailingPathDelimiter(sFolder) + sr.Name) ;
     until FindNext(sr) <> 0;
   finally
-    SysUtils.FindClose(sr) ;
+    System.SysUtils.FindClose(sr) ;
   end;
 end; // GetSubFolders
 
@@ -2589,7 +2609,7 @@ var
   lastWriteTimeSystem: TSystemTime;
 
 begin
-  if sysUtils.FindFirst(sPath, iFileAttributes, sr) = 0 then
+  if System.SysUtils.FindFirst(sPath, iFileAttributes, sr) = 0 then
     try
       dtLastModified := sr.TimeStamp;
 
@@ -2605,7 +2625,7 @@ begin
       with lastWriteTimeSystem do
         dtLastWriten := EncodeDateTime(wYear, wMonth, wDay, wHour, wMinute, wSecond, wMilliseconds);
     finally
-      SysUtils.FindClose(sr);
+      System.SysUtils.FindClose(sr);
     end
   else
   begin
@@ -2656,12 +2676,12 @@ begin
 
   if (FindFirst(sFolder + Separator + '*.*',faAnyFile,SearchRec) = 0) then
   begin
-    if (SysUtils.FileExists(sFolder + Separator + SearchRec.Name)) then
+    if (System.SysUtils.FileExists(sFolder + Separator + SearchRec.Name)) then
     begin
       iDirBytes := iDirBytes + SearchRec.Size;
     end
     else
-      if (SysUtils.DirectoryExists(sFolder + Separator + SearchRec.Name)) then
+      if (System.SysUtils.DirectoryExists(sFolder + Separator + SearchRec.Name)) then
       begin
         if (SearchRec.Name<>'.') and (SearchRec.Name<>'..') then
         begin
@@ -2671,12 +2691,12 @@ begin
 
     while FindNext(SearchRec) = 0 do
     begin
-      if (SysUtils.FileExists(sFolder + Separator + SearchRec.Name)) then
+      if (System.SysUtils.FileExists(sFolder + Separator + SearchRec.Name)) then
       begin
         iDirBytes := iDirBytes + SearchRec.Size;
       end
       else
-        if (SysUtils.DirectoryExists(sFolder + Separator + SearchRec.Name)) then
+        if (System.SysUtils.DirectoryExists(sFolder + Separator + SearchRec.Name)) then
         begin
           if (SearchRec.Name<>'.') and (SearchRec.Name<>'..') then
           begin
@@ -2686,7 +2706,7 @@ begin
     end; // while
   end; // if
 
-  SysUtils.FindClose(SearchRec) ;
+  System.SysUtils.FindClose(SearchRec) ;
   result := iDirBytes;
 end; // GetFolderSize
 
@@ -2895,7 +2915,7 @@ var
   LEncoding : TEncoding;
 
 begin
-  if (SysUtils.FileExists(sFileName)) then
+  if (System.SysUtils.FileExists(sFileName)) then
   begin
     LEncoding := nil;
     LFileStream := TFileStream.Create(sFileName,fmOpenRead or fmShareDenyNone);
@@ -2994,12 +3014,12 @@ begin
               Folder);
 //  result := 'C:\LockedTemp\';
 
-  SysUtils.ForceDirectories(result);
-  if (not SysUtils.DirectoryExists(result)) then
+  System.SysUtils.ForceDirectories(result);
+  if (not System.SysUtils.DirectoryExists(result)) then
   begin
     // Just in case we could not create the working dir (which is unlikely)
     result := 'C:\Temp\';
-    SysUtils.ForceDirectories(result);
+    System.SysUtils.ForceDirectories(result);
   end; // if
 
 //  Test that we can read/write to this folder
@@ -3170,7 +3190,7 @@ end; // RefreshAllMappedDrives
 function FilesBackedUp(pathSource : String;
                        pathDestination : String) : Boolean;
 begin
-  result := (SysUtils.ForceDirectories(pathDestination)) and
+  result := (System.SysUtils.ForceDirectories(pathDestination)) and
             (XCopyFiles(pathSource, pathDestination, FALSE, FALSE,
                         TRUE, FALSE, 0, 0) = 0);
 end; // FilesBackedUp
@@ -3221,7 +3241,7 @@ begin
     end; // if
     fresult := FindNext(srFile);
   end; // while
-  SysUtils.FindClose(srFile);
+  System.SysUtils.FindClose(srFile);
   filesFound.Sort;
 end; // FilesSortedAlphabetically
 
@@ -3251,7 +3271,7 @@ var
 
 begin
   result := (FindFirst(path, attr, sr) = 0);
-  SysUtils.FindClose(sr);
+  System.SysUtils.FindClose(sr);
 end; // FileExistsA
 
 //***************************************************************************

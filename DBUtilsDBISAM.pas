@@ -220,7 +220,14 @@ var
   srParadox : TSearchRec;
 
 begin
-  if (FindFirst(DBFolder + '*.db',faArchive,srParadox) = 0) then
+  var Attrs : Integer;
+  Attrs := 0;
+  {$IFDEF MSWINDOWS}
+  {$WARN SYMBOL_PLATFORM OFF}
+  Attrs := faArchive;
+  {$WARN SYMBOL_PLATFORM ON}
+  {$ENDIF}
+  if (FindFirst(DBFolder + '*.db', Attrs, srParadox) = 0) then
   begin
     if (ShowDebugMessages) then
       Dialog_Ops.MessageDlg('Found Paradox tables in "' + DBFolder + '"',mtInformation,[mbOK],0);
@@ -1681,7 +1688,14 @@ begin
                                    CountFiles(sDBDirectory + ChangeFileExt(sDBUC_TableFilename,DBISAM_TABLE_EXT), faArchive);
        end; // if
        // Iterate through all existing wildcard tables.
-       if (FindFirst(sDBDirectory + ChangeFileExt(sDBUC_TableFilename,DBISAM_TABLE_EXT), faArchive, searchrec) = 0) then
+      var Attrs : Integer;
+      Attrs := 0;
+      {$IFDEF MSWINDOWS}
+      {$WARN SYMBOL_PLATFORM OFF}
+      Attrs := faArchive;
+      {$WARN SYMBOL_PLATFORM ON}
+      {$ENDIF}
+       if (FindFirst(sDBDirectory + ChangeFileExt(sDBUC_TableFilename,DBISAM_TABLE_EXT), Attrs, searchrec) = 0) then
        begin
 //         // Adjust this progress bar (and below) to show progress in wildcard tables
 //         if (pbDatabaseProgress <> nil) then
@@ -2420,7 +2434,14 @@ begin
         // Wildcard (multiple tables with a similar naming structure)
         // Go through all the existing wildcard tables, checking each for validity
         // Note that I am deeming it permissable (no error) that no wildcard tabled exist.
-        fresult := FindFirst(sTestDir + sDBUC_TableFilename, faArchive, searchrec);
+        var Attrs : Integer;
+        Attrs := 0;
+        {$IFDEF MSWINDOWS}
+        {$WARN SYMBOL_PLATFORM OFF}
+        Attrs := faArchive;
+        {$WARN SYMBOL_PLATFORM ON}
+        {$ENDIF}
+        fresult := FindFirst(sTestDir + sDBUC_TableFilename, Attrs, searchrec);
         if (fresult = 0) then
         begin
           while ((fresult=0) and

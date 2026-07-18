@@ -13,7 +13,8 @@ unit Str_Ops;
 
 interface
 
-uses Classes, Sysutils;
+uses
+  System.Classes, System.SysUtils;
 
 function Centre_Line (main : String; ch : Char; field : integer) : String;
 procedure RemoveLagging(var main : String; sRemove : string);
@@ -196,8 +197,8 @@ implementation
 
 uses
   System.StrUtils, System.AnsiStrings, System.Character, System.Types,
-  System.DateUtils, System.RegularExpressions,
-  Math, TimeDate,
+  System.DateUtils, System.RegularExpressions, System.Math,
+  TimeDate,
   Character_Ops;
 
 //****************************************************************************
@@ -1716,6 +1717,8 @@ end; // YesNo
 //  O/P       : String
 //
 //  OPERATION : String equivalent of the Maths ifthen i.e. in-line string selection
+//
+//              Duh! This already exists in System.StrUtils
 //
 //  UPDATED   : 2018-08-04
 //

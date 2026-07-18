@@ -123,7 +123,9 @@ function PolynomialValue(coefficients : array of double;
 
 implementation
 
-uses Math, SysUtils, Str_Ops;
+uses
+  System.Math, System.SysUtils,
+  Str_Ops;
 
 //***************************************************************************
 //
