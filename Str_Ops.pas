@@ -78,9 +78,9 @@ function SuppressMiddle(sMain :string;
                         iAvailableSpace :integer): string;
 function SuppressEnd(sMain : String;
                      iAvailableSpace : Integer) : String;
-function YesNo(sInput : String;
-               bUpperCase : boolean) : String; overload;
 function YesNo(bState : boolean;
+               bUpperCase : boolean = FALSE) : String; overload;
+function YesNo(sInput : String;
                bUpperCase : boolean = FALSE) : String; overload;
 function IfThenS(state : boolean;
                  sTrue : String; sFalse : String = '') : String;
@@ -166,6 +166,10 @@ function RemoveHiddenLeadingTrailing(original : String;
                                      removeTab : Boolean;
                                      leadingOnly : Boolean = FALSE;
                                      trailingOnly : Boolean = FALSE) : String;
+function RemoveHidden(original : String;
+                      removeSpace : Boolean;
+                      removeCRandLF : Boolean;
+                      removeTab : Boolean) : String;
 
 // TStrings-associated functions
 //------------------------------------------------------------------------------
@@ -184,7 +188,9 @@ function ConcatenateStrings(theStrings : TStrings;
                             separator : String = '';
                             quotes : String = '') : String;
 
-//****************************************************************************
+var
+  textYes : String;
+  textNo : String;
 
 implementation
 
@@ -1677,26 +1683,24 @@ end; // SuppressEnd
 //  UPDATED   :
 //
 //***************************************************************************
-function YesNo(sInput : String;
-               bUpperCase : boolean) : String; overload;
+function YesNo(bState : boolean;
+               bUpperCase : boolean = FALSE) : String; overload;
 begin
-  result := 'No';
-  if ((UpperCase(LeftStr(sInput,1)) = 'Y') or
-      (UpperCase(LeftStr(sInput,1)) = '1')) then
-    result := 'Yes';
+  result := textNo;
+  if (bState) then
+    result := textYes;
 
   if (bUpperCase) then
     result := UpperCase(result);
 end; // YesNo
-function YesNo(bState : boolean;
+function YesNo(sInput : String;
                bUpperCase : boolean = FALSE) : String; overload;
 begin
-  result := 'No';
-  if (bState) then
-      result := 'Yes';
-
-  if (bUpperCase) then
-    result := UpperCase(result);
+  result := YesNo(
+    (UpperCase(LeftStr(sInput,1)) = 'Y') or
+    (UpperCase(LeftStr(sInput,1)) = '1'),
+    bUpperCase
+  );
 end; // YesNo
 
 //***************************************************************************
@@ -3656,5 +3660,57 @@ begin
 //  Copy (x, idxF, idxL - idxF + 1)
   Result := Copy(original, idxFirst, idxLast - idxFirst + 1);
 end; // RemoveHiddenLeadingTrailing
+
+//***************************************************************************
+//
+//  OPERATION : Remove (optionally) all spaces, tabs, CR and LF characters
+//              from a string.
+//
+//              Can be used to essentially check if string text contains "nothing".
+//
+//  I/P       : original : String - The string to be modified
+//
+//              removeSpace : Boolean - TRUE to remove all spaces
+//
+//              removeCRandLF : Boolean; - TRUE to remove all CR and LF characters
+//
+//              removeTab : Boolean - TRUE to remove all TAB characters.
+//
+//  O/P       : String - The modified string.
+//
+//***************************************************************************
+function RemoveHidden(original : String;
+                      removeSpace : Boolean;
+                      removeCRandLF : Boolean;
+                      removeTab : Boolean) : String;
+begin
+  Result := original;
+  if (removeSpace) then
+  begin
+    Result := StringReplace(Result, ' ', '', [rfReplaceAll]);
+  end;
+  if (removeCRandLF) then
+  begin
+    Result := StringReplace(Result, #$0A, '', [rfReplaceAll]);
+    Result := StringReplace(Result, #$0D, '', [rfReplaceAll]);
+  end;
+  if (removeTab) then
+  begin
+    Result := StringReplace(Result, #$09, '', [rfReplaceAll]);
+  end;
+end;
+
+//***************************************************************************
+//
+//  OPERATION :
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//***************************************************************************
+initialization
+  textYes := 'Yes';
+  textNo := 'No';
 
 end.
