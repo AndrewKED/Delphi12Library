@@ -217,7 +217,9 @@ procedure ClearTabList;
 procedure AddTab(iNewTabPosition : integer);
 procedure UseTable(idxTable : Integer);
 procedure DefineTable(iTableLeft : Integer;
-                      iColumnWidths : array of integer);
+                      columnWidths : array of Integer) ; overload;
+procedure DefineTable(iTableLeft : Integer;
+                      columnWidths : array of String) ; overload;
 procedure DefineTableHeaderColumn(iColumnNumber : Integer;
                                   sFontName : String;
                                   iFontSize : Integer;
@@ -2401,6 +2403,28 @@ end; // DrawBodyCellBorders
 
 //***************************************************************************
 //
+//  OPERATION : Set the defaults values to be used in body cell drawing
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//***************************************************************************
+procedure DefaultBodyCellSettings(colNumber : Integer);
+begin
+  tptTable[ct].bodyAlignment[colNumber] := tptTable[ct].bodyColumns[colNumber].taAlignment;
+  tptTable[ct].bodyStyle[colNumber] := tptTable[ct].bodyColumns[colNumber].sfsFontStyle;
+  tptTable[ct].bodyBGColour[colNumber] := tptTable[ct].bodyColumns[colNumber].cBackgroundColour;
+  tptTable[ct].bodyFGColour[colNumber] := tptTable[ct].bodyColumns[colNumber].cFontColour;
+  tptTable[ct].bodyFontSize[colNumber] := tptTable[ct].bodyColumns[colNumber].iFontSize;
+  tptTable[ct].bodyTopBorderTWIPS[colNumber] := tptTable[ct].bodyColumns[colNumber].iTopBorderTWIPS;
+  tptTable[ct].bodyBottomBorderTWIPS[colNumber] := tptTable[ct].bodyColumns[colNumber].iBottomBorderTWIPS;
+  tptTable[ct].bodyLeftBorderTWIPS[colNumber] := tptTable[ct].bodyColumns[colNumber].iLeftBorderTWIPS;
+  tptTable[ct].bodyRightBorderTWIPS[colNumber] := tptTable[ct].bodyColumns[colNumber].iRightBorderTWIPS;
+end; // DefaultBodyCellSettings
+
+//***************************************************************************
+//
 //  FUNCTION  :`PrintTableRow
 //
 //  I/P       : bHeader (boolean) - TRUE if we are printing a header
@@ -2890,6 +2914,15 @@ begin
 
   until (bRowCompleted);
 
+  // Once a row is completed, reset the body cell properties,
+  // ready for the next row.
+  // This ensures that, should the next row be terminated before insertion has
+  // occurred for each cell, the unused cells will be correctly rendered.
+  for n := 1 to MAX_COLUMNS do
+  begin
+    DefaultBodyCellSettings(tptTable[ct].siCurrentBodyColumn);
+  end;
+
   // Adjust the lowest position used to take into account the thickness of any
   // bottom borders in this row. Note the div 2, since the line is drawn on the
   // lowest bottom border pos, half the width on each side of the Y-position.
@@ -2953,31 +2986,27 @@ end; // UseTable
 
 //***************************************************************************
 //
-//  FUNCTION    :   DefineTable
-//
-//  I/P         :   iTableLeft(integer) - The X position of the left side
-//                    of the table (in MM100) that is about to be defined.
-//
-//                  iColumnWidths (array of integer) - The widths of each
-//                    column in the table in 100ths of mm.
-//
-//  O/P         :   tptTable[ct].headerColumns and tptTable[ct].bodyColumns - Have their column
-//                    widths and left/right edges defined.
-//
-//                  tptTable[ct].iTableColumns - Set to the number of columns in the
-//                    table.
-//
 //  OPERATION   :   Any unfinished row is printed.
 //
 //                  Undefines all table columns and header columns.
 //
 //                  Destroys any current table.
 //
-//  UPDATED     :   2018-11-07
+//  I/P         :   iTableLeft(integer) - The X position of the left side
+//                    of the table (in MM100) that is about to be defined.
+//
+//                  columnWidths (array of integer) - The widths of each
+//                    column in the table in 100ths of mm.
+//
+//  O/P         :   tptTable[ct].headerColumns and tptTable[ct].bodyColumns -
+//                    Have their column widths and left/right edges defined.
+//
+//                  tptTable[ct].iTableColumns - Set to the number of columns
+//                    in the table.
 //
 //***************************************************************************
 procedure DefineTable(iTableLeft : Integer;
-                      iColumnWidths : array of integer);
+                      columnWidths : array of integer) ; overload;
 var
   n : Integer;
   iLeft : Integer;
@@ -2987,14 +3016,14 @@ begin
   EndTable;
 
   // Set the number of columns in the new table
-  tptTable[ct].iTableColumns := High(iColumnWidths) + 1;
+  tptTable[ct].iTableColumns := High(columnWidths) + 1;
   // Define the positions and widths of each header column and body column
   iLeft := iTableLeft;
   for n := 1 to tptTable[ct].iTableColumns do
   begin
     tptTable[ct].bodyColumns[n].iColumnLeftMM100 := iLeft;
     tptTable[ct].headerColumns[n].iColumnLeftMM100 := iLeft;
-    iLeft := iLeft + iColumnWidths[n-1];
+    iLeft := iLeft + columnWidths[n-1];
     tptTable[ct].bodyColumns[n].iColumnRightMM100 := iLeft;
     tptTable[ct].headerColumns[n].iColumnRightMM100 := iLeft;
   end; // for
@@ -3004,21 +3033,81 @@ end; // DefineTable
 
 //***************************************************************************
 //
-//  FUNCTION  : ClearTable
+//  OPERATION   :   Any unfinished row is printed.
+//
+//                  Undefines all table columns and header columns.
+//
+//                  Destroys any current table.
+//
+//  I/P         :   iTableLeft(integer) - The X position of the left side
+//                    of the table (in MM100) that is about to be defined.
+//
+//                  columnWidths (array of String) - The relative widths of
+//                    each column in the table (e.g. ['1r', '1r'] to get a 50:50
+//                    split of the column widths on the available space
+//
+//  O/P         :   tptTable[ct].headerColumns and tptTable[ct].bodyColumns -
+//                    Have their column widths and left/right edges defined.
+//
+//                  tptTable[ct].iTableColumns - Set to the number of columns
+//                    in the table.
+//
+//***************************************************************************
+procedure DefineTable(iTableLeft : Integer;
+                      columnWidths : array of String) ; overload;
+var
+  n : Integer;
+  iLeft : Integer;
+  totalWidth : Integer;
+
+begin
+  // Terminate a previously active table, printing anything remaining.
+  EndTable;
+
+  totalWidth := 0;
+  for n := Low(columnWidths) to High(columnWidths) do
+  begin
+    if ((Length(columnWidths[n]) = 0) or
+        (columnWidths[n][Length(columnWidths[n])] <> 'r') or
+        (not IsAnInteger(Copy(columnWidths[n], 1, Length(columnWidths[n])-1)))) then
+    begin
+      raise Exception.Create('Invalid relative column width');
+    end;
+    Inc(totalWidth, StrToInt(Copy(columnWidths[n], 1, Length(columnWidths[n])-1)));
+  end; // for
+
+
+  // Set the number of columns in the new table
+  tptTable[ct].iTableColumns := High(columnWidths) + 1;
+  // Define the positions and widths of each header column and body column
+  iLeft := iTableLeft;
+  for n := 1 to tptTable[ct].iTableColumns do
+  begin
+    tptTable[ct].bodyColumns[n].iColumnLeftMM100 := iLeft;
+    tptTable[ct].headerColumns[n].iColumnLeftMM100 := iLeft;
+    iLeft := iLeft +
+      (StrToInt(Copy(columnWidths[n-1], 1, Length(columnWidths[n-1])-1)) *
+       iPrnAreaWidth) div  totalWidth;
+    tptTable[ct].bodyColumns[n].iColumnRightMM100 := iLeft;
+    tptTable[ct].headerColumns[n].iColumnRightMM100 := iLeft;
+  end; // for
+  // Indicate that there is no active table at present
+  tptTable[ct].active := FALSE;
+end;
+
+//***************************************************************************
+//
+//  OPERATION : Sets the current table to non-operational.
 //
 //  I/P       :
 //
 //  O/P       :
 //
-//  OPERATION : Sets the current table to non-operational.
-//
-//  UPDATED   : 2008-06-17
-//
 //***************************************************************************
 procedure ClearTable;
 begin
   tptTable[ct].iTableColumns := 0;
-  DefineTable(0,[]);
+  tptTable[ct].active := FALSE;
 end; // ClearTable
 
 //***************************************************************************
@@ -3431,16 +3520,8 @@ begin
       sCellText := '';
     end; // else
 
-    // Set the defaults values to be used in body cell drawing
-    tptTable[ct].bodyAlignment[tptTable[ct].siCurrentBodyColumn] := tptTable[ct].bodyColumns[tptTable[ct].siCurrentBodyColumn].taAlignment;
-    tptTable[ct].bodyStyle[tptTable[ct].siCurrentBodyColumn] := tptTable[ct].bodyColumns[tptTable[ct].siCurrentBodyColumn].sfsFontStyle;
-    tptTable[ct].bodyBGColour[tptTable[ct].siCurrentBodyColumn] := tptTable[ct].bodyColumns[tptTable[ct].siCurrentBodyColumn].cBackgroundColour;
-    tptTable[ct].bodyFGColour[tptTable[ct].siCurrentBodyColumn] := tptTable[ct].bodyColumns[tptTable[ct].siCurrentBodyColumn].cFontColour;
-    tptTable[ct].bodyFontSize[tptTable[ct].siCurrentBodyColumn] := tptTable[ct].bodyColumns[tptTable[ct].siCurrentBodyColumn].iFontSize;
-    tptTable[ct].bodyTopBorderTWIPS[tptTable[ct].siCurrentBodyColumn] := tptTable[ct].bodyColumns[tptTable[ct].siCurrentBodyColumn].iTopBorderTWIPS;
-    tptTable[ct].bodyBottomBorderTWIPS[tptTable[ct].siCurrentBodyColumn] := tptTable[ct].bodyColumns[tptTable[ct].siCurrentBodyColumn].iBottomBorderTWIPS;
-    tptTable[ct].bodyLeftBorderTWIPS[tptTable[ct].siCurrentBodyColumn] := tptTable[ct].bodyColumns[tptTable[ct].siCurrentBodyColumn].iLeftBorderTWIPS;
-    tptTable[ct].bodyRightBorderTWIPS[tptTable[ct].siCurrentBodyColumn] := tptTable[ct].bodyColumns[tptTable[ct].siCurrentBodyColumn].iRightBorderTWIPS;
+    // Set the defaults values to be used in this column's body cell drawing
+    DefaultBodyCellSettings(tptTable[ct].siCurrentBodyColumn);
     // Make any specified cell changes
     n := 0;
     while ((n < Length(overrideIDs)) and
@@ -3653,12 +3734,18 @@ begin
   // Store whether the header row should be reprinted at the start of a new
   // page in a table that has split over a page
   tptTable[ct].bReprintHeaderRow := startPagesWithHeaderRow;
-  // Clear all text from the column headers row
+
   for n := 1 to MAX_COLUMNS do
+  begin
+    // Clear all text from the column headers row
     tptTable[ct].headerRowText[n] := '';
-  // Clear all text from this body row
-  for n := 1 to MAX_COLUMNS do
+    // Clear all text from this body row
     tptTable[ct].bodyRowText[n] := '';
+    // Set the default settings for the body cells.
+    // This ensures that, should the next row be terminated before insertion has
+    // occurred for each cell, the unused cells will be correctly rendered.
+    DefaultBodyCellSettings(n);
+  end;
 end; // StartTable
 
 //***************************************************************************
