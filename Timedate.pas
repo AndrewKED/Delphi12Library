@@ -138,6 +138,9 @@ function VerboseTimeVariable(period : Double;
 function YYYYMMDD2DateTime(sYYYYMMDD : string) : TDateTime;
 function HHNNSS2DateTime(sHHNNSS : string) : TDateTime;
 function YYYYMMDD_HHNNSS2DateTime(sDateTime : string) : TDateTime;
+function HHNNSSZZZ2DateTime(timestamp : uint32) : TDateTime;
+function Time2HHNNSSZZZ(timestamp : TDateTime) : uint32;
+function DateTimeToUnixMillis(dt: TDateTime): Int64;
 {$IFDEF MSWINDOWS}
 procedure ForceSystemDateTime(dtNew : TDateTime);
 {$ENDIF}
@@ -1028,6 +1031,66 @@ begin
 //    end;
   end; // else
 end; // YYYYMMDD_HHNNSS2DateTime
+
+//***************************************************************************
+//
+//  OPERATION : Convert a value give as HHHNNSSZZZ into a TDateTime value.
+//
+//              This is a form that may be derived from interpretation of the
+//              time filed in a GNSS GGA NMEA message, where the decimal point is
+//              ignored.
+//
+//  I/P       : timestamp : uint32 - Time stamp in the form HHNNSSZZZ
+//
+//  O/P       : TDateTime - The value converted
+//
+//***************************************************************************
+function HHNNSSZZZ2DateTime(timestamp : uint32) : TDateTime;
+begin
+  Result := (timestamp div 10000000) / 24.0;
+  timestamp := timestamp mod 10000000;
+  Result := Result + (timestamp div 100000) / (24.0 * 60.0);
+  timestamp := timestamp mod 100000;
+  Result := Result + (timestamp / 1000.0) / (24.0 * 60.0 * 60.0);
+end; // HHNNSSZZZ2DateTime
+
+//***************************************************************************
+//
+//  OPERATION : Convert the time portion of a TDateTime value to an integer in
+//              the form HHHNNSSZZZ.
+//
+//              This is the opposite of HHNNSSZZZ2DateTime(), above.
+//
+//  I/P       : TDateTime - The value to be converted
+//
+//  O/P       : uint32 - Time stamp in the form HHNNSSZZZ
+//
+//***************************************************************************
+function Time2HHNNSSZZZ(timestamp : TDateTime) : uint32;
+begin
+  Result := HourOf(timestamp) * 10000000 +
+            MinuteOf(timestamp) * 100000 +
+            SecondOf(timestamp) * 1000 +
+            MillisecondOf(timestamp);
+end; // Time2HHNNSSZZZ
+
+//***************************************************************************
+//
+//  OPERATION : Create a millisecond resolution 64-bit Unix/Linux datetime stamp
+//
+//  I/P       : dt : TDateTime - The datetime stamp to be converted
+//
+//  O/P       : Int64 - the number of ms since 1970-01-01
+//
+//***************************************************************************
+function DateTimeToUnixMillis(dt: TDateTime): Int64;
+const
+  UnixEpochStart: TDateTime = 25569.0; // 1970-01-01
+  MillisPerDay = 86400000; // 24 * 60 * 60 * 1000
+
+begin
+  Result := Round((dt - UnixEpochStart) * MillisPerDay);
+end; // DateTimeToUnixMillis
 
 {$IFDEF MSWINDOWS}
 //***************************************************************************
