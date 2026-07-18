@@ -61,13 +61,14 @@ function ExtractJSONFloat(theJSON : TJSONValue;
 function ExtractJSONBoolean(theJSON : TJSONValue;
                           objectName : String;
                           var objectValue : Boolean) : Boolean;
-function JSONArrayString(ab : TArray<Byte>) : String;
+function IntegerCSV2JSONArray(theCSV : String) : TJSONArray;
 
 implementation
 
 uses
   System.Classes, System.Variants, System.SysUtils, System.Rtti,
-  System.JSON.Readers, System.JSON.Types;
+  System.JSON.Readers, System.JSON.Types,
+  Str_Ops;
 
 //***************************************************************************
 //
@@ -652,19 +653,25 @@ begin
   end;
 end; // ExtractJSONBoolean
 
-function JSONArrayString(ab : TArray<Byte>) : String;
-var
-  n : Integer;
-
+//***************************************************************************
+//
+//  OPERATION : Convert a CSV list of integers into a TJSONArray
+//
+//  I/P       : theCSV : String - The given CSV list of integers
+//
+//  O/P       : TJSONArray
+//
+//***************************************************************************
+function IntegerCSV2JSONArray(theCSV : String) : TJSONArray;
 begin
-  Result := '[';
-  for n := 0 to Length(ab) do
-  begin
-    Result := Result + ab[n].ToString + ',';
+  Result := TJSONArray.Create;
+  try
+    while (theCSV <> '') do
+    begin
+      Result.Add(StrToInt(ExtractAndTrim(theCSV, ',')));
+    end;
+  except
   end;
-
-  Result := Copy(Result, 1, Length(Result)-1) + ']';
-end;
-
+end; // IntegerCSV2JSONArray
 
 end.
