@@ -937,10 +937,10 @@ begin
   // not used                             // Le
 
 {$IFDEF DEBUG_LOTS}
-  AddNFCDebug('Set GPIO Port, ' + ifthens(state, 'HiZ', 'Low'));
+  AddNFCDebug('-- Set GPIO Port, ' + ifthens(state, 'HiZ', 'Low'));
 {$ENDIF}
 
-  result := (SendCommand(PCB_ID_I or PCB_RFU_I or blockNumber,
+  Result := (SendCommand(PCB_ID_I or PCB_RFU_I or blockNumber,
                          command)) and
 //            (Length(cmdResponse) = 5) and
             (ResponseStatus(cmdResponse, 1) = RX_STAT_OK);
@@ -983,10 +983,10 @@ begin
   command[6 + sizeof(data) - 1] := $00;   // Le
 
 {$IFDEF DEBUG_LOTS}
-  AddNFCDebug('NFC_SelectNDEFTagApplication');
+  AddNFCDebug('-- NFC_SelectNDEFTagApplication');
 {$ENDIF}
 
-  result := (SendCommand(PCB_ID_I or PCB_RFU_I or blockNumber,
+  Result := (SendCommand(PCB_ID_I or PCB_RFU_I or blockNumber,
                          command)) and
 //            (Length(cmdResponse) = 5) and
             (ResponseStatus(cmdResponse, 1) = RX_STAT_OK);
@@ -1045,10 +1045,10 @@ begin
   end; // case
 
 {$IFDEF DEBUG_LOTS}
-  AddNFCDebug('NFC_SelectFile,' + fileID.ToString);
+  AddNFCDebug('-- NFC_SelectFile,' + fileID.ToString);
 {$ENDIF}
 
-  result := (SendCommand(PCB_ID_I or PCB_RFU_I or blockNumber,
+  Result := (SendCommand(PCB_ID_I or PCB_RFU_I or blockNumber,
                          command)) and
 //            (Length(cmdResponse) = 5) and
             (ResponseStatus(cmdResponse, 1) = RX_STAT_OK);
@@ -1146,6 +1146,10 @@ begin
   command[3] := offset and $FF;             // P2 }
   command[4] := Le;                         // Length expected
 
+{$IFDEF DEBUG_LOTS}
+  AddNFCDebug('-- NFC_ReadFileLength');
+{$ENDIF}
+
   if ((SendCommand(PCB_ID_I or PCB_RFU_I or blockNumber,
                    command)) and
       (ResponseStatus(cmdResponse, Le + 1) = RX_STAT_OK)) then
@@ -1158,6 +1162,10 @@ begin
     command[2] := (offset shr 8) and $FF;   // P1 } Address
     command[3] := offset and $FF;           // P2 }
     command[4] := Le;                       // Length expected
+
+{$IFDEF DEBUG_LOTS}
+  AddNFCDebug('-- NFC_ReadFile');
+{$ENDIF}
 
     Result := (SendCommand(PCB_ID_I or PCB_RFU_I or blockNumber,
                            command)) and
@@ -1217,7 +1225,12 @@ begin
   command[4] := Length(hexData) div 2 + 2;          // Length to be written (1 length bytes + data)
   for i := 0 to Length(hexData) div 2 - 1 do
     command[5 + i] := StrToInt('$' + String(Copy(hexData, 2*i+1, 2)));
-  result := (SendCommand(PCB_ID_I or PCB_RFU_I or blockNumber,
+
+{$IFDEF DEBUG_LOTS}
+  AddNFCDebug('-- NFC_WriteFile');
+{$ENDIF}
+
+  Result := (SendCommand(PCB_ID_I or PCB_RFU_I or blockNumber,
                          command));
 
   // Check if there is a S(WTX) Waiting Frame eXtension time request

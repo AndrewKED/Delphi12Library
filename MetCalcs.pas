@@ -333,7 +333,7 @@ end; // Td_From_VP
 //
 //  I/P       : dGivenVP : double - The Vapour Pressure, in hPa
 //
-//  O/P       : double - The frostpoint temperature in �C
+//  O/P       : double - The frostpoint temperature in degC
 //
 //  OPERATION : Determine the Frost Point Temperature, given the Vapour
 //              Pressure using Wexler (modified to ITS-90 by Hardy)
@@ -376,7 +376,7 @@ end; // Tf_From_VP
 //
 //  FUNCTION  : VapourPressure
 //
-//  I/P       : dTemperature : Double - The temperature in �C
+//  I/P       : dTemperature : Double - The temperature in degC
 //
 //              dHumidity : Double  - The relative humidity in %
 //
@@ -682,9 +682,7 @@ end; // T_From_PotTemp_P
 //					    Science.   He quoted his source as:
 //						  Moisture Calculations (Roy Jenne, NCAR, USA)
 //
-//              Confirmed in WMO No 175 pg 25, with the one constant changed
-//              from 0.379 to 0.37802.
-
+//              Confirmed in WMO No 175 pg 25
 //
 //              Another definition : The virtual temperature is the temperature
 //              that dry air would have if its pressure and density were equal
@@ -704,7 +702,7 @@ begin
   begin
     // Virtual Temperature
     result := Kelvin_From_degC(dVTTemperature) /
-              (1.0 - 0.37802 * VapourPressure(dVTTemperature, dVTHumidity) / dVTPressure);
+              (1.0 - VapourPressure(dVTTemperature, dVTHumidity) / dVTPressure * (1 - 0.62198));
   end // if
   else
     result := INVALID_VALUE;
@@ -1234,7 +1232,8 @@ end; // WindChillWattsPerM2
 //              Observation" Annex 4B
 //              "Psychometric formulae for the Assmann psychrometer"
 //
-//              Experimental comparison among the psychrometer and the two-pressure humidity generator and the dew point hygrometer
+//              Experimental comparison among the psychrometer and the
+//              two-pressure humidity generator and the dew point hygrometer
 //
 //  UPDATED   : 2005/02/22
 //
