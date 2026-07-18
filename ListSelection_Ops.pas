@@ -17,7 +17,8 @@ procedure SetupSelection(available : TListBox;
                          availableLabel : TLabel;
                          selectedLabel : TLabel;
                          availableFormat : String;
-                         selectedFormat : String);
+                         selectedFormat : String;
+                         clearItems : Boolean = TRUE);
 procedure DisableSelection;
 procedure RestoreAvailableSelection;
 procedure AddAvailable(item : String);
@@ -78,7 +79,8 @@ procedure SetupSelection(available : TListBox;
                          availableLabel : TLabel;
                          selectedLabel : TLabel;
                          availableFormat : String;
-                         selectedFormat : String);
+                         selectedFormat : String;
+                         clearItems : Boolean = TRUE);
 begin
   FAvailable := available;
   FSelected := selected;
@@ -93,11 +95,11 @@ begin
   FAvailableFormat := availableFormat;
   FSelectedFormat := selectedFormat;
 
-  if (FAvailable <> nil) then
+  if ((FAvailable <> nil) and (clearItems)) then
   begin
     fAvailable.Items.Clear;
   end;
-  if (FSelected <> nil) then
+  if ((FSelected <> nil) and (clearItems)) then
   begin
     FSelected.Items.Clear;
   end;

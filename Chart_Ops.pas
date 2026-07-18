@@ -96,7 +96,13 @@ end; // SetChartAxisLnLin
 
 //***************************************************************************
 //
-//  FUNCTION  : SetAxisMinMax
+//  OPERATION : Set the requested minimum and maximum values on the given axis.
+//
+//              Used only when both theAxis.AutomaticMinimum and
+//              theAxis.AutomaticMaximum are FALSE.
+//
+//              The steps in this function are necessary to ensure that at no
+//              time is the axis minimum more than the axis maximum.
 //
 //  I/P       : theAxis : TChartAxis - The axis for which minimum and maximum
 //                are to be set.
@@ -107,31 +113,24 @@ end; // SetChartAxisLnLin
 //
 //  O/P       : None
 //
-//  OPERATION : Set the required minimum and maximum values on the given axis.
-//
-//              Used only when both theAxis.AutomaticMinimum and
-//              theAxis.AutomaticMaximum are FALSE.
-//
-//              The steps in this function are necessary to ensure that at no
-//              time is the axis minimum more than the axis maximum.
-//
-//  UPDATED   : 2020-04-17
-//
 //***************************************************************************
 procedure SetAxisMinMax(theAxis : TChartAxis;
                         minimum : Double;
                         maximum : Double);
 begin
-  if (minimum >= theAxis.Maximum) then
+  if (minimum <= maximum) then
   begin
-    theAxis.Maximum := maximum;
-    theAxis.Minimum := minimum;
-  end // if
-  else
-  begin
-    theAxis.Minimum := minimum;
-    theAxis.Maximum := maximum;
-  end; // else
+    if (minimum >= theAxis.Maximum) then
+    begin
+      theAxis.Maximum := maximum;
+      theAxis.Minimum := minimum;
+    end // if
+    else
+    begin
+      theAxis.Minimum := minimum;
+      theAxis.Maximum := maximum;
+    end; // else
+  end; // if
 end;
 
 //***************************************************************************

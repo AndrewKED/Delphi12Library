@@ -1213,13 +1213,6 @@ end; // ClosestWeekDay
 
 //***************************************************************************
 //
-//  FUNCTION  : FixedDTPShortTimeFormat
-//
-//  I/P       :
-//
-//  O/P       : String - A version of the PC's short time format which is
-//                applicable for use in a TDateTimePicker component.
-//
 //  OPERATION : Return a time format string for a TDateTimePicker,
 //              based on the current Short Time Format.
 //
@@ -1234,9 +1227,14 @@ end; // ClosestWeekDay
 //              Secondly, a TDateTimePicker wants the use of an AM/PM indicator
 //              to be specified by 'tt' and not the 'AMPM' that
 //              FromatSettings.ShortTimeFormat may report.
-
 //
-//  UPDATED   : 2013-08-21
+//              Note that Short time format specifieds hour and minutes (and no
+//              seconds or milliseconds)
+//
+//  I/P       : None
+//
+//  O/P       : String - A version of the PC's short time format which is
+//                applicable for use in a TDateTimePicker component.
 //
 //***************************************************************************
 function FixedDTPShortTimeFormat : String;
@@ -1248,8 +1246,8 @@ begin
 
   if (Pos('AMPM',result) = 0) then
   begin
-    // Have encountered a non-AM/PM (i.e. 24 hour clock) where ShortTimeFormat
-    // has specified 'hh' instead of 'HH'
+    // I have encountered a PC where a format without "AMPM" (i.e. 24 hour clock)
+    // had been specified as 'hh' instead of 'HH', which is confusing.
     result := SearchAndReplace(result, 'hh', 'HH')
   end // if
   else

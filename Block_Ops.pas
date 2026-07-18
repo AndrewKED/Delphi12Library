@@ -113,7 +113,7 @@ function BlockSum(const blockSource : TBytes;
 implementation
 
 uses
-  System.Classes, System.Math, System.AnsiStrings,
+  System.Classes, System.Math, System.AnsiStrings, System.StrUtils,
   Str_Ops;
 
 //***************************************************************************
@@ -467,7 +467,8 @@ end; // HexString2TBytes
 
 //***************************************************************************
 //
-//  FUNCTION  : TBytes2HexString
+//  OPERATION : Convert a given TBytes object into the equivalent string of
+//              upper-case hexadecimal character pairs.
 //
 //  I/P       : ipBytes: TBytes - The bytes to be converted into a hex string
 //
@@ -477,11 +478,6 @@ end; // HexString2TBytes
 //              separator : String = '' - Separator between hexadecimal pairs
 //
 //  O/P       : String - The resultant string of upper-case hexasedicmal pairs.
-//
-//  OPERATION : Converts a given TBytes object into the equivalent string of
-//              upper-case hexadecimal character pairs.
-//
-//  UPDATED   : 2021-01-27
 //
 //***************************************************************************
 function TBytes2HexString(ipBytes : TBytes;
@@ -496,9 +492,9 @@ begin
   while (n < Length(ipBytes)) do
   begin
     Result := Result +
-              ifthens(squareBrackets, '[', '') +
+              ifthen(squareBrackets, '[', '') +
               IntToHex(ipBytes[n]) +
-              ifthens(squareBrackets, ']', '') +
+              ifthen(squareBrackets, ']', '') +
               separator;
     Inc(n);
   end; // while
@@ -553,9 +549,9 @@ begin
          ((numBytes <> BLK_CONV_SIZE) and (numBytes <> BLK_CONV_NULL) and (n < numBytes))) do
   begin
     Result := Result +
-              ifthens(squareBrackets, '[', '') +
+              ifthen(squareBrackets, '[', '') +
               IntToHex(ipBytes[n]) +
-              ifthens(squareBrackets, ']', '') +
+              ifthen(squareBrackets, ']', '') +
               separator;
     Inc(n);
   end; // while

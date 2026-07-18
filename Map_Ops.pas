@@ -157,6 +157,8 @@ function CompassDirections8(id : Integer) : String;
 function GroundDistance(elevAngle : Double;
                         altitude : Double;
                         latitude : Double = 45.0) : Double;
+function MidLatitude(latitudeA : Double;
+                     latitudeB : Double) : Double;
 function MidLongitude(longitudeA : Double;
                       longitudeB : Double) : Double;
 
@@ -2007,18 +2009,31 @@ end; // GroundDistance
 
 //***************************************************************************
 //
-//  FUNCTION  : MidLongitude
+//  OPERATION : Find the latitude mid-way between the two given latitudes.
+//
+//  I/P       : latitudeA : Double
+//
+//              latitudeB : Double
+//
+//  O/P       : Double - The latitude result
+//
+//***************************************************************************
+function MidLatitude(latitudeA : Double;
+                     latitudeB : Double) : Double;
+begin
+  Result := (latitudeA + latitudeB) / 2.0;
+end; // MidLatitude
+
+//***************************************************************************
+//
+//  OPERATION : Find the longitude mid-way (by shortest route) between the two
+//              given longitudes.
 //
 //  I/P       : longitudeA : Double
 //
 //              longitudeB : Double
 //
 //  O/P       : Double - The longitude result
-//
-//  OPERATION : Find the longitude mid-way (by shortest route) between the two
-//              given longitudes.
-//
-//  UPDATED   : 2025-06-02
 //
 //***************************************************************************
 function MidLongitude(longitudeA : Double;

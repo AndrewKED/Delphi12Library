@@ -10,7 +10,7 @@ const
   // for-application dynamic font loading is being used).
   // Also check all TControl.Font.Name properties (in .dfm files) are correct.
   MONO_FONT = 'Bitstream Vera Sans Mono';
-  FONT_AWESOME_SOLID = 'Font Awesome 6 Pro Solid Black';
+  FONT_AWESOME_SOLID = 'Font Awesome 6 Pro Solid';
   FONT_AWESOME_REGULAR = 'Font Awesome 6 Pro Regular';
 
   FA_ICON_CHECK = #$F00C;

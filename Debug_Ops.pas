@@ -35,7 +35,7 @@ var
 implementation
 
 uses
-  System.Math, System.Classes, System.IOUtils,
+  System.Math, System.Classes, System.IOUtils, System.StrUtils,
   File_Ops, Str_Ops;
 
 var
@@ -220,7 +220,7 @@ begin
       SetDebugLogFile(iIndex, '', FALSE);
 
     try
-      logLine := ifthens(includeDT, DebugLineHeader + ',', '');
+      logLine := ifthen(includeDT, DebugLineHeader + ',', '');
       case entryType of
         LOG_ENTRY_OK :
           logLine := logLine + '1,';
