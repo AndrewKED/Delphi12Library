@@ -65,12 +65,23 @@ function GetDisplayFormat(decimals : Integer;
 procedure RestoreDecimalSeparator;
 function IsNumberInArray(const ANumber: Integer;
                          const AArray: array of Integer): Boolean;
+function IsInRange(const theValue, minValue, maxValue : Extended;
+                   epsilon : Extended) : Boolean; overload;
+function IsInRange(const theValue, minValue, maxValue : Double;
+                   epsilon : Double) : Boolean; overload;
+function IsInRange(const theValue, minValue, maxValue : Single;
+                   epsilon : Single) : Boolean; overload;
+function IsInRange(const theValue, minValue, maxValue : Integer) : Boolean; overload;
+function IsInRange(const theValue, minValue, maxValue : Int64) : Boolean; overload;
+function IsInRange(const theValue, minValue, maxValue : UInt64) : Boolean; overload;
+function FormatForcedDecimalPoint(decimalPlaces : Integer;
+                                  value : Extended) : String;
 
 implementation
 
 uses
   WinApi.Windows,
-  System.Math, system.SysUtils,
+  System.Math, System.SysUtils, System.Types,
   Str_Ops, Generic_Ops;
 
 var
@@ -927,6 +938,74 @@ begin
   end;
   Result := False;
 end; // IsNumberInArray
+
+//***************************************************************************
+//
+//  OPERATION : Compare a value against limits, and indicate if it is in range
+//
+//  I/P       : theValue - The value to be tested.
+//
+//              minValue - the minimum permissable value.
+//
+//              maxValue - The maximum permissable value
+//
+//  O/P       : Boolean - TRUE if the value falls within the given range
+//
+//***************************************************************************
+function IsInRange(const theValue, minValue, maxValue : Extended;
+                   epsilon : Extended) : Boolean; overload;
+begin
+  Result := (CompareValue(theValue, minValue, epsilon) <> LessThanValue) and
+            (CompareValue(theValue, maxValue, epsilon) <> GreaterThanValue)
+end; // IsInRange
+function IsInRange(const theValue, minValue, maxValue : Double;
+                   epsilon : Double) : Boolean; overload;
+begin
+  Result := (CompareValue(theValue, minValue, epsilon) <> LessThanValue) and
+            (CompareValue(theValue, maxValue, epsilon) <> GreaterThanValue)
+end; // IsInRange
+function IsInRange(const theValue, minValue, maxValue : Single;
+                   epsilon : Single) : Boolean; overload;
+begin
+  Result := (CompareValue(theValue, minValue, epsilon) <> LessThanValue) and
+            (CompareValue(theValue, maxValue, epsilon) <> GreaterThanValue)
+end; // IsInRange
+function IsInRange(const theValue, minValue, maxValue : Integer) : Boolean; overload;
+begin
+  Result := (theValue >= minValue) and (theValue <= maxValue);
+end; // IsInRange
+
+function IsInRange(const theValue, minValue, maxValue : Int64) : Boolean; overload;
+begin
+  Result := (theValue >= minValue) and (theValue <= maxValue);
+end; // IsInRange
+
+function IsInRange(const theValue, minValue, maxValue : UInt64) : Boolean; overload;
+begin
+  Result := (theValue >= minValue) and (theValue <= maxValue);
+end; // IsInRange
+
+//***************************************************************************
+//
+//  OPERATION : Perform a Format function on a floating point number, with the
+//              result using a decimal point as a decimal separator.
+//
+//              This is needed, for example in formtting Google Charts options.
+//
+//  I/P       : decimalPlaces : Integer - The number of decimal places to use.
+//
+//              value : Extended - The value to represent
+//
+//  O/P       : String - The formatted output
+//
+//***************************************************************************
+function FormatForcedDecimalPoint(decimalPlaces : Integer;
+                                  value : Extended) : String;
+begin
+  SetDecimalSeparatorAsPoint;
+  Result := Format('%.*f', [decimalPlaces, value]);
+  FormatSettings.DecimalSeparator := currentDecimalSeaprator;
+end; // FormatForcedDecimalPoint
 
 //***************************************************************************
 //
