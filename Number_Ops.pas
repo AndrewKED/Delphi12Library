@@ -87,7 +87,6 @@ uses
 var
   currentDecimalSeaprator : char;
 
-
 //***************************************************************************
 //
 //  FUNCTION  : Bytes2Int16
@@ -441,6 +440,25 @@ begin
   iByte2 := RawBytes[3];
   iByte3 := RawBytes[4];
 end; //
+
+//***************************************************************************
+//
+//  OPERATION : Return the 8-character hexadecimal representation of the bytes
+//              that form a Single value. Least significant byte first.
+//
+//  I/P       : value : Single - The value to be converted
+//
+//  O/P       : String - The hexadecimal representation.
+//
+//***************************************************************************
+function SingleToLEHex(value :Single): String;
+var
+  byte0, byte1, byte2, byte3 : Byte;
+
+begin
+  Single2Bytes(value, byte0, byte1, byte2, byte3);
+  Result := Format('%.2x%.2x%.2x%.2x', [byte0, byte1, byte2, byte3]);
+end; // SingleToLEHex
 
 //***************************************************************************
 //
