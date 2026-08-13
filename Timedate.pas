@@ -166,6 +166,7 @@ function AddDateToTime(TimeOnly : TDateTime;
                        DateAndTime : TDateTime) : TDateTime;
 function RoundDateTimeDown(Given : TDateTime;
                            RoundDownID : integer) : TDateTime;
+procedure LoadLocaleWeekDays(target : TStrings);
 {$IFDEF MSWINDOWS}
 function GetStartOfTheWeek : Integer;
 {$IFNDEF NO_DKLANG}
@@ -1581,6 +1582,30 @@ begin
       result := Given;
   end;
 end;
+
+//***************************************************************************
+//
+//  OPERATION : Insert the local weekdays into a given TStringList
+//
+//  I/P       :
+//
+//  O/P       :
+//
+//***************************************************************************
+procedure LoadLocaleWeekDays(target : TStrings);
+var
+  fs : TFormatSettings;
+  d : Integer;
+
+begin
+  GetLocaleFormatSettings(GetThreadlocale, fs);
+
+  target.Clear;
+  for d := DayMonday to daySunday do
+  begin
+    target.Add(fs.LongDayNames[d]);
+  end; // for
+end; // LoadWeekDays
 
 {$IFDEF MSWINDOWS}
 //***************************************************************************
