@@ -132,7 +132,7 @@ procedure SetFormAccessRights(ThisForm : TForm;
 procedure CloseFromFormActivate(ThisForm : TForm);
 function ManageChildModal(parentForm : TCustomForm;
                           childForm : TCustomForm;
-                          keepVisible : Boolean = FALSE) : TModalResult;
+                          restoreParent : Boolean = FALSE) : TModalResult;
 
 implementation
 
@@ -1116,8 +1116,11 @@ begin
     // Use Monitor 0 if the desired form position is not known.
     useMonitor := 0;
   end // if
-  else if ((thisForm.BorderStyle <> bsNone) and
-        (maximiseForm)) then
+//  else if ((thisForm.BorderStyle <> bsNone) and
+//        (maximiseForm)) then
+// 2026-07 I'm not sure why I also checked the Border Style.
+// Surely, if the request is to maximise, the Border Style is irrelevant.
+  else if (maximiseForm) then
   begin
     // Form must be maximised
     for n := 0 to Screen.MonitorCount-1 do
@@ -1175,17 +1178,19 @@ begin
   begin
     formTop := thisForm.Top;
   end; // if
-  if (formWidth = INVALID_FORM_DIMENSION) then
+  if ((formWidth = INVALID_FORM_DIMENSION) and (not maximiseForm)) then
   begin
     formWidth := thisForm.Width;
   end; // if
-  if (formHeight = INVALID_FORM_DIMENSION) then
+  if ((formHeight = INVALID_FORM_DIMENSION) and (not maximiseForm)) then
   begin
     formHeight := thisForm.Height;
   end; // if
 
-  if ((thisForm.BorderStyle <> bsNone) and
-      (maximiseForm)) then
+//  if ((thisForm.BorderStyle <> bsNone) and
+//      (maximiseForm)) then
+//!! As above, I don't recal wny BorderStyle is important in this case
+  if (maximiseForm) then
   begin
     // Form must be maximised
     // Set left first, to correctly create maximized forms on the applicable monitor
@@ -2009,7 +2014,7 @@ end; // CloseFromFormActivate
 //              childForm : TFTCustomFormorm - The child modal form to be
 //                launched.
 //
-//              keepVisible : Boolean = FALSE - Indicates whether the parent
+//              restoreParent : Boolean = FALSE - Indicates whether the parent
 //                form should be restored (made visible) or closed on closing
 //                the child form.
 //
@@ -2028,7 +2033,7 @@ end; // CloseFromFormActivate
 //***************************************************************************
 function ManageChildModal(parentForm : TCustomForm;
                           childForm : TCustomForm;
-                          keepVisible : Boolean = FALSE) : TModalResult;
+                          restoreParent : Boolean = FALSE) : TModalResult;
 begin
   if (parentForm <> nil) then
   begin
@@ -2039,7 +2044,7 @@ begin
 
   if (parentForm <> nil) then
   begin
-    if ((keepVisible) or
+    if ((restoreParent) or
         (childForm.ModalResult = mrAbort)) then
     begin
       parentForm.Visible := TRUE;

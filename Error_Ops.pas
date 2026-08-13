@@ -52,6 +52,9 @@ var
 //  OPERATION : Creates an error border "set" of rectangular boxes around each
 //              of the controls.
 //
+//              A TForm which uses Error Borders should always call HideErrorBorder(?) in
+//              its OnDestroy event (to make sure that it has tidied up correctly)
+//
 //  UPDATED   : 2020-11-16
 //
 //***************************************************************************
