@@ -265,17 +265,17 @@ end;
 
 //***************************************************************************
 //
-//  FUNCTION  : UniDBGridAutoWidth
-//
-//  I/P       :
-//
-//  O/P       :
-//
-//  OPERATION :
+//  OPERATION : Correct the grid column ratios, as per design.
 //
 //              From https://forums.unigui.com/index.php?/topic/4627-set-tunidbgrids-column-width-with-percentage/
 //
-//  UPDATED   : 2024-11-18
+//  I/P       : aGrid: TUniDBGrid
+//
+//              aFieldName: String = '' - List of fields to be specifically set.
+//                If empty, all fields will have autowidth relating to their
+//                width set in designer.
+//
+//  O/P       :
 //
 //***************************************************************************
 procedure uniDBGridAutoWidth(aGrid: TUniDBGrid; aFieldName: String = '');

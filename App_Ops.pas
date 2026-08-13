@@ -43,7 +43,7 @@ implementation
 uses
   System.SysUtils, System.DateUtils,
   System.Win.Registry,
-  Winapi.Windows,
+  Winapi.Windows, Winapi.TlHelp32,
   VCL.Forms,
   WinAPI.Messages,
   ImageHlp,
@@ -75,6 +75,52 @@ var
   LastPeekMessageTime: Cardinal = 0;
   Handle : HMODULE;
   SystemCritical: TSystemCritical;
+
+//***************************************************************************
+//
+//  FUNCTION  : runningUnderIDE
+//
+//  I/P       : None
+//
+//  O/P       : Boolean - TRUE if the application is running under the IDE
+//
+//  OPERATION : Indicate if the program is running under the IDE
+//
+//  UPDATED   : 2024-10-08
+//
+//***************************************************************************
+
+
+//***************************************************************************
+//
+//  OPERATION : Count the number of instances of the named process that are
+//              running.
+//
+//  I/P       : ExeName: String - Name of the process to be checked
+//
+//  O/P       : Integer - Number of instances of the process that are running
+//
+//***************************************************************************
+function ProcessCount(const ExeName: String): Integer;
+var
+  ContinueLoop : Boolean;
+  FSnapshotHandle : THandle;
+  FProcessEntry32 : TProcessEntry32;
+
+begin
+  FSnapshotHandle := CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  FProcessEntry32.dwSize := SizeOf(FProcessEntry32);
+  ContinueLoop := Process32First(FSnapshotHandle, FProcessEntry32);
+  Result := 0;
+  while Integer(ContinueLoop) <> 0 do
+  begin
+    if ((UpperCase(ExtractFileName(FProcessEntry32.szExeFile)) = UpperCase(ExeName)) or
+        (UpperCase(FProcessEntry32.szExeFile) = UpperCase(ExeName))) then
+      Inc(Result);
+    ContinueLoop := Process32Next(FSnapshotHandle, FProcessEntry32);
+  end; // while
+  CloseHandle(FSnapshotHandle);
+end; // ProcessCount
 
 //***************************************************************************
 //

@@ -59,11 +59,12 @@ procedure SetDateControlsToMonth(ctrlFrom, ctrlTo : TCalendarView;
                                  firstDay : Integer = 1); overload;
 procedure FixDateTimeEntry(dtpDate : TDateTimePicker;
                            dtpTime : TDateTimePicker);
+function MergeRtfContents(const ipRtfA, ipRtfB: TCustomRichEdit): string;
 
 implementation
 
 uses
-  System.SysUtils, System.DateUtils, System.UITypes,
+  System.SysUtils, System.DateUtils, System.UITypes, System.Classes,
   Vcl.Dialogs,
   WinAPI.Messages, WinAPI.Windows,
   TimeDate, Str_Ops;
@@ -776,5 +777,37 @@ begin
     dtpTime.Format := SearchAndReplace(dtpTime.Format, 'AMPM', 'tt');
   end; // if
 end; // FixDateTimeEntry
+
+//***************************************************************************
+//
+// OPERATION : Merge two RTF strings into one valid RTF document. The first
+//             RTF becomes the base document and the second is appended with
+//             formatting preserved.
+//
+// I/P : ipRtfA : string - First/source base RTF document
+//
+// ipRtfB : string - Second/source RTF document to append
+//
+// O/P : string - Merged RTF document.
+//
+//***************************************************************************
+function MergeRtfContents(const ipRtfA, ipRtfB: TCustomRichEdit): string;
+var
+  reOut : TRichEdit;
+
+begin
+  reOut := TRichEdit.Create(nil);
+  try
+    ipRtfA.SelectAll;
+    ipRtfA.CopyToClipboard;
+    reOut.PasteFromClipboard;
+    reOut.SelStart := reOut.Perform(EM_LINEINDEX, reOut.Lines.Count, 0);  //Set caret at end
+    ipRtfB.SelectAll;
+    ipRtfB.CopyToClipboard;
+    reOut.PasteFromClipboard;
+  finally
+    reOut.Free;
+  end;
+end;
 
 end.
