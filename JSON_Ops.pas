@@ -8,6 +8,9 @@ uses
 procedure AddUpdateJSONPair(pObj: TJSONObject;
                             pName: String;
                             pJSONValue: TJSONValue);
+procedure ClearJSONObject(aJSONObject : TJSONObject);
+procedure AssignJSONObject(const source : TJSONObject;
+                           dest : TJSONObject);
 function GotJSONValue(aJSONObject : TJSONObject;
                       name : String;
                       var theValue : TJSONValue) : boolean; overload;
@@ -101,6 +104,59 @@ begin
     pObj.AddPair(pName, pJSONValue);
   end;
 end; // AddUpdateJSONPair
+
+//***************************************************************************
+//
+// OPERATION : Remove all key/value pairs from a JSON object without freeing
+//             the object itself.
+//
+// I/P : aJSONObject : TJSONObject - The object to clear
+//
+// O/P :
+//
+//***************************************************************************
+procedure ClearJSONObject(aJSONObject : TJSONObject);
+var
+  pair : TJSONPair;
+
+begin
+  if not Assigned(aJSONObject) then
+    exit;
+  while (aJSONObject.Count > 0) do
+  begin
+    pair := aJSONObject.RemovePair(aJSONObject.Pairs[0].JsonString.Value);
+    FreeAndNil(pair);
+  end;
+end; // ClearJSONObject
+
+//***************************************************************************
+//
+// OPERATION : Replace the contents of dest with a deep copy of source.
+//
+// I/P : source : TJSONObject - JSON to copy from (may be nil)
+//
+//       dest : TJSONObject - JSON to copy into
+//
+// O/P :
+//
+//***************************************************************************
+procedure AssignJSONObject(const source : TJSONObject;
+                           dest : TJSONObject);
+var
+  pair : TJSONPair;
+
+begin
+  ClearJSONObject(dest);
+  if (not Assigned(source)) then
+  begin
+    Exit;
+  end; // if
+
+  for pair in source do
+  begin
+    dest.AddPair(pair.JsonString.Value, pair.JsonValue.Clone as TJSONValue);
+  end; // for
+end; // AssignJSONObject
 
 //***************************************************************************
 //
