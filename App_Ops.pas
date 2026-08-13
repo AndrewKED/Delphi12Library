@@ -18,6 +18,7 @@ type
 
   TSWVersions = array of TSWVersion;
 
+function ProcessCount(const ExeName: String): Integer;
 function runningUnderIDE : Boolean;
 function debugCompilation : Boolean;
 function folderApplication : String;
@@ -75,21 +76,6 @@ var
   LastPeekMessageTime: Cardinal = 0;
   Handle : HMODULE;
   SystemCritical: TSystemCritical;
-
-//***************************************************************************
-//
-//  FUNCTION  : runningUnderIDE
-//
-//  I/P       : None
-//
-//  O/P       : Boolean - TRUE if the application is running under the IDE
-//
-//  OPERATION : Indicate if the program is running under the IDE
-//
-//  UPDATED   : 2024-10-08
-//
-//***************************************************************************
-
 
 //***************************************************************************
 //

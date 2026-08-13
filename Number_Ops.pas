@@ -42,6 +42,7 @@ procedure UInt642Bytes(GivenValue : uint64;
 function Bytes2Single(iByte0, iByte1, iByte2, iByte3 : byte) : single;
 procedure Single2Bytes(GivenValue : single;
                        var iByte0, iByte1, iByte2, iByte3 : byte);
+function SingleToLEHex(value :Single): String;
 function IEEE754Single(iByte0, iByte1, iByte2, iByte3 : integer) : single;
 function IntToBinStr(theValue : UInt64;
                      BitsRequired : byte;
